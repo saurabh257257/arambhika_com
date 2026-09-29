@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact Us — Arambhika</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(145deg, #0a2e1a 0%, #1a5c2e 55%, #25a244 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 22px;
+      padding: 40px 44px 36px;
+      text-align: center;
+      max-width: 540px;
+      width: 100%;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+    }
+
+    .logo {
+      height: 64px;
+      width: auto;
+      object-fit: contain;
+      margin-bottom: 14px;
+    }
+
+    .company-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a3a6b;
+      margin-bottom: 3px;
+    }
+
+    .tagline {
+      font-size: 11.5px;
+      color: #777;
+      margin-bottom: 22px;
+    }
+
+    .divider {
+      border: none;
+      height: 1px;
+      background: #e2eaf5;
+      margin: 0 0 22px;
+    }
+
+    .scan-label {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #1a7a3c;
+      margin-bottom: 16px;
+    }
+
+    .qr-wrap {
+      display: inline-block;
+      padding: 16px;
+      border: 2.5px solid #b2dfbe;
+      border-radius: 18px;
+      background: #f2fbf5;
+    }
+
+    .qr-wrap img {
+      display: block;
+      border-radius: 8px;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 28px 16px 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <img class="logo" src="assets/logo.png" alt="Arambhika" />
+    <div class="company-name">Arambhika</div>
+    <div class="tagline">EV Battery Component Manufacturer</div>
+    <hr class="divider" />
+
+    <div class="scan-label">💬 Scan to Chat on WhatsApp</div>
+
+    <div class="qr-wrap">
+      <img
+        src="assets/qr_whatsapp.png"
+        width="280"
+        height="280"
+        alt="WhatsApp QR Code"
+      />
+    </div>
+  </div>
+
+</body>
+</html>

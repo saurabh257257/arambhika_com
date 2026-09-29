@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Generate Proforma Invoice | Arambhika</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: #f5f8ff;
+      color: #1e293b;
+      padding: 24px 16px 80px;
+      min-height: 100vh;
+    }
+    .pi-wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(15,23,42,0.08);
+      padding: 32px 36px;
+    }
+    .pi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 20px;
+      margin-bottom: 28px;
+      gap: 20px;
+    }
+    .pi-header h1 {
+      font-family: "Poppins", sans-serif;
+      font-size: 1.6rem;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .pi-header .sub { color: #64748b; font-size: 0.88rem; }
+    .pi-header .brand-logo {
+      width: 120px; height: auto; border-radius: 8px; object-fit: contain;
+    }
+
+    .section-title {
+      font-family: "Poppins", sans-serif;
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #1e5eff;
+      margin: 28px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px 16px;
+    }
+    .form-grid.two { grid-template-columns: 1fr 1fr; }
+    .field label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-family: inherit;
+      background: #fff;
+      transition: border-color 0.15s;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      outline: none;
+      border-color: #1e5eff;
+    }
+    .field textarea { resize: vertical; min-height: 60px; }
+    .field.full { grid-column: 1 / -1; }
+
+    /* Line items */
+    .items-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 28px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .items-head h3 {
+      font-family: "Poppins", sans-serif;
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #1e5eff;
+    }
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .items-table th {
+      background: #f1f5f9;
+      padding: 9px 8px;
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #475569;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    .items-table td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+    .items-table select,
+    .items-table input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-family: inherit;
+    }
+    .items-table input[type="number"] { text-align: right; }
+    .items-table .line-total {
+      font-weight: 600;
+      color: #0f172a;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .remove-btn {
+      background: transparent;
+      border: none;
+      color: #dc2626;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    .remove-btn:hover { color: #991b1b; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-primary { background: #1e5eff; color: #fff; }
+    .btn-primary:hover { background: #1847d1; }
+    .btn-ghost {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      color: #1e293b;
+    }
+    .btn-ghost:hover { background: #f1f5f9; }
+    .btn:active { transform: translateY(1px); }
+
+    /* Totals */
+    .totals-wrap {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .totals-box {
+      width: 100%;
+      max-width: 380px;
+      background: #f8faff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 18px 22px;
+    }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 0.9rem;
+      color: #475569;
+    }
+    .totals-row.grand {
+      margin-top: 8px;
+      padding-top: 12px;
+      border-top: 2px solid #cbd5e1;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .totals-row input {
+      width: 110px;
+      text-align: right;
+      padding: 5px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-family: inherit;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 720px) {
+      .pi-wrap { padding: 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid.two { grid-template-columns: 1fr; }
+      .items-table { font-size: 0.78rem; }
+      .items-table th, .items-table td { padding: 6px 4px; }
+      .actions { flex-direction: column; }
+      .actions .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="pi-wrap">
+    <div class="pi-header">
+      <div>
+        <h1>Proforma Invoice Generator</h1>
+        <p class="sub">For Swastik Metal Components — Arambhika</p>
+      </div>
+      <img class="brand-logo" src="assets/logo.png" alt="logo" />
+    </div>
+
+    <!-- PI Meta -->
+    <div class="section-title">Invoice Details</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>PI Date</label>
+        <input type="date" id="piDate" />
+      </div>
+      <div class="field">
+        <label>PI Number</label>
+        <input type="text" id="piNumber" placeholder="e.g. PI/2026/001" />
+      </div>
+      <div class="field">
+        <label>Remarks</label>
+        <input type="text" id="piRemarks" placeholder="Optional notes" value="ok" />
+      </div>
+    </div>
+
+    <!-- Consignee -->
+    <div class="section-title">Consignee (Ship To)</div>
+    <div class="form-grid">
+      <div class="field full">
+        <label>Client / Company Name</label>
+        <input type="text" id="clientName" placeholder="M/S CLIENT COMPANY" required />
+      </div>
+      <div class="field">
+        <label>GSTIN</label>
+        <input type="text" id="clientGstin" placeholder="e.g. 09XXXXXX1Z9" />
+      </div>
+      <div class="field">
+        <label>State Code</label>
+        <input type="text" id="clientState" placeholder="e.g. 9" />
+      </div>
+      <div class="field">
+        <label>Contact Person</label>
+        <input type="text" id="clientContactPerson" />
+      </div>
+      <div class="field full">
+        <label>Address</label>
+        <textarea id="clientAddress" placeholder="Full billing address"></textarea>
+      </div>
+      <div class="field">
+        <label>Contact No</label>
+        <input type="text" id="clientContactNo" placeholder="Phone number" />
+      </div>
+    </div>
+
+    <!-- Line Items -->
+    <div class="items-head">
+      <h3>Line Items</h3>
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="btn btn-ghost" id="addRow">+ From Catalog</button>
+        <button type="button" class="btn btn-ghost" id="addFreeRow">+ Custom Product</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="items-table" id="itemsTable">
+        <thead>
+          <tr>
+            <th style="width:34px;">#</th>
+            <th style="width:260px;">Product</th>
+            <th style="width:90px;">HSN</th>
+            <th style="width:70px;">Grade</th>
+            <th style="width:80px;">Qty</th>
+            <th style="width:60px;">Unit</th>
+            <th style="width:90px;">Rate (₹)</th>
+            <th style="width:80px;">P&amp;F</th>
+            <th style="width:110px;">Taxable</th>
+            <th style="width:36px;"></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+    </div>
+    <p class="hint">Rate is pre-filled from catalog. Edit any field above inline.</p>
+
+    <!-- Totals -->
+    <div class="totals-wrap">
+      <div class="totals-box">
+        <div class="totals-row">
+          <span>Taxable Value</span>
+          <span id="sumTaxable">₹0</span>
+        </div>
+        <div class="totals-row">
+          <span>Freight</span>
+          <input type="number" id="freight" value="0" min="0" step="0.01" />
+        </div>
+        <div class="totals-row">
+          <span>Total P&amp;F</span>
+          <span id="sumPF">₹0</span>
+        </div>
+        <div class="totals-row">
+          <span>IGST @ 18%</span>
+          <span id="sumGst">₹0</span>
+        </div>
+        <div class="totals-row grand">
+          <span>GRAND TOTAL</span>
+          <span id="sumGrand">₹0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-ghost" id="resetBtn">Reset</button>
+      <button type="button" class="btn btn-primary" id="downloadBtn">⬇ Download PI PDF</button>
+    </div>
+  </div>
+
+  <script>
+    // ── Seller fixed info ──
+    const SELLER = {
+      name: "SWASTIK METAL COMPONENTS",
+      address: "PLOT NO- 366, UDYOG KENDRA 2nd, ECOTECH 3rd, GRATER NOIDA, GAUTAM BUDDHA NAGAR, UP- 201306",
+      gstin: "09ARLPG4112H1ZY",
+      state: "9"
+    };
+    const HSN_DEFAULT = "85079090";
+    const GST_RATE = 18;
+
+    let PRODUCTS = [];
+
+    // ── Load products.json ──
+    fetch('products.json?v=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        PRODUCTS = [];
+        (data.categories || []).forEach(cat => {
+          (cat.products || []).forEach(p => {
+            PRODUCTS.push({
+              sku: p.SKU || '',
+              code: p.ProductCode,
+              category: p.Category,
+              price: parseFloat(p.Price) || 0,
+              unit: p.Unit || 'KG',
+              minQty: p['Minimum Quantity'] || 1,
+              dims: p.Product_Dimensions || ''
+            });
+          });
+        });
+        addRow();
+      })
+      .catch(() => {
+        alert('Could not load products.json. Ensure you are viewing this via a web server, not file://');
+        addRow();
+      });
+
+    // ── Set today's date ──
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('piDate').value = today;
+
+    // ── Row management ──
+    const tbody = document.getElementById('itemsBody');
+
+    function parseDims(dimsStr) {
+      // Try to extract width/thickness from "Strip size: 31 x 0.15 mm" or "Dimension: (55x20x2mm)"
+      const m = dimsStr.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i);
+      if (m) return { width: m[1], thickness: m[2] };
+      return { width: '', thickness: '' };
+    }
+
+    function attachRowListeners(tr) {
+      ['it-qty','it-rate','it-pf'].forEach(cls => {
+        tr.querySelector('.'+cls).addEventListener('input', recalc);
+      });
+      tr.querySelector('.remove-btn').addEventListener('click', () => {
+        tr.remove();
+        renumber();
+        recalc();
+      });
+    }
+
+    function addRow() {
+      const idx = tbody.children.length + 1;
+      const tr = document.createElement('tr');
+      tr.dataset.rowType = 'catalog';
+      tr.innerHTML = `
+        <td>${idx}</td>
+        <td>
+          <select class="it-product"></select>
+        </td>
+        <td><input type="text" class="it-hsn" value="${HSN_DEFAULT}" /></td>
+        <td><input type="text" class="it-grade" value="PLATED" /></td>
+        <td><input type="number" class="it-qty" value="1" min="0" step="0.01" /></td>
+        <td><input type="text" class="it-unit" value="KG" /></td>
+        <td><input type="number" class="it-rate" value="0" min="0" step="0.01" /></td>
+        <td><input type="number" class="it-pf" value="0" min="0" step="0.01" /></td>
+        <td class="line-total">₹0</td>
+        <td><button type="button" class="remove-btn" title="Remove">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+
+      const sel = tr.querySelector('.it-product');
+      sel.innerHTML = '<option value="">Select product...</option>' +
+        PRODUCTS.map((p, i) => {
+          const label = p.sku ? p.sku + ' – ' + p.code : p.code;
+          return `<option value="${i}">${label}</option>`;
+        }).join('') +
+        '<option value="__others__" style="font-style:italic;color:#999;">─── Others (free text) ───</option>';
+
+      sel.addEventListener('change', () => {
+        if (sel.value === '__others__') {
+          // Convert this row to a free-text custom row
+          const rowIdx = tr.firstElementChild.textContent;
+          const newTr = document.createElement('tr');
+          newTr.dataset.rowType = 'custom';
+          newTr.style.background = '#fffdf0';
+          newTr.innerHTML = `
+            <td>${rowIdx}</td>
+            <td><input type="text" class="it-product-text" placeholder="Enter product description..."
+              style="width:100%;font-size:0.85rem;padding:6px 8px;border:1px solid #f0c040;border-radius:6px;font-family:inherit;" /></td>
+            <td><input type="text" class="it-hsn" value="${HSN_DEFAULT}" /></td>
+            <td><input type="text" class="it-grade" value="" placeholder="Grade" /></td>
+            <td><input type="number" class="it-qty" value="1" min="0" step="0.01" /></td>
+            <td><input type="text" class="it-unit" value="KG" /></td>
+            <td><input type="number" class="it-rate" value="0" min="0" step="0.01" /></td>
+            <td><input type="number" class="it-pf" value="0" min="0" step="0.01" /></td>
+            <td class="line-total">₹0</td>
+            <td><button type="button" class="remove-btn" title="Remove">✕</button></td>
+          `;
+          tr.replaceWith(newTr);
+          attachRowListeners(newTr);
+          newTr.querySelector('.it-product-text').focus();
+          return;
+        }
+        const p = PRODUCTS[sel.value];
+        if (!p) return;
+        tr.querySelector('.it-rate').value = p.price;
+        tr.querySelector('.it-unit').value = p.unit;
+        tr.querySelector('.it-qty').value = p.minQty || 1;
+        tr.querySelector('.it-grade').value =
+          p.category.toLowerCase().includes('pure') ? 'PURE' :
+          p.category.toLowerCase().includes('plated') ? 'PLATED' :
+          p.category.toLowerCase().includes('copper') ? 'COPPER' :
+          p.category.toLowerCase().includes('alum') ? 'ALUMINIUM' : '';
+        recalc();
+      });
+
+      attachRowListeners(tr);
+    }
+
+    function addFreeRow() {
+      const idx = tbody.children.length + 1;
+      const tr = document.createElement('tr');
+      tr.dataset.rowType = 'custom';
+      tr.style.background = '#fffdf0';
+      tr.innerHTML = `
+        <td>${idx}</td>
+        <td>
+          <input type="text" class="it-product-text" placeholder="Enter product description..." style="width:100%;font-size:0.85rem;padding:6px 8px;border:1px solid #f0c040;border-radius:6px;font-family:inherit;" />
+        </td>
+        <td><input type="text" class="it-hsn" value="${HSN_DEFAULT}" /></td>
+        <td><input type="text" class="it-grade" value="" placeholder="Grade" /></td>
+        <td><input type="number" class="it-qty" value="1" min="0" step="0.01" /></td>
+        <td><input type="text" class="it-unit" value="KG" /></td>
+        <td><input type="number" class="it-rate" value="0" min="0" step="0.01" /></td>
+        <td><input type="number" class="it-pf" value="0" min="0" step="0.01" /></td>
+        <td class="line-total">₹0</td>
+        <td><button type="button" class="remove-btn" title="Remove">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+      attachRowListeners(tr);
+      tr.querySelector('.it-product-text').focus();
+    }
+
+    function renumber() {
+      Array.from(tbody.children).forEach((tr, i) => {
+        tr.firstElementChild.textContent = i + 1;
+      });
+    }
+
+    function recalc() {
+      let taxable = 0, pf = 0;
+      Array.from(tbody.children).forEach(tr => {
+        const qty = parseFloat(tr.querySelector('.it-qty').value) || 0;
+        const rate = parseFloat(tr.querySelector('.it-rate').value) || 0;
+        const lpf = parseFloat(tr.querySelector('.it-pf').value) || 0;
+        const lineTotal = qty * rate;
+        tr.querySelector('.line-total').textContent = '₹' + lineTotal.toFixed(2);
+        taxable += lineTotal;
+        pf += lpf;
+      });
+      const freight = parseFloat(document.getElementById('freight').value) || 0;
+      const subtotal = taxable + pf + freight;
+      const gst = subtotal * GST_RATE / 100;
+      const grand = subtotal + gst;
+      document.getElementById('sumTaxable').textContent = '₹' + taxable.toFixed(2);
+      document.getElementById('sumPF').textContent = '₹' + pf.toFixed(2);
+      document.getElementById('sumGst').textContent = '₹' + gst.toFixed(2);
+      document.getElementById('sumGrand').textContent = '₹' + grand.toFixed(2);
+    }
+
+    document.getElementById('addRow').addEventListener('click', addRow);
+    document.getElementById('addFreeRow').addEventListener('click', addFreeRow);
+    document.getElementById('freight').addEventListener('input', recalc);
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (!confirm('Clear all entries?')) return;
+      tbody.innerHTML = '';
+      document.getElementById('clientName').value = '';
+      document.getElementById('clientGstin').value = '';
+      document.getElementById('clientState').value = '';
+      document.getElementById('clientAddress').value = '';
+      document.getElementById('clientContactPerson').value = '';
+      document.getElementById('clientContactNo').value = '';
+      document.getElementById('freight').value = 0;
+      addRow();
+      recalc();
+    });
+
+    // ── PDF Generation ──
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const clientName = document.getElementById('clientName').value.trim();
+      if (!clientName) { alert('Please enter client name'); return; }
+      if (tbody.children.length === 0) { alert('Please add at least one product'); return; }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const pageW = doc.internal.pageSize.getWidth();
+      const margin = 10;
+      let y = margin;
+
+      // Title
+      doc.setFont('helvetica', 'bolditalic');
+      doc.setFontSize(16);
+      doc.text('PROFORMA  INVOICE', pageW / 2, y + 6, { align: 'center' });
+      y += 10;
+
+      // Sub header
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PROFORMA INVOICE-', pageW - margin, y, { align: 'right' });
+      y += 5;
+      const piDate = document.getElementById('piDate').value;
+      const piNum = document.getElementById('piNumber').value;
+      const dateStr = piDate ? piDate.split('-').reverse().join('-') : '';
+      doc.text(`Date: ${dateStr}${piNum ? '   PI#: ' + piNum : ''}`, pageW - margin, y, { align: 'right' });
+      y += 6;
+
+      // Consignee header
+      doc.setFillColor(230, 236, 246);
+      doc.rect(margin, y, pageW - 2*margin, 6, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text('Consignee (Ship to)', pageW - margin - 2, y + 4.2, { align: 'right' });
+      y += 6;
+
+      // Two-column seller / buyer box
+      const colW = (pageW - 2*margin) / 2;
+      const box = (x, y, w, rows) => {
+        doc.setDrawColor(180);
+        doc.rect(x, y, w, rows.length * 6);
+        doc.setFontSize(8);
+        rows.forEach((r, i) => {
+          doc.setFont('helvetica', 'bold');
+          doc.text(r[0], x + 1.5, y + 4 + i*6);
+          doc.setFont('helvetica', 'normal');
+          const txt = doc.splitTextToSize(r[1], w - 28);
+          doc.text(txt, x + 28, y + 4 + i*6);
+        });
+      };
+
+      const sellerRows = [
+        ['GSTIN :', SELLER.gstin],
+        ['NAME :', SELLER.name],
+        ['ADDRESS :', SELLER.address],
+        ['STATE CODE', SELLER.state]
+      ];
+      const buyerRows = [
+        ['GSTIN :', document.getElementById('clientGstin').value || ''],
+        ['NAME :', clientName],
+        ['ADDRESS :', document.getElementById('clientAddress').value || ''],
+        ['STATE CODE', document.getElementById('clientState').value || '']
+      ];
+
+      // Build address-aware rows (address may wrap)
+      const sellerAddr = doc.splitTextToSize(SELLER.address, colW - 30);
+      const buyerAddr = doc.splitTextToSize(document.getElementById('clientAddress').value || '', colW - 30);
+      const addrLines = Math.max(sellerAddr.length, buyerAddr.length, 2);
+      const rowH = 5.5;
+      const addrH = addrLines * 3.8;
+      const startY = y;
+      // 4 rows; address row variable height
+      const rowHeights = [rowH, rowH, addrH + 2, rowH];
+
+      function drawSide(x, rows, addrLinesArr) {
+        let cy = startY;
+        rows.forEach((r, idx) => {
+          const h = rowHeights[idx];
+          doc.setDrawColor(180);
+          doc.rect(x, cy, colW, h);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.text(r[0], x + 1.5, cy + 3.8);
+          doc.setFont('helvetica', 'normal');
+          if (idx === 2) {
+            doc.text(addrLinesArr, x + 28, cy + 3.8);
+          } else {
+            doc.text(String(r[1] || ''), x + 28, cy + 3.8);
+          }
+          cy += h;
+        });
+        return cy;
+      }
+
+      const endLeft = drawSide(margin, sellerRows, sellerAddr);
+      drawSide(margin + colW, buyerRows, buyerAddr);
+      y = endLeft + 2;
+
+      // Contact info for buyer
+      doc.setDrawColor(180);
+      doc.rect(margin + colW, y, colW, rowH);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text('CONTACT PERSON :', margin + colW + 1.5, y + 3.8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(document.getElementById('clientContactPerson').value || '', margin + colW + 38, y + 3.8);
+
+      doc.rect(margin + colW, y + rowH, colW, rowH);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CONTACT NO :', margin + colW + 1.5, y + rowH + 3.8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(document.getElementById('clientContactNo').value || '', margin + colW + 38, y + rowH + 3.8);
+
+      // Left side blank boxes to keep symmetry
+      doc.rect(margin, y, colW, rowH * 2);
+
+      y += rowH * 2 + 3;
+
+      // Build items table
+      const items = [];
+      let taxable = 0, pf = 0;
+      Array.from(tbody.children).forEach((tr, i) => {
+        const isFree = tr.dataset.rowType === 'custom';
+        let prodCode = '', dims = { width: '', thickness: '' };
+        if (isFree) {
+          prodCode = tr.querySelector('.it-product-text')?.value?.trim() || '';
+        } else {
+          const prod = tr.querySelector('.it-product');
+          const p_sel = PRODUCTS[prod.value];
+          prodCode = p_sel ? (p_sel.sku ? p_sel.sku + ' - ' + p_sel.code : p_sel.code) : (prod.options[prod.selectedIndex]?.text || '');
+          const p = PRODUCTS[prod.value];
+          dims = p ? parseDims(p.dims) : { width: '', thickness: '' };
+        }
+        const hsn = tr.querySelector('.it-hsn').value;
+        const grade = tr.querySelector('.it-grade').value;
+        const qty = parseFloat(tr.querySelector('.it-qty').value) || 0;
+        const rate = parseFloat(tr.querySelector('.it-rate').value) || 0;
+        const lpf = parseFloat(tr.querySelector('.it-pf').value) || 0;
+        const lineTotal = qty * rate;
+        taxable += lineTotal;
+        pf += lpf;
+        items.push([
+          String(i+1),
+          hsn,
+          prodCode,
+          dims.width,
+          dims.thickness,
+          grade,
+          qty.toString(),
+          rate.toFixed(2),
+          lpf.toFixed(2),
+          lineTotal.toFixed(2),
+          GST_RATE.toString(),
+          dateStr
+        ]);
+      });
+
+      doc.autoTable({
+        startY: y,
+        head: [[
+          { content: 'Sr', rowSpan: 2 },
+          { content: 'HSN CODE', rowSpan: 2 },
+          { content: 'DESCRIPTION OF GOODS', rowSpan: 2 },
+          { content: 'SIZE', colSpan: 2 },
+          { content: 'GRADE', rowSpan: 2 },
+          { content: 'QTY', rowSpan: 2 },
+          { content: 'PER KG RATE', rowSpan: 2 },
+          { content: 'P&F/\nFREIGHT', rowSpan: 2 },
+          { content: 'TAXABLE VALUE', rowSpan: 2 },
+          { content: 'IGST %', rowSpan: 2 },
+          { content: 'Date', rowSpan: 2 }
+        ],[
+          'WIDTH','THICKNESS'
+        ]],
+        body: items,
+        theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 1.5, halign: 'center', valign: 'middle' },
+        headStyles: { fillColor: [230,236,246], textColor: [30,41,59], fontStyle: 'bold' },
+        columnStyles: {
+          2: { halign: 'left', cellWidth: 36 },
+          9: { halign: 'right' }
+        },
+        margin: { left: margin, right: margin }
+      });
+
+      let ty = doc.lastAutoTable.finalY;
+      const freight = parseFloat(document.getElementById('freight').value) || 0;
+      const subtotal = taxable + pf + freight;
+      const gst = subtotal * GST_RATE / 100;
+      const grand = subtotal + gst;
+
+      // Totals block
+      const tblW = pageW - 2*margin;
+      const labelW = tblW - 50;
+      const drawTot = (label, val, bold) => {
+        doc.setDrawColor(180);
+        doc.rect(margin, ty, labelW, 6);
+        doc.rect(margin + labelW, ty, 50, 6);
+        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+        doc.setFontSize(8.5);
+        doc.text(label, margin + 2, ty + 4);
+        doc.text(val, margin + labelW + 48, ty + 4, { align: 'right' });
+        ty += 6;
+      };
+      drawTot('TOTAL TAXABLE VALUE', taxable.toFixed(2), true);
+      drawTot('FREIGHT', freight.toFixed(2), false);
+      drawTot('TOTAL P and F', pf.toFixed(2), false);
+      drawTot('TAX-18%', gst.toFixed(2), false);
+      drawTot('TOTAL', grand.toFixed(2), true);
+
+      ty += 4;
+
+      // Remarks + signature block
+      const remarks = document.getElementById('piRemarks').value || '';
+      doc.setDrawColor(180);
+      const blockH = 28;
+      doc.rect(margin, ty, tblW, blockH);
+      doc.line(margin + tblW/2, ty, margin + tblW/2, ty + blockH);
+      doc.line(margin, ty + 6, margin + tblW, ty + 6);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text('REMARKS :', margin + 2, ty + 4.2);
+      doc.text('FOR SWASTIK METAL COMPONENTS', margin + tblW/2 + 2, ty + 4.2);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(remarks, margin + tblW/4, ty + 18, { align: 'center' });
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.text('AUTHORIZED SIGNATORY', margin + tblW*3/4, ty + 25, { align: 'center' });
+
+      // Save
+      const safeName = clientName.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+      const fname = `PI_${safeName || 'Client'}_${dateStr || today}.pdf`;
+      doc.save(fname);
+    });
+  </script>
+</body>
+</html>

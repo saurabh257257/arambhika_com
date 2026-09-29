@@ -1,0 +1,126 @@
+{
+  "brand": {
+    "name": "Arambhika",
+    "tagline": "Nickel & Copper Battery Connectors: Mfg. & Dist.",
+    "logo": "assets/logo.png"
+  },
+  "topBar": {
+    "phones": [
+      {
+        "label": "+91-9315545821",
+        "tel": "+919315545821",
+        "whatsapp": "919315545821"
+      }
+    ]
+  },
+  "nav": {
+    "home": "Home",
+    "catalog": "Product Store",
+    "capabilities": "Our Capabilities",
+    "about": "About \u0026 Contact"
+  },
+  "solutions": {
+    "eyebrow": "Our Strengths",
+    "title": "What Sets Us Apart in Battery Components",
+    "subtitle": "Speed, scale, and reliability — built in-house.",
+    "items": [
+      {
+        "id": "1",
+        "title": "Arambhika / Swastik Metal Components",
+        "tag": "Battery Pack Connectors & Nickel Strip Solutions",
+        "line": "Participating in AutoTech Asia & Battery Tech India exhibition at Hall No. 6, Booth No. A20 from 17-19 April 2026 at Bharat Mandapam, New Delhi.",
+        "image": "assets/solutions/exhibitions.jpeg"
+      },
+      {
+        "id": "2",
+        "title": "Fully In-House Manufacturing",
+        "tag": "Integrated Plating Facility",
+        "line": "End-to-end in-house manufacturing with an integrated plating plant and capacity up to 25 tonnes per month.",
+        "image": "assets/solutions/image1.jpg"
+      },
+      {
+        "id": "3",
+        "title": "Emergency Production Support",
+        "tag": "Fast & Reliable Manufacturing",
+        "line": "Dedicated production support to meet emergency and urgent customer requirements without delays.",
+        "image": "assets/solutions/image2.jpg"
+      },
+      {
+        "id": "4",
+        "title": "Rapid Custom Development",
+        "tag": "Zero Tooling Cost",
+        "line": "No tooling charges and ultra-fast custom product development with lead times under 7 days.",
+        "image": "assets/solutions/image3.jpg"
+      },
+      {
+        "id": "5",
+        "title": "Trusted Industry Partner",
+        "tag": "Proven Brand Experience",
+        "line": "Proven track record serving leading energy brands.",
+        "image": "assets/solutions/image4.jpg"
+      }
+    ],
+    "nextLabel": "Next"
+  },
+  "about": {
+    "eyebrow": "About Us",
+    "title": "Our Key Strengths \u0026 Capabilities",
+    "lead": "We believe the above strengths enable us to deliver consistent quality.",
+    "whyTitle": "Why partners choose us",
+    "whyItems": [
+      "Production support during emergency and urgent requirements.",
+      "Complete in-house setup of all machineries along with an integrated plating plant.",
+      "No tooling cost charged for running / repeat products.",
+      "Very low development lead time, enabling faster product finalization.",
+      "Proven experience in catering to reputed brands, public listed companies, etc.",
+      "Core specialization in:",
+      "sub: Nickel Strips",
+      "sub: Copper Busbars",
+      "sub: Aluminium Busbars"
+    ]
+  },
+  "contactCta": {
+    "eyebrow": "Contact Us",
+    "title": "Reach our team for pricing, samples, and supply planning.",
+    "lead": "Visit the Contact Us page to send your requirements and get a response within 24 hours.",
+    "buttonLabel": "Go to Contact Page"
+  },
+  "fab": {
+    "label": "Sample Request/ Order"
+  },
+  "capabilities": {
+    "eyebrow": "Our Capabilities",
+    "title": "What Sets Us Apart in Battery Components",
+    "lead": "Speed, scale, and reliability — built in-house.",
+    "items": [
+      {
+        "id": "1",
+        "title": "Fully In-House Manufacturing",
+        "tag": "Integrated Plating Facility",
+        "line": "End-to-end in-house manufacturing with an integrated plating plant and capacity up to 25 tonnes per month.",
+        "image": "assets/solutions/image1.jpg"
+      },
+      {
+        "id": "2",
+        "title": "Emergency Production Support",
+        "tag": "Fast & Reliable Manufacturing",
+        "line": "Dedicated production support to meet emergency and urgent customer requirements without delays.",
+        "image": "assets/solutions/image2.jpg"
+      },
+      {
+        "id": "3",
+        "title": "Rapid Custom Development",
+        "tag": "Zero Tooling Cost",
+        "line": "No tooling charges and ultra-fast custom product development with lead times under 7 days.",
+        "image": "assets/solutions/image3.jpg"
+      },
+      {
+        "id": "4",
+        "title": "Trusted Industry Partner",
+        "tag": "Proven Brand Experience",
+        "line": "Proven track record serving leading energy brands.",
+        "image": "assets/solutions/image4.jpg"
+      }
+    ]
+  }
+}

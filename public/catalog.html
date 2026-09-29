@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Catalog | Nickel Strips, Copper Busbars & Battery Components | Arambhika</title>
+  <meta name="description" content="Browse 53+ SKUs of nickel-plated strips, pure nickel strips, copper busbars and battery interconnect components from Arambhika. View specs, pricing and download the full PDF catalog." />
+  <meta name="keywords" content="nickel strip catalog, copper busbar catalog, battery component price list, 18650 nickel strip, 21700 nickel strip, EV battery parts catalog India" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://www.arambhikaenablers.in/catalog.html" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; color: #1a1a2e; }
+
+    .pdf-btn {
+      position: fixed; bottom: 32px; right: 32px; z-index: 999;
+      display: flex; align-items: center; gap: 8px;
+      background: #1a3a6b; color: #fff; font-size: 14px; font-weight: 600;
+      padding: 13px 22px; border: none; border-radius: 40px; cursor: pointer;
+      box-shadow: 0 4px 18px rgba(26,58,107,.35); transition: background .2s, transform .15s;
+    }
+    .pdf-btn:hover { background: #2d6abf; transform: translateY(-2px); }
+    .pdf-btn svg { flex-shrink: 0; }
+
+    .header {
+      background: #fff; border-bottom: 3px solid #1a3a6b;
+      padding: 20px 40px; display: flex; align-items: center;
+      justify-content: space-between; gap: 24px;
+    }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .header-logo { height: 72px; width: auto; object-fit: contain; }
+    .header-brand h1 { font-size: 22px; font-weight: 700; color: #1a3a6b; line-height: 1.2; }
+    .header-brand p { font-size: 12px; color: #555; margin-top: 3px; }
+    .header-contact { text-align: right; font-size: 12px; color: #333; line-height: 1.8; }
+    .header-contact strong { color: #1a3a6b; }
+
+    .catalog-banner {
+      background: linear-gradient(135deg, #1a3a6b 0%, #2d6abf 100%);
+      color: #fff; text-align: center; padding: 18px 40px;
+    }
+    .catalog-banner h2 { font-size: 20px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+    .catalog-banner p { font-size: 12px; opacity: .85; margin-top: 4px; }
+
+    .content { max-width: 1280px; margin: 0 auto; padding: 16px 16px 32px; }
+
+    .category-section { margin-bottom: 18px; }
+    .category-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .category-heading h3 {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.2px; color: #1a3a6b; white-space: nowrap;
+    }
+    .category-heading::before {
+      content: ''; display: block; width: 3px; height: 16px;
+      background: #2d6abf; border-radius: 2px; flex-shrink: 0;
+    }
+    .category-heading::after { content: ''; flex: 1; height: 1px; background: #d0d8e8; }
+
+    .product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+
+    .product-card {
+      background: #fff; border: 1px solid #dde4f0; border-radius: 7px;
+      overflow: hidden; display: flex; flex-direction: row; align-items: stretch;
+      transition: box-shadow .18s; min-height: 0;
+    }
+    .product-card:hover { box-shadow: 0 4px 14px rgba(26,58,107,.11); }
+
+    .product-img-wrap {
+      width: 88px; min-width: 88px; background: #f4f6fb;
+      overflow: hidden; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0;
+    }
+    .product-img-wrap img { width: 88px; height: 88px; object-fit: cover; display: block; }
+
+    .product-info { padding: 7px 9px; flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .product-name { font-size: 10px; font-weight: 700; color: #1a3a6b; line-height: 1.3; }
+    .product-price { font-size: 11px; font-weight: 700; color: #1a7a4a; letter-spacing: .2px; }
+    .product-price span { font-size: 9px; font-weight: 400; color: #777; margin-left: 2px; }
+    .product-dims { font-size: 9px; color: #555; line-height: 1.45; white-space: pre-line; }
+    .product-badge { margin-top: auto; padding-top: 4px; display: flex; gap: 4px; flex-wrap: wrap; }
+    .badge {
+      font-size: 8px; font-weight: 600; padding: 1px 5px; border-radius: 20px;
+      background: #e8f0fb; color: #1a3a6b; border: 1px solid #c5d6f0;
+    }
+    .badge.avail-now { background: #e6f9f0; color: #1a7a4a; border-color: #b2e4cd; }
+    .badge.avail-request { background: #fff4e0; color: #a05c00; border-color: #f5d58a; }
+
+    .footer {
+      background: #1a3a6b; color: #c5d6f0; text-align: center;
+      padding: 12px 40px; font-size: 10.5px; line-height: 1.8;
+    }
+    .footer strong { color: #fff; }
+
+    .loading { text-align: center; padding: 60px; color: #888; font-size: 14px; }
+
+    @page { size: A4 landscape; margin: 8mm 8mm; }
+    @media print {
+      .pdf-btn { display: none !important; }
+      body { background: #fff; }
+      .header { padding: 6px 16px; border-bottom: 2px solid #1a3a6b; }
+      .header-logo { height: 48px; }
+      .header-brand h1 { font-size: 16px; }
+      .catalog-banner { padding: 5px 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .catalog-banner h2 { font-size: 14px; }
+      .catalog-banner p { font-size: 9px; }
+      .content { padding: 8px 6px 12px; max-width: 100%; }
+      .category-section { margin-bottom: 10px; }
+      .category-heading { margin-bottom: 5px; }
+      .product-grid { grid-template-columns: repeat(4, 1fr); gap: 5px; }
+      .product-card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ccc; }
+      .product-img-wrap { width: 72px; min-width: 72px; }
+      .product-img-wrap img { width: 72px; height: 72px; }
+      .product-info { padding: 5px 7px; gap: 2px; }
+      .product-name { font-size: 8.5px; }
+      .product-dims { font-size: 7.5px; }
+      .product-price { font-size: 9px; }
+      .badge { font-size: 7px; padding: 1px 4px; }
+      .footer { background: #1a3a6b !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 8px 16px; font-size: 9px; }
+    }
+    @media (max-width: 1100px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px) {
+      .product-grid { grid-template-columns: repeat(2, 1fr); }
+      .header { flex-direction: column; align-items: flex-start; }
+      .header-contact { text-align: left; }
+      .pdf-btn { bottom: 20px; right: 20px; font-size: 13px; padding: 11px 18px; }
+    }
+    @media (max-width: 420px) { .product-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  <button class="pdf-btn" onclick="window.print()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 15V3m0 12-4-4m4 4 4-4"/><path d="M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/>
+    </svg>
+    Download as PDF
+  </button>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="assets/logo.png" alt="Arambhika Logo" />
+      <div class="header-brand">
+        <h1>Arambhika</h1>
+        <p>EV Battery Component Manufacturer</p>
+      </div>
+    </div>
+    <div class="header-contact">
+      <strong>Contact Us</strong><br />
+      +91-8112662827<br />
+      +91-9953255677
+    </div>
+  </header>
+
+  <div class="catalog-banner">
+    <h2>Product Catalog</h2>
+    <p>Battery Pack Connectors &amp; Nickel Strip Solutions</p>
+  </div>
+
+  <main class="content" id="catalogRoot">
+    <div class="loading">Loading catalog…</div>
+  </main>
+
+  <footer class="footer">
+    <strong>Arambhika / Swastik Metal Components</strong><br />
+    Battery Pack Connectors &amp; Nickel Strip Solutions<br />
+    +91-8112662827 &nbsp;|&nbsp; +91-9953255677
+  </footer>
+
+<script>
+// Auto-print if ?autoprint=1 is in the URL (triggered by QR scan)
+const AUTO_PRINT = new URLSearchParams(location.search).get('autoprint') === '1';
+
+if (AUTO_PRINT) {
+  // Show a loading banner so user knows what's happening
+  document.addEventListener('DOMContentLoaded', () => {
+    const banner = document.createElement('div');
+    banner.id = 'autoBanner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a3a6b;color:#fff;text-align:center;padding:12px 16px;font-size:14px;font-weight:600;letter-spacing:.5px;';
+    banner.textContent = '⏳ Loading catalog — PDF download will start automatically…';
+    document.body.prepend(banner);
+  });
+}
+
+// Compress an img to a canvas JPEG — only called right before printing
+function compressImg(imgEl, size, quality) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    c.getContext('2d').drawImage(imgEl, 0, 0, size, size);
+    imgEl.dataset.origSrc = imgEl.src;           // save original
+    imgEl.src = c.toDataURL('image/jpeg', quality);
+  } catch(e) { /* cross-origin: skip */ }
+}
+
+// Restore originals after print so screen stays sharp
+function restoreImgs() {
+  document.querySelectorAll('.product-img-wrap img[data-orig-src]').forEach(img => {
+    img.src = img.dataset.origSrc;
+    delete img.dataset.origSrc;
+  });
+}
+
+// Before print: compress for PDF size; after print: restore crisp originals
+window.addEventListener('beforeprint', () => {
+  document.querySelectorAll('.product-img-wrap img').forEach(img => {
+    if (img.complete && img.naturalWidth) compressImg(img, 180, 0.78);
+  });
+});
+window.addEventListener('afterprint', restoreImgs);
+
+fetch('products.json?v=' + Date.now(), { cache: 'no-store' })
+  .then(r => r.json())
+  .then(data => {
+    const root = document.getElementById('catalogRoot');
+    root.innerHTML = '';
+
+    (data.categories || []).forEach(cat => {
+      const sec = document.createElement('section');
+      sec.className = 'category-section';
+
+      const heading = document.createElement('div');
+      heading.className = 'category-heading';
+      heading.innerHTML = '<h3>' + cat.Category + '</h3>';
+      sec.appendChild(heading);
+
+      const grid = document.createElement('div');
+      grid.className = 'product-grid';
+
+      (cat.products || []).forEach(p => {
+        const imgSrc = (p.Image_Link && p.Image_Link[0]) ? p.Image_Link[0] : 'assets/logo.png';
+        const avail = (p.Availability || '').toLowerCase() === 'now' ? 'avail-now' : 'avail-request';
+        const availLabel = avail === 'avail-now' ? 'Available' : 'On Request';
+        const dims = (p.Product_Dimensions || '') + '\nUnit: ' + (p.Unit || '') + ' | Min Qty: ' + (p['Minimum Quantity'] || 1);
+        const price = p.Price ? '&#8377;' + Number(p.Price).toLocaleString('en-IN') + '<span>/ ' + (p.Unit || '') + '</span>' : '';
+
+        // Create card element (not via innerHTML so we can attach load handler)
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.dataset.sku = p.ProductCode;
+        card.innerHTML = `
+          <div class="product-img-wrap">
+            <img alt="${p.ProductCode}" />
+          </div>
+          <div class="product-info">
+            <div class="product-name">${p.ProductCode} <span style="color:#2d6abf;font-weight:500;font-size:.85em;">(${p.SKU})</span></div>
+            <div class="product-dims">${dims.trim()}</div>
+            ${price ? '<div class="product-price">' + price + '</div>' : ''}
+            <div class="product-badge">
+              <span class="badge ${avail}">${availLabel}</span>
+              <span class="badge">${p.SKU}</span>
+            </div>
+          </div>`;
+
+        // Load image and immediately compress to 88px canvas dataURL
+        const imgEl = card.querySelector('img');
+        imgEl.crossOrigin = 'anonymous';
+        imgEl.src = imgSrc;   // full-res — only compressed at print time
+
+        grid.appendChild(card);
+      });
+
+      sec.appendChild(grid);
+      root.appendChild(sec);
+    });
+
+    // Auto-print: wait for images to load then trigger print dialog
+    if (AUTO_PRINT) {
+      const allImgs = Array.from(root.querySelectorAll('img'));
+      let loaded = 0;
+      const total = allImgs.length;
+
+      function tryPrint() {
+        loaded++;
+        if (loaded >= total) {
+          // Extra 800ms buffer for render to settle
+          setTimeout(() => {
+            const b = document.getElementById('autoBanner');
+            if (b) b.textContent = '📄 Opening download dialog…';
+            setTimeout(() => window.print(), 400);
+          }, 800);
+        }
+      }
+
+      if (total === 0) {
+        setTimeout(() => window.print(), 1200);
+      } else {
+        allImgs.forEach(img => {
+          if (img.complete) { tryPrint(); }
+          else { img.addEventListener('load', tryPrint); img.addEventListener('error', tryPrint); }
+        });
+      }
+    }
+  })
+  .catch(() => {
+    document.getElementById('catalogRoot').innerHTML =
+      '<div class="loading">Could not load catalog. Please refresh.</div>';
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,891 @@
+{
+    "categories": [
+        {
+            "Category": "Nickel Strip Plated",
+            "products": [
+                {
+                    "SKU": "NPT1",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated 1P 6x0.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPT1-Nickel Strip Plated-Nickel Strip Plated 1P 6x0.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPT1-Nickel Strip Plated-Nickel Strip Plated 1P 6x0.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPT1-Nickel Strip Plated-Nickel Strip Plated 1P 6x0.15 mm_3.jpg"
+                    ],
+                    "Price": "480",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "Strip size: 6 x 0.15 mm thick; Nickel-plated",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                },
+                {
+                    "SKU": "NPT2",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated 1P 8x0.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPT2-Nickel Strip Plated-Nickel Strip Plated 1P 8x0.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPT2-Nickel Strip Plated-Nickel Strip Plated 1P 8x0.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPT2-Nickel Strip Plated-Nickel Strip Plated 1P 8x0.15 mm_3.jpg"
+                    ],
+                    "Price": "480",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "Strip size: 8 x 0.15 mm thick; Nickel-plated",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                },
+                {
+                    "SKU": "NPT3",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated 1P 10x0.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPT3-Nickel Strip Plated-Nickel Strip Plated 1P 10x0.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPT3-Nickel Strip Plated-Nickel Strip Plated 1P 10x0.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPT3-Nickel Strip Plated-Nickel Strip Plated 1P 10x0.15 mm_3.jpg"
+                    ],
+                    "Price": "480",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "Strip size: 10 x 0.15 mm thick; Nickel-plated",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                },
+                {
+                    "SKU": "NPTH1",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated 2P(18650) 26x0.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPTH1-Nickel Strip Plated-Nickel Strip Plated 2P(18650) 26x0.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH1-Nickel Strip Plated-Nickel Strip Plated 2P(18650) 26x0.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH1-Nickel Strip Plated-Nickel Strip Plated 2P(18650) 26x0.15 mm_3.jpg"
+                    ],
+                    "Price": "750",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "26 x 0.15 mm for 18650 2P (H-type);",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                },
+                {
+                    "SKU": "NPTH2",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated 2P(21700) 31x0.15 mm without holder CD 22.5",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPTH2-Nickel Strip Plated-Nickel Strip Plated 2P(21700) 31x0.15 mm without CD 22.5_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH2-Nickel Strip Plated-Nickel Strip Plated 2P(21700) 31x0.15 mm without CD 22.5_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH2-Nickel Strip Plated-Nickel Strip Plated 2P(21700) 31x0.15 mm without CD 22.5_3.jpg"
+                    ],
+                    "Price": "750",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "31x0.15 mm without CD 22.5",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                },
+                {
+                    "SKU": "NPTH3",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated 2P(21700) 31x0.15 mm with holder CD 23",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPTH3-Nickel Strip Plated-Nickel Strip Plated 2P(21700) 31x0.15 mm with holder CD 23_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH3-Nickel Strip Plated-Nickel Strip Plated 2P(21700) 31x0.15 mm with holder CD 23_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH3-Nickel Strip Plated-Nickel Strip Plated 2P(21700) 31x0.15 mm with holder CD 23_3.jpg"
+                    ],
+                    "Price": "750",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "31x0.15 mm with holder CD 23",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                },
+                {
+                    "SKU": "NPTH4",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated 2P(32650) with holder 46.5x0.15 mm CD 34.5",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPTH4-Nickel Strip Plated-Nickel Strip Plated 2P(32650) with holder 46.5x0.15 mm CD 34.5_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH4-Nickel Strip Plated-Nickel Strip Plated 2P(32650) with holder 46.5x0.15 mm CD 34.5_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH4-Nickel Strip Plated-Nickel Strip Plated 2P(32650) with holder 46.5x0.15 mm CD 34.5_3.jpg"
+                    ],
+                    "Price": "750",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "with holder 46.5x0.15 mm CD 34.5",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                },
+                {
+                    "SKU": "NPTH5",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated 2P(32650) without holder 46.5x0.15 mm CD 32.8",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPTH5-Nickel Strip Plated-Nickel Strip Plated 2P(32650) without holder 46.5x0.15 mm CD 32.8_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH5-Nickel Strip Plated-Nickel Strip Plated 2P(32650) without holder 46.5x0.15 mm CD 32.8_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH5-Nickel Strip Plated-Nickel Strip Plated 2P(32650) without holder 46.5x0.15 mm CD 32.8_3.jpg"
+                    ],
+                    "Price": "750",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "without holder 46.5x0.15 mm CD 32.8",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                },
+                {
+                    "SKU": "NPTH6",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated 2P(32650) 36.5x0.15 mm - Fuse Type CD 22.5",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPTH6-Nickel Strip Plated-Nickel Strip Plated 2P(32650) 36.5x0.15 mm - Fuse Type CD 22.5_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH6-Nickel Strip Plated-Nickel Strip Plated 2P(32650) 36.5x0.15 mm - Fuse Type CD 22.5_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH6-Nickel Strip Plated-Nickel Strip Plated 2P(32651) 36.5x0.15 mm - Fuse Type CD 22.5_3.jpg"
+                    ],
+                    "Price": "830",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "36.5x0.15 mm - Fuse Type CD 22.5",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                },
+                {
+                    "SKU": "NPTH7",
+                    "Category": "Nickel Strip Plated",
+                    "ProductCode": "Nickel Strip Plated ZigZag ( 18650) 19.01 x.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Plated/NPTH7-Nickel Strip Plated-Nickel Strip Plated ZigZag ( 18650) 19.01 x.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH7-Nickel Strip Plated-Nickel Strip Plated ZigZag ( 18650) 19.01 x.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Plated/NPTH7-Nickel Strip Plated-Nickel Strip Plated ZigZag ( 18650) 19.01 x.15 mm_3.jpg"
+                    ],
+                    "Price": "830",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "46.5x0.3 mm - Zig Zag",
+                    "Additional_Details": "Nickel-plated (corrosion resistant); balanced thickness; good conductivity; battery packs, EV, ESS; flexible, easy to solder"
+                }
+            ]
+        },
+        {
+            "Category": "Nickel Strip Pure",
+            "products": [
+                {
+                    "SKU": "NP1",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 1P 6x0.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NP1-Nickel Strip Pure-Nickel Strip Pure 1P 6x0.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP1-Nickel Strip Pure-Nickel Strip Pure 1P 6x0.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP1-Nickel Strip Pure-Nickel Strip Pure 1P 6x0.15 mm_3.jpg"
+                    ],
+                    "Price": "3250",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "Strip size: 6 x 0.15 mm thick; Pure Nickel",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NP2",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 1P 8x0.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NP2-Nickel Strip Pure-Nickel Strip Pure 1P 8x0.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP2-Nickel Strip Pure-Nickel Strip Pure 1P 8x0.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP2-Nickel Strip Pure-Nickel Strip Pure 1P 8x0.15 mm_3.jpg"
+                    ],
+                    "Price": "3250",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "Strip size: 8 x 0.15 mm thick; Pure Nickel",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NP3",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 1P 10x0.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NP3-Nickel Strip Pure-Nickel Strip Pure 1P 10x0.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP3-Nickel Strip Pure-Nickel Strip Pure 1P 10x0.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP3-Nickel Strip Pure-Nickel Strip Pure 1P 10x0.15 mm_3.jpg"
+                    ],
+                    "Price": "3250",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "Strip size: 10 x 0.15 mm thick; Pure Nickel",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NP4",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 1P 8x 0.3 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NP4-Nickel Strip Pure-Nickel Strip Pure 1P 8x 0.3 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP4-Nickel Strip Pure-Nickel Strip Pure 1P 8x 0.3 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP4-Nickel Strip Pure-Nickel Strip Pure 1P 8x 0.3 mm_3.jpg"
+                    ],
+                    "Price": "3250",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "Strip size: 8 x 0.3 mm thick; Pure Nickel",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NP5",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 1P 10 x 0.3 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NP5-Nickel Strip Pure-Nickel Strip Pure 1P 10 x 0.3 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP5-Nickel Strip Pure-Nickel Strip Pure 1P 10 x 0.3 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NP5-Nickel Strip Pure-Nickel Strip Pure 1P 10 x 0.3 mm_3.jpg"
+                    ],
+                    "Price": "3250",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "Strip size: 10 x 0.3 mm thick; Pure Nickel",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH1",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(18650) 26x0.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH1-Nickel Strip Pure-Nickel Strip Pure 2P(18650) 26x0.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH1-Nickel Strip Pure-Nickel Strip Pure 2P(18650) 26x0.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH1-Nickel Strip Pure-Nickel Strip Pure 2P(18650) 26x0.15 mm_3.jpg"
+                    ],
+                    "Price": "4200",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "26 x 0.15 mm for 18650 2P (H-type);",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH2",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(21700) 31x0.15 mm without holder CD 22.5",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH2-Nickel Strip Pure-Nickel Strip Pure 2P(21700) 31x0.15 mm without holder CD 22.5_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH2-Nickel Strip Pure-Nickel Strip Pure 2P(21700) 31x0.15 mm without holder CD 22.5_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH2-Nickel Strip Pure-Nickel Strip Pure 2P(21700) 31x0.15 mm without holder CD 22.5_3.jpg"
+                    ],
+                    "Price": "4200",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "31x0.15 mm without CD 22.5",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH3",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(21700) 31x0.15 mm with holder CD 23",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH3-Nickel Strip Pure-Nickel Strip Pure 2P(21700) 31x0.15 mm with holder CD 23_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH3-Nickel Strip Pure-Nickel Strip Pure 2P(21700) 31x0.15 mm with holder CD 23_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH3-Nickel Strip Pure-Nickel Strip Pure 2P(21700) 31x0.15 mm with holder CD 23_3.jpg"
+                    ],
+                    "Price": "4200",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "31x0.15 mm with holder CD 23",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH4",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(32650) with holder 46.5x0.15 mm CD 34.5",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH4-Nickel Strip Pure-Nickel Strip Pure 2P(32650) with holder 46.5x0.15 mm CD 34.5_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH4-Nickel Strip Pure-Nickel Strip Pure 2P(32650) with holder 46.5x0.15 mm CD 34.5_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH4-Nickel Strip Pure-Nickel Strip Pure 2P(32650) with holder 46.5x0.15 mm CD 34.5_3.jpg"
+                    ],
+                    "Price": "4200",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "with holder 46.5x0.15 mm CD 34.5",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH5",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(32650) without holder 46.5x0.15 mm CD 32.8",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH5-Nickel Strip Pure-Nickel Strip Pure 2P(32650) without holder 46.5x0.15 mm CD 32.8_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH5-Nickel Strip Pure-Nickel Strip Pure 2P(32650) without holder 46.5x0.15 mm CD 32.8_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH5-Nickel Strip Pure-Nickel Strip Pure 2P(32650) without holder 46.5x0.15 mm CD 32.8_3.jpg"
+                    ],
+                    "Price": "4200",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "without holder 46.5x0.15 mm CD 32.8",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH6",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(32650) 36.5x0.15 mm - Fuse Type CD 22.5",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH6-Nickel Strip Pure-Nickel Strip Pure 2P(32650) 36.5x0.15 mm - Fuse Type CD 22.5_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH6-Nickel Strip Pure-Nickel Strip Pure 2P(32650) 36.5x0.15 mm - Fuse Type CD 22.5_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH6-Nickel Strip Pure-Nickel Strip Pure 2P(32650) 36.5x0.15 mm - Fuse Type CD 22.5_3.jpg"
+                    ],
+                    "Price": "4600",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "36.5x0.15 mm - Fuse Type CD 22.5",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH7",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(33140) 46.5x0.3 mm H Type",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH7-Nickel Strip Pure-Nickel Strip Pure 2P(33140) 46.5x0.3 mm H Type_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH7-Nickel Strip Pure-Nickel Strip Pure 2P(33140) 46.5x0.3 mm H Type_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH7-Nickel Strip Pure-Nickel Strip Pure 2P(33141) 46.5x0.3 mm H Type_3.jpg"
+                    ],
+                    "Price": "4200",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "46.5x0.3 mm H Type",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH8",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(33140) 46.5x0.3 mm - Zig Zag",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH8-Nickel Strip Pure-Nickel Strip Pure 2P(33140) 46.5x0.3 mm - Zig Zag_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH8-Nickel Strip Pure-Nickel Strip Pure 2P(33140) 46.5x0.3 mm - Zig Zag_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH8-Nickel Strip Pure-Nickel Strip Pure 2P(33140) 46.5x0.3 mm - Zig Zag_3.jpg"
+                    ],
+                    "Price": "4600",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "46.5x0.3 mm - Zig Zag",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH9",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure ZigZag ( 18650) 19.01 x.15 mm",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH9-Nickel Strip Pure-Nickel Strip Pure ZigZag ( 18650) 19.01 x.15 mm_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH9-Nickel Strip Pure-Nickel Strip Pure ZigZag ( 18650) 19.01 x.15 mm_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH9-Nickel Strip Pure-Nickel Strip Pure ZigZag ( 18650) 19.01 x.15 mm_3.jpg"
+                    ],
+                    "Price": "4600",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "Width 32.96 mm; Central depth 19.00 mm; Pure Nickel",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH10",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(33140) 46.5x0.3 mm H Type without fuse",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH10-Nickel Strip Pure-Nickel Strip Pure 2P(33140) 46.5x0.3 mm H Type without fuse_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH10-Nickel Strip Pure-Nickel Strip Pure 2P(33141) 46.5x0.3 mm H Type without fuse_1 - Copy.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH10-Nickel Strip Pure-Nickel Strip Pure 2P(33140) 46.5x0.3 mm H Type without fuse_2.jpg"
+                    ],
+                    "Price": "4200",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "46.5x0.3 mm H Type without fuse",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                },
+                {
+                    "SKU": "NPH11",
+                    "Category": "Nickel Strip Pure",
+                    "ProductCode": "Nickel Strip Pure 2P(32650) with holder 49.5x0.20 mm CD 34.5",
+                    "Image_Link": [
+                        "assets/skuimages/Nickel Strip Pure/NPH11-Nickel Strip Pure-Nickel Strip Pure 2P(32650) with holder 49.5x0.20 mm CD 34.5_1.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH11-Nickel Strip Pure-Nickel Strip Pure 2P(32650) with holder 49.5x0.20 mm CD 34.5_2.jpg",
+                        "assets/skuimages/Nickel Strip Pure/NPH11-Nickel Strip Pure-Nickel Strip Pure 2P(32650) with holder 49.5x0.20 mm CD 34.5_3.jpg"
+                    ],
+                    "Price": "4200",
+                    "Availability": "Now",
+                    "Unit": "KG",
+                    "Minimum Quantity": 4,
+                    "Product_Dimensions": "49.5 x 0.20 mm thick; 32650 cell; CD 34.5 mm; with holder",
+                    "Additional_Details": "Pure nickel; low resistance + corrosion resistance; easy soldering; battery packs, EVs, power tools, ESS"
+                }
+            ]
+        },
+        {
+            "Category": "Copper Busbar",
+            "products": [
+                {
+                    "SKU": "CP1",
+                    "Category": "Copper Busbar",
+                    "ProductCode": "COPPER BUS BAR Universal (55x20x2mm) - Tin Coated",
+                    "Image_Link": [
+                        "assets/skuimages/Copper Busbar/CP1-COPPER BUS BAR-COPPER BUS BAR Universal (55x20x2mm) - Tin Coated_1.jpeg",
+                        "assets/skuimages/Copper Busbar/CP1-COPPER BUS BAR-COPPER BUS BAR Universal (55x20x2mm) - Tin Coated_2.jpeg",
+                        "assets/skuimages/Copper Busbar/CP1-COPPER BUS BAR-COPPER BUS BAR Universal (55x20x2mm) - Tin Coated_3.jpeg"
+                    ],
+                    "Price": "31",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 100,
+                    "Product_Dimensions": "55x20x2 mm; Pure Copper; Silver",
+                    "Additional_Details": "High Conductivity Copper Material with Tin Coating for Corrosion Resistance, this component is specifically designed for Prismatic Lithium Batteries, ensuring Low Resistance Current Transfer with Strong and Durable Construction for Easy Installation in Battery Pack Assembly."
+                },
+                {
+                    "SKU": "CP2",
+                    "Category": "Copper Busbar",
+                    "ProductCode": "COPPER BUS BAR Universal (60x20x2mm) - Tin Coated",
+                    "Image_Link": [
+                        "assets/skuimages/Copper Busbar/CP2-COPPER BUS BAR-COPPER BUS BAR Universal (60x20x2mm) - Tin Coated_1.jpeg",
+                        "assets/skuimages/Copper Busbar/CP2-COPPER BUS BAR-COPPER BUS BAR Universal (60x20x2mm) - Tin Coated_2.jpeg",
+                        "assets/skuimages/Copper Busbar/CP2-COPPER BUS BAR-COPPER BUS BAR Universal (60x20x2mm) - Tin Coated_3.jpeg"
+                    ],
+                    "Price": "38",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 100,
+                    "Product_Dimensions": "60x20x2 mm; Pure Copper; Silver",
+                    "Additional_Details": "High Conductivity Copper Material with Tin Coating for Corrosion Resistance, this component is specifically designed for Prismatic Lithium Batteries, ensuring Low Resistance Current Transfer with Strong and Durable Construction for Easy Installation in Battery Pack Assembly."
+                },
+                {
+                    "SKU": "CP3",
+                    "Category": "Copper Busbar",
+                    "ProductCode": "COPPER BUS BAR Universal (68x20x2mm)- Tin Coated",
+                    "Image_Link": [
+                        "assets/skuimages/Copper Busbar/CP3-COPPER BUS BAR-COPPER BUS BAR Universal (68x20x2mm)- Tin Coated_1.jpeg",
+                        "assets/skuimages/Copper Busbar/CP3-COPPER BUS BAR-COPPER BUS BAR Universal (82x20x2mm)- Tin Coated_1.jpeg",
+                        "assets/skuimages/Copper Busbar/CP3-COPPER BUS BAR-COPPER BUS BAR Universal (68x20x2mm)- Tin Coated_2.jpeg"
+                    ],
+                    "Price": "42",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 100,
+                    "Product_Dimensions": "68x20x2 mm; Pure Copper; Silver",
+                    "Additional_Details": "High Conductivity Copper Material with Tin Coating for Corrosion Resistance, this component is specifically designed for Prismatic Lithium Batteries, ensuring Low Resistance Current Transfer with Strong and Durable Construction for Easy Installation in Battery Pack Assembly."
+                },
+                {
+                    "SKU": "CP4",
+                    "Category": "Copper Busbar",
+                    "ProductCode": "COPPER BUS BAR Universal (82x20x2mm)- Tin Coated",
+                    "Image_Link": [
+                        "assets/skuimages/Copper Busbar/CP3-COPPER BUS BAR-COPPER BUS BAR Universal (82x20x2mm)- Tin Coated_1.jpeg",
+                        "assets/skuimages/Copper Busbar/CP3-COPPER BUS BAR-COPPER BUS BAR Universal (82x20x2mm)- Tin Coated_2.jpeg",
+                        "assets/skuimages/Copper Busbar/CP3-COPPER BUS BAR-COPPER BUS BAR Universal (82x20x2mm)- Tin Coated_3.jpeg"
+                    ],
+                    "Price": "50",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 100,
+                    "Product_Dimensions": "82x20x2 mm; Pure Copper; Silver",
+                    "Additional_Details": "High Conductivity Copper Material with Tin Coating for Corrosion Resistance, this component is specifically designed for Prismatic Lithium Batteries, ensuring Low Resistance Current Transfer with Strong and Durable Construction for Easy Installation in Battery Pack Assembly."
+                }
+            ]
+        },
+        {
+            "Category": "Aluminium Busbar",
+            "products": [
+                {
+                    "SKU": "AS11",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 1 - C2C series busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS11-Aluminium Busbar-Model 1 - C2C series busbar_1.jpeg",
+                        "assets/skuimages/Aluminium Busbar/AS11-Aluminium Busbar-Model 1 - C2C series busbar_2.jpg",
+                        "assets/skuimages/Aluminium Busbar/AS11-Aluminium Busbar-Model 1 - C2C series busbar_3.jpg"
+                    ],
+                    "Price": "18",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 14,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS12",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 1 - C2C parellel busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS12-Aluminium Busbar-Model 1 - C2C parellel busbar_1.jpeg",
+                        "assets/skuimages/Aluminium Busbar/AS12-Aluminium Busbar-Model 1 - C2C parellel busbar_2.jpg",
+                        "assets/skuimages/Aluminium Busbar/AS12-Aluminium Busbar-Model 1 - C2C parellel busbar_3.jpg"
+                    ],
+                    "Price": "18",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 1,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS13",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 1 - C2C L shape busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS13-Aluminium Busbar-Model 1 - C2C L shape busbar_1.jpeg",
+                        "assets/skuimages/Aluminium Busbar/AS13-Aluminium Busbar-Model 1 - C2C L shape busbar_2.jpg",
+                        "assets/skuimages/Aluminium Busbar/AS13-Aluminium Busbar-Model 1 - C2C L shape busbar_3.jpg"
+                    ],
+                    "Price": "17",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 2,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS14",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 1- C2C terminal extension busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS14-Aluminium Busbar-Model 1- C2C terminal extension busbar_1.jpeg",
+                        "assets/skuimages/Aluminium Busbar/AS14-Aluminium Busbar-Model 1- C2C terminal extension busbar_2.jpg",
+                        "assets/skuimages/Aluminium Busbar/AS14-Aluminium Busbar-Model 1- C2C terminal extension busbar_3.jpg"
+                    ],
+                    "Price": "17",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 2,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS15",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 1 - All",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS15-Aluminium Busbar-Model 1 - All_1.jpeg"
+                    ],
+                    "Price": "356",
+                    "Availability": "Now",
+                    "Unit": "Set",
+                    "Minimum Quantity": 1,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics for 14 piece prismatic pack",
+                    "Additional_Details": ""
+                },
+                {
+                    "SKU": "AS21",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 2 - C2C series busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS21-Aluminium Busbar-Model 2 - C2C series busbar_1.jpeg",
+                        "assets/skuimages/Aluminium Busbar/AS21-Aluminium Busbar-Model 2 - C2C series busbar_2.jpg",
+                        "assets/skuimages/Aluminium Busbar/AS21-Aluminium Busbar-Model 2 - C2C series busbar_3.jpg"
+                    ],
+                    "Price": "18",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 14,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS22",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 2 - C2C parellel busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS22-Aluminium Busbar-Model 2 - C2C parellel busbar_1.jpeg",
+                        "assets/skuimages/Aluminium Busbar/AS22-Aluminium Busbar-Model 2 - C2C parellel busbar_2.jpg",
+                        "assets/skuimages/Aluminium Busbar/AS22-Aluminium Busbar-Model 2 - C2C parellel busbar_3.jpg"
+                    ],
+                    "Price": "18",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 1,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS23",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 2 - C2C L shape busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS23-Aluminium Busbar-Model 2 - C2C L shape busbar_1.jpeg",
+                        "assets/skuimages/Aluminium Busbar/AS23-Aluminium Busbar-Model 2 - C2C L shape busbar_2.jpg",
+                        "assets/skuimages/Aluminium Busbar/AS23-Aluminium Busbar-Model 2 - C2C L shape busbar_3.jpg"
+                    ],
+                    "Price": "17",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 2,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS24",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 2- C2C terminal extension busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS24-Aluminium Busbar-Model 2- C2C terminal extension busbar_1.jpeg",
+                        "assets/skuimages/Aluminium Busbar/AS24-Aluminium Busbar-Model 2- C2C terminal extension busbar_2.jpg",
+                        "assets/skuimages/Aluminium Busbar/AS24-Aluminium Busbar-Model 2- C2C terminal extension busbar_3.jpg"
+                    ],
+                    "Price": "17",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 2,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS24",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 2-All",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS24-Aluminium Busbar-Model 2- C2C terminal extension busbar_1.jpeg",
+                        "assets/skuimages/Aluminium Busbar/AS24-Aluminium Busbar-Model 2- C2C terminal extension busbar_2.jpg",
+                        "assets/skuimages/Aluminium Busbar/AS24-Aluminium Busbar-Model 2- C2C terminal extension busbar_3.jpg"
+                    ],
+                    "Price": "356",
+                    "Availability": "Now",
+                    "Unit": "Set",
+                    "Minimum Quantity": 1,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS31",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 3 - C2C series busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS31-Aluminium Busbar-Model 3 - C2C series busbar_1.jpeg"
+                    ],
+                    "Price": "18",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 14,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics for 14 piece prismatic pack",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS32",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 3 - C2C parellel busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS32-Aluminium Busbar-Model 3 - C2C parellel busbar_1.jpeg"
+                    ],
+                    "Price": "18",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 1,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS33",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 3 - C2C L shape busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS33-Aluminium Busbar-Model 3 - C2C L shape busbar_1.jpeg"
+                    ],
+                    "Price": "17",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 2,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS34",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 3- C2C terminal extension busbar",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS34-Aluminium Busbar-Model 3 - C2C series busbar_1.jpeg"
+                    ],
+                    "Price": "17",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 2,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                },
+                {
+                    "SKU": "AS35",
+                    "Category": "Aluminium Busbar",
+                    "ProductCode": "Model 3- All",
+                    "Image_Link": [
+                        "assets/skuimages/Aluminium Busbar/AS35-Aluminium Busbar-Model 3- All_1.jpeg"
+                    ],
+                    "Price": "356",
+                    "Availability": "Now",
+                    "Unit": "Set",
+                    "Minimum Quantity": 14,
+                    "Product_Dimensions": "Aluminium 1200 grade busbars for prismatics for 14 piece prismatic pack",
+                    "Additional_Details": "Aluminium busbars – built for reliable battery connections."
+                }
+            ]
+        },
+        {
+            "Category": "Cell Prismatic",
+            "products": [
+                {
+                    "SKU": "CP1",
+                    "Category": "Cell Prismatic",
+                    "ProductCode": "Ganfeng - 100Ah Prismatic Cell",
+                    "Image_Link": [
+                        "assets/skuimages/Cell Prismatic/CP1-Cell Prismatic-Ganfeng - 100Ah Prismatic Cell_1.jpg",
+                        "assets/skuimages/Cell Prismatic/CP1-Cell Prismatic-Ganfeng - 100Ah Prismatic Cell_2.jpg",
+                        "assets/skuimages/Cell Prismatic/CP1-Cell Prismatic-Ganfeng - 100Ah Prismatic Cell_3.jpg"
+                    ],
+                    "Price": "2100",
+                    "Availability": "On Request",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 10,
+                    "Product_Dimensions": "GANFENG PRISMATIC CELL LiFePO4 100Ah 3.2V – High-Capacity & Long Life",
+                    "Additional_Details": "Cells for EV Batteries"
+                },
+                {
+                    "SKU": "CP2",
+                    "Category": "Cell Prismatic",
+                    "ProductCode": "High Power - 100Ah Prismatic Cell",
+                    "Image_Link": [
+                        "assets/skuimages/Cell Prismatic/CP2-Cell Prismatic-High Power - 100Ah Prismatic Cell_1.jpg",
+                        "assets/skuimages/Cell Prismatic/CP2-Cell Prismatic-High Power - 100Ah Prismatic Cell_2.jpg",
+                        "assets/skuimages/Cell Prismatic/CP2-Cell Prismatic-High Power - 100Ah Prismatic Cell_3.jpg"
+                    ],
+                    "Price": "2300",
+                    "Availability": "On Request",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 10,
+                    "Product_Dimensions": "High Power 100Ah prismatic LiFePO4 cell with low internal resistance, fast charge-discharge capability, and aluminium casing for EVs, solar, UPS, and industrial energy storage.",
+                    "Additional_Details": "Cells for EV Batteries"
+                },
+                {
+                    "SKU": "CP3",
+                    "Category": "Cell Prismatic",
+                    "ProductCode": "Highstar - 100Ah Big Prismatic Cell- Laser",
+                    "Image_Link": [
+                        "assets/skuimages/Cell Prismatic/CP3-Cell Prismatic-Highstar - 100Ah Big Prismatic Cell- Laser_1.jpg",
+                        "assets/skuimages/Cell Prismatic/CP3-Cell Prismatic-Highstar - 100Ah Big Prismatic Cell- Laser_2.jpg",
+                        "assets/skuimages/Cell Prismatic/CP3-Cell Prismatic-Highstar - 100Ah Big Prismatic Cell- Laser_3.jpg"
+                    ],
+                    "Price": "1900",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 10,
+                    "Product_Dimensions": "Highstar 100Ah prismatic LiFePO4 cell delivering stable 3.2V power for solar storage, EVs, e-rickshaws, inverters, and industrial energy systems.",
+                    "Additional_Details": "Cells for EV Batteries"
+                },
+                {
+                    "SKU": "CP4",
+                    "Category": "Cell Prismatic",
+                    "ProductCode": "Highstar - 100Ah Small Prismatic Cell- Screw",
+                    "Image_Link": [
+                        "assets/skuimages/Cell Prismatic/CP4-Cell-Prismatic-Highstar - 100Ah Small Prismatic Cell- Screw_1.jpg",
+                        "assets/skuimages/Cell Prismatic/CP4-Cell-Prismatic-Highstar - 100Ah Small Prismatic Cell- Screw_2.jpg",
+                        "assets/skuimages/Cell Prismatic/CP4-Cell-Prismatic-Highstar - 100Ah Small Prismatic Cell- Screw_3.jpg"
+                    ],
+                    "Price": "2300",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 10,
+                    "Product_Dimensions": "Highstar 100Ah small prismatic LiFePO4 screw-type cell with aluminium casing, high energy density, and long cycle life for solar, EVs, e-rickshaws, UPS, and industrial energy storage.",
+                    "Additional_Details": "Cells for EV Batteries"
+                }
+            ]
+        },
+        {
+            "Category": "Cell Li-ion",
+            "products": [
+                {
+                    "SKU": "CLI1",
+                    "Category": "Cell Li-ion",
+                    "ProductCode": "LITHUM-ION CELL 2900 mAh DMEGC 18650 ",
+                    "Image_Link": [
+                        "assets/skuimages/Cell Li-ion/CLI1-Lithium-Ion-LITHUM-ION CELL 2900 mAh DMEGC 18650 _1.jpg",
+                        "assets/skuimages/Cell Li-ion/CLI1-Lithium-Ion-LITHUM-ION CELL 2900 mAh DMEGC 18650 _2.jpg",
+                        "assets/skuimages/Cell Li-ion/CLI1-Lithium-Ion-LITHUM-ION CELL 2900 mAh DMEGC 18650 _3.jpg"
+                    ],
+                    "Price": "116",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 1000,
+                    "Product_Dimensions": "High-cycle 18650 lithium-ion cell delivering 2900mAh for portable electronics, power tools, e-bikes, and energy storage systems.",
+                    "Additional_Details": "Cells for EV Batteries"
+                },
+                {
+                    "SKU": "CLI2",
+                    "Category": "Cell Li-ion",
+                    "ProductCode": "LITHUM-ION CELL 3200 mAh DMEGC 18650",
+                    "Image_Link": [
+                        "assets/skuimages/Cell Li-ion/CLI2-Cell Li-ion-LITHUM-ION CELL 3200 mAh DMEGC 18650_1.jpg",
+                        "assets/skuimages/Cell Li-ion/CLI2-Cell Li-ion-LITHUM-ION CELL 3200 mAh DMEGC 18650_2.jpg",
+                        "assets/skuimages/Cell Li-ion/CLI2-Cell Li-ion-LITHUM-ION CELL 3200 mAh DMEGC 18650_3.jpg"
+                    ],
+                    "Price": "120",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 1000,
+                    "Product_Dimensions": "High-cycle 18650 lithium-ion cell delivering 3200mAh for portable electronics, power tools, e-bikes, and energy storage systems.",
+                    "Additional_Details": "Cells for EV Batteries"
+                },
+                {
+                    "SKU": "CLI3",
+                    "Category": "Cell Li-ion",
+                    "ProductCode": "LITHIUM-ION CELL 2600 mAh DMEGC 18650",
+                    "Image_Link": [
+                        "assets/skuimages/Cell Li-ion/CLI3-Cell Li-ion-LITHIUM-ION CELL 2600 mAh DMEGC 18650_1.jpg",
+                        "assets/skuimages/Cell Li-ion/CLI3-Cell Li-ion-LITHIUM-ION CELL 2600 mAh DMEGC 18650_2.jpg",
+                        "assets/skuimages/Cell Li-ion/CLI3-Cell Li-ion-LITHIUM-ION CELL 2600 mAh DMEGC 18650_3.jpg"
+                    ],
+                    "Price": "98",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 1000,
+                    "Product_Dimensions": "High-cycle 18650 lithium-ion cell delivering 2600mAh for portable electronics, power tools, e-bikes, and energy storage systems.",
+                    "Additional_Details": "Cells for EV Batteries"
+                },
+                {
+                    "SKU": "CLI4",
+                    "Category": "Cell Li-ion",
+                    "ProductCode": "LITHIUM-ION CELL 4500 mAh DMEGC 21700",
+                    "Image_Link": [
+                        "assets/skuimages/Cell Li-ion/CLI4-Cell Li-ion-LITHIUM-ION CELL 4500 mAh DMEGC 21700_1.jpg",
+                        "assets/skuimages/Cell Li-ion/CLI4-Cell Li-ion-LITHIUM-ION CELL 4500 mAh DMEGC 21700_2.jpg",
+                        "assets/skuimages/Cell Li-ion/CLI4-Cell Li-ion-LITHIUM-ION CELL 4500 mAh DMEGC 21700_3.jpg"
+                    ],
+                    "Price": "142",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 1000,
+                    "Product_Dimensions": "High-capacity 21700 lithium-ion cell delivering 4500mAh for power tools, electric vehicles, e-bikes, and custom energy storage packs.",
+                    "Additional_Details": "Cells for EV Batteries"
+                }
+            ]
+        },
+        {
+            "Category": "Cell LFP",
+            "products": [
+                {
+                    "SKU": "CLFP1",
+                    "Category": "Cell LFP",
+                    "ProductCode": "LFP CELL 3.2V 15AH CNAE 32140 ESS A GRADE",
+                    "Image_Link": [
+                        "assets/skuimages/Cell LFP/CLFP1-Cell LFP-LFP CELL 3.2V 15AH CNAE 32140 ESS A GRADE_1.jpg",
+                        "assets/skuimages/Cell LFP/CLFP1-Cell LFP-LFP CELL 3.2V 15AH CNAE 32140 ESS A GRADE_2.jpg",
+                        "assets/skuimages/Cell LFP/CLFP1-Cell LFP-LFP CELL 3.2V 15AH CNAE 32140 ESS A GRADE_3.jpg"
+                    ],
+                    "Price": "285",
+                    "Availability": "Now",
+                    "Unit": "Piece",
+                    "Minimum Quantity": 1000,
+                    "Product_Dimensions": "A-Grade LiFePO4 cell with 15Ah capacity and 3,000+ cycle life, ideal for solar storage, EVs, UPS, and industrial power applications.",
+                    "Additional_Details": "Cells for EV Batteries"
+                }
+            ]
+        }
+    ]
+}

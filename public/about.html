@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About Us | Nickel Strip & Busbar Manufacturer | Arambhika</title>
+  <meta name="description" content="Arambhika (Swastik Metal Components) is a Greater Noida-based manufacturer of nickel-plated strips, pure nickel strips and copper busbars for EV and ESS battery pack assembly. Learn about our team and facility." />
+  <meta name="keywords" content="about Arambhika, nickel strip manufacturer Greater Noida, Swastik Metal Components, battery component manufacturer India" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://www.arambhikaenablers.in/about.html" />
+  <meta property="og:title" content="About | Arambhika" />
+  <meta property="og:description" content="Manufacturer & distributor of nickel strips, copper busbars, and battery interconnect components for B2B battery manufacturing." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="assets/logo.png" />
+  <meta property="og:site_name" content="Arambhika" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="About | Arambhika" />
+  <meta name="twitter:description" content="Manufacturer & distributor of nickel strips, copper busbars, and battery interconnect components for B2B battery manufacturing." />
+  <meta name="twitter:image" content="assets/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="_theme_overrides.css" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BDECEEVPNW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'AW-17944658317');
+    gtag('config', 'G-BDECEEVPNW');
+  </script>
+  <style>
+    /* ── About page overrides ── */
+
+    /* Hero */
+    .about-hero {
+      background: var(--navy);
+      padding: 80px 0 70px;
+      position: relative;
+      overflow: hidden;
+    }
+    .about-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 80% at 80% 50%, rgba(30,94,255,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .about-hero-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+    }
+    .about-hero .eyebrow {
+      color: #93c5fd;
+    }
+    .about-hero h1 {
+      font-family: "Poppins", serif;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.15;
+      color: #ffffff;
+      margin-bottom: 20px;
+    }
+    .about-hero p {
+      font-size: 1.05rem;
+      color: #94a3b8;
+      max-width: 540px;
+      line-height: 1.8;
+    }
+    .about-hero-divider {
+      width: 48px;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+      margin: 28px 0;
+    }
+
+    /* Stats strip */
+    .stats-strip {
+      background: var(--accent);
+      padding: 0;
+    }
+    .stats-strip-inner {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .stat-item {
+      padding: 28px 24px;
+      text-align: center;
+      border-right: 1px solid rgba(255,255,255,0.15);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-number {
+      font-family: "Poppins", serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.75);
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* MD Message */
+    .md-section {
+      padding: 90px 0;
+      background: #ffffff;
+    }
+    .md-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 72px;
+      align-items: center;
+    }
+    .md-text .eyebrow { margin-bottom: 10px; }
+    .md-text h2 {
+      font-family: "Poppins", serif;
+      font-size: clamp(1.7rem, 2.8vw, 2.4rem);
+      line-height: 1.2;
+      margin-bottom: 24px;
+      color: var(--navy);
+    }
+    .md-text p {
+      color: var(--muted);
+      line-height: 1.85;
+      margin-bottom: 18px;
+      font-size: 0.97rem;
+    }
+    .md-signature {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+    .md-signature-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: grid;
+      place-items: center;
+      font-family: "Poppins", serif;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .md-signature-name {
+      font-weight: 600;
+      color: var(--navy);
+      font-size: 0.95rem;
+    }
+    .md-signature-title {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .md-video-wrap {
+      position: relative;
+    }
+    .md-video-wrap video {
+      width: 100%;
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(15,23,42,0.18);
+      display: block;
+    }
+    .md-video-badge {
+      position: absolute;
+      top: -14px;
+      right: -14px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      box-shadow: 0 4px 12px rgba(30,94,255,0.35);
+    }
+
+    /* Mission */
+    .mission-section {
+      padding: 90px 0;
+      background: var(--surface-alt);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .mission-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: start;
+    }
+    .mission-text h2 {
+      font-family: "Poppins", serif;
+      font-size: clamp(1.7rem, 2.8vw, 2.3rem);
+      line-height: 1.2;
+      margin-bottom: 20px;
+      color: var(--navy);
+    }
+    .mission-text p {
+      color: var(--muted);
+      line-height: 1.85;
+      margin-bottom: 16px;
+      font-size: 0.97rem;
+    }
+    .mission-pillars {
+      display: grid;
+      gap: 16px;
+    }
+    .pillar-card {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px 22px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      transition: box-shadow 0.2s;
+    }
+    .pillar-card:hover {
+      box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+    }
+    .pillar-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: #eef4ff;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .pillar-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--accent);
+    }
+    .pillar-title {
+      font-weight: 600;
+      color: var(--navy);
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+    .pillar-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* Why Choose Us */
+    .why-section {
+      padding: 90px 0;
+      background: var(--navy);
+    }
+    .why-head {
+      text-align: center;
+      margin-bottom: 52px;
+    }
+    .why-head .eyebrow { color: #93c5fd; }
+    .why-head h2 {
+      font-family: "Poppins", serif;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      color: #ffffff;
+      margin-bottom: 14px;
+    }
+    .why-head p {
+      color: #94a3b8;
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.75;
+    }
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .why-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 32px 28px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .why-card:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(30,94,255,0.4);
+    }
+    .why-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(30,94,255,0.2);
+      display: grid;
+      place-items: center;
+      margin-bottom: 20px;
+    }
+    .why-card-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: #93c5fd;
+    }
+    .why-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 10px;
+    }
+    .why-card p {
+      font-size: 0.87rem;
+      color: #94a3b8;
+      line-height: 1.7;
+    }
+
+    /* Contact */
+    .contact-section {
+      padding: 90px 0;
+      background: #ffffff;
+    }
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 72px;
+      align-items: start;
+    }
+    .contact-info h2 {
+      font-family: "Poppins", serif;
+      font-size: clamp(1.7rem, 2.8vw, 2.3rem);
+      color: var(--navy);
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+    .contact-info > p {
+      color: var(--muted);
+      line-height: 1.8;
+      margin-bottom: 40px;
+    }
+    .contact-detail-list {
+      display: grid;
+      gap: 20px;
+    }
+    .contact-detail {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .contact-detail-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #eef4ff;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .contact-detail-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--accent);
+    }
+    .contact-detail-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+    .contact-detail-value {
+      font-size: 0.95rem;
+      color: var(--navy);
+      font-weight: 500;
+      line-height: 1.6;
+    }
+    .contact-detail-value a {
+      color: var(--accent);
+    }
+    .office-block {
+      margin-top: 36px;
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+    }
+    .office-block h4 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .office-item {
+      margin-bottom: 14px;
+    }
+    .office-name {
+      font-weight: 600;
+      font-size: 0.93rem;
+      color: var(--navy);
+      margin-bottom: 2px;
+    }
+    .office-addr {
+      font-size: 0.83rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* Contact form */
+    .contact-form-card {
+      background: #f8faff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 40px 36px;
+    }
+    .contact-form-card h3 {
+      font-family: "Poppins", serif;
+      font-size: 1.3rem;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .contact-form-card > p {
+      font-size: 0.87rem;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    .contact-form-card label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 18px;
+    }
+    .contact-form-card label span {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .contact-form-card input,
+    .contact-form-card textarea,
+    .contact-form-card select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 0.93rem;
+      font-family: inherit;
+      color: var(--ink);
+      background: #ffffff;
+      transition: border-color 0.2s;
+    }
+    .contact-form-card input:focus,
+    .contact-form-card textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .contact-form-card textarea { resize: vertical; }
+    .contact-form-card .phone-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .contact-form-card .phone-row select { width: auto; }
+    .contact-form-card .button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 13px;
+    }
+    .contact-form-card .form-note {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .stats-strip-inner { grid-template-columns: repeat(2, 1fr); }
+      .md-grid,
+      .mission-grid,
+      .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+      .why-grid { grid-template-columns: 1fr 1fr; }
+      .md-video-badge { top: 10px; right: 10px; }
+    }
+    @media (max-width: 600px) {
+      .stats-strip-inner { grid-template-columns: repeat(2, 1fr); }
+      .why-grid { grid-template-columns: 1fr; }
+      .contact-form-card { padding: 28px 20px; }
+    }
+  </style>
+
+  <!-- Structured data: Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Manufacturer",
+    "name": "Arambhika",
+    "alternateName": "Swastik Metal Components",
+    "url": "https://www.arambhikaenablers.in/about.html",
+    "logo": "https://www.arambhikaenablers.in/assets/logo.png",
+    "description": "Arambhika (Swastik Metal Components) is a Greater Noida-based manufacturer of nickel-plated strips, pure nickel strips and copper busbars for EV and energy storage system (ESS) battery pack assembly.",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "SK-201, Sector 116",
+      "addressLocality": "Noida",
+      "addressRegion": "Uttar Pradesh",
+      "postalCode": "201301",
+      "addressCountry": "IN"
+    },
+    "contactPoint": [
+      {
+        "@type": "ContactPoint",
+        "telephone": "+91-9315545821",
+        "contactType": "sales",
+        "areaServed": "IN",
+        "availableLanguage": ["en", "hi"]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand brand-block">
+        <img class="brand-logo" id="brandLogo" src="assets/logo.png" alt="Arambhika logo" />
+        <p class="brand-tag" id="brandTag">EV Battery Component Manufacturer</p>
+      </div>
+      <div class="nav-right">
+        <nav class="nav-links">
+          <div class="nav-contact">
+            <a class="phone-link" href="tel:+919315545821" id="topPhone1">
+              +91-9315545821
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.5-.3.8-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v3c0 .5-.4.9-.9.9C10.4 19 5 13.6 5 7.1c0-.5.4-.9.9-.9h3c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .6-.2.8l-1.5 1.2z"/></svg>
+            </a>
+            <a class="wa-link" href="https://wa.me/919315545821" target="_blank" rel="noopener" id="topWa1">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A10 10 0 0 0 3.2 17.9L2 22l4.2-1.1a10 10 0 0 0 14.3-17.4zm-8.5 16a8 8 0 0 1-4.1-1.1l-.3-.2-2.4.6.6-2.3-.2-.3A8 8 0 1 1 12 19.5zm4.4-6.1c-.2-.1-1.3-.6-1.5-.7-.2-.1-.4-.1-.6.1-.2.2-.7.7-.9.9-.2.2-.3.2-.6.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.9-.1-.2 0-.4.1-.5.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2.1-.4 0-.6-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.4.5.6.2 1.1.2 1.5.1.5-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1-.1-.1-.2-.2-.4-.3z"/></svg>
+            </a>
+            <span class="divider">|</span>
+            <a class="phone-link" href="tel:+918112662827" id="topPhone2">
+              +91-8112662827
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.5-.3.8-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v3c0 .5-.4.9-.9.9C10.4 19 5 13.6 5 7.1c0-.5.4-.9.9-.9h3c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .6-.2.8l-1.5 1.2z"/></svg>
+            </a>
+            <a class="wa-link" href="https://wa.me/919315545821" target="_blank" rel="noopener" id="topWa2">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A10 10 0 0 0 3.2 17.9L2 22l4.2-1.1a10 10 0 0 0 14.3-17.4zm-8.5 16a8 8 0 0 1-4.1-1.1l-.3-.2-2.4.6.6-2.3-.2-.3A8 8 0 1 1 12 19.5zm4.4-6.1c-.2-.1-1.3-.6-1.5-.7-.2-.1-.4-.1-.6.1-.2.2-.7.7-.9.9-.2.2-.3.2-.6.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.9-.1-.2 0-.4.1-.5.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2.1-.4 0-.6-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.4.5.6.2 1.1.2 1.5.1.5-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1-.1-.1-.2-.2-.4-.3z"/></svg>
+            </a>
+          </div>
+          <a href="index.html#home" id="navHome">Home</a>
+          <a href="index.html#catalog" id="navCatalog">Product Store</a>
+          <a href="capabilities.html" id="navCapabilities">Our Capabilities</a>
+          <a href="about.html" id="navAbout">About & Contact</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Hero -->
+    <section class="about-hero">
+      <div class="container">
+        <div class="about-hero-inner">
+          <p class="eyebrow">About Arambhika</p>
+          <h1>Built on Quality.<br/>Driven by Partnership.</h1>
+          <div class="about-hero-divider"></div>
+          <p>We are a manufacturer and distributor of precision battery interconnect components — nickel strips, copper busbars, and aluminium busbars — supplying B2B manufacturers across India with consistent quality and responsive service.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats strip -->
+    <div class="stats-strip">
+      <div class="container">
+        <div class="stats-strip-inner">
+          <div class="stat-item">
+            <div class="stat-number">500+</div>
+            <div class="stat-label">B2B Partners Served</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">3+</div>
+            <div class="stat-label">Years of Operations</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">20+</div>
+            <div class="stat-label">Product Variants</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">Pan-India</div>
+            <div class="stat-label">Delivery Network</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mission & Values -->
+    <section class="mission-section">
+      <div class="container">
+        <div class="mission-grid">
+          <div class="mission-text">
+            <p class="eyebrow">Our Mission</p>
+            <h2>Enabling Battery Manufacturing at Scale</h2>
+            <p>Arambhika was founded to bridge the gap between premium-grade battery components and the manufacturers who need them. We focus on traceability, precision, and partnership — ensuring your supply chain is never the weak link.</p>
+            <p>Our manufacturing unit, Swastik Metal Components, operates in Greater Noida with the capacity to produce custom widths, stamped profiles, and bent configurations to exact specifications.</p>
+          </div>
+          <div class="mission-pillars">
+            <div class="pillar-card">
+              <div class="pillar-icon">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              </div>
+              <div>
+                <div class="pillar-title">Documented Quality Inspection</div>
+                <div class="pillar-desc">Every batch is verified against dimensional and conductivity standards before dispatch.</div>
+              </div>
+            </div>
+            <div class="pillar-card">
+              <div class="pillar-icon">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm6 12H6v-.57c0-2 4-3.1 6-3.1s6 1.1 6 3.1V18z"/></svg>
+              </div>
+              <div>
+                <div class="pillar-title">Custom Manufacturing</div>
+                <div class="pillar-desc">Custom widths, stampings, and bending available to match your exact pack design.</div>
+              </div>
+            </div>
+            <div class="pillar-card">
+              <div class="pillar-icon">
+                <svg viewBox="0 0 24 24"><path d="M20 4H4v2l8 5 8-5V4zm0 4.2L12 13 4 8.2V20h16V8.2z"/></svg>
+              </div>
+              <div>
+                <div class="pillar-title">Responsive Support</div>
+                <div class="pillar-desc">Dedicated support for sampling, bulk orders, and long-term supply contracts.</div>
+              </div>
+            </div>
+            <div class="pillar-card">
+              <div class="pillar-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z"/></svg>
+              </div>
+              <div>
+                <div class="pillar-title">Pan-India Delivery</div>
+                <div class="pillar-desc">Reliable logistics from our Greater Noida facility to manufacturers across the country.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Choose Us -->
+    <section class="why-section">
+      <div class="container">
+        <div class="why-head">
+          <p class="eyebrow">Why Arambhika</p>
+          <h2>What Sets Us Apart</h2>
+          <p>We combine manufacturing precision with a B2B-first approach — giving you the reliability and flexibility that large-scale battery production demands.</p>
+        </div>
+        <div class="why-grid">
+          <div class="why-card">
+            <div class="why-card-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 14l-3-3 1.41-1.41L11 12.17l4.59-4.58L17 9l-6 6z"/></svg>
+            </div>
+            <h3>Verified Material Quality</h3>
+            <p>All products are sourced from certified suppliers and undergo in-house inspection for thickness, purity, and electrical conductivity.</p>
+          </div>
+          <div class="why-card">
+            <div class="why-card-icon">
+              <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            </div>
+            <h3>Flexible Order Sizes</h3>
+            <p>From sample requests to full production runs — we accommodate your requirements at every stage of your business growth.</p>
+          </div>
+          <div class="why-card">
+            <div class="why-card-icon">
+              <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>
+            </div>
+            <h3>Competitive Pricing</h3>
+            <p>Direct-from-manufacturer pricing with volume-based flexibility. No middlemen — better margins for your production.</p>
+          </div>
+          <div class="why-card">
+            <div class="why-card-icon">
+              <svg viewBox="0 0 24 24"><path d="M4 6h18V4H4a2 2 0 0 0-2 2v13h2V6zm18 2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm0 10h-8v-8h8v8z"/></svg>
+            </div>
+            <h3>Custom Configurations</h3>
+            <p>Stamped profiles, custom widths, H-type strips, and bent busbars — engineered to your exact cell and pack layout.</p>
+          </div>
+          <div class="why-card">
+            <div class="why-card-icon">
+              <svg viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
+            </div>
+            <h3>WhatsApp-First Support</h3>
+            <p>Instant quotes, order tracking, and technical guidance over WhatsApp — responsive when your production line needs it most.</p>
+          </div>
+          <div class="why-card">
+            <div class="why-card-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2zm0 12c-5.33 0-8 2.67-8 4v2h16v-2c0-1.33-2.67-4-8-4z"/></svg>
+            </div>
+            <h3>Long-Term Partnership</h3>
+            <p>We invest in understanding your production needs so we can consistently deliver the right materials at the right time.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="contact-section">
+      <div class="container">
+        <div class="contact-grid">
+          <div class="contact-info">
+            <p class="eyebrow">Get in Touch</p>
+            <h2>Let's Talk About Your Requirements</h2>
+            <p>Whether you're looking for a sample, a bulk order, or a long-term supply partner — our team is ready to help. Reach out via the form or directly through the contacts below.</p>
+            <div class="contact-detail-list">
+              <div class="contact-detail">
+                <div class="contact-detail-icon">
+                  <svg viewBox="0 0 24 24"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.5-.3.8-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v3c0 .5-.4.9-.9.9C10.4 19 5 13.6 5 7.1c0-.5.4-.9.9-.9h3c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .6-.2.8l-1.5 1.2z"/></svg>
+                </div>
+                <div>
+                  <div class="contact-detail-label">Phone</div>
+                  <div class="contact-detail-value">
+                    <a href="tel:+918112662827">+91 8112662827</a> &nbsp;|&nbsp; <a href="tel:+919307480409">+91 9307480409</a>
+                  </div>
+                </div>
+              </div>
+              <div class="contact-detail">
+                <div class="contact-detail-icon">
+                  <svg viewBox="0 0 24 24"><path d="M20.5 3.5A10 10 0 0 0 3.2 17.9L2 22l4.2-1.1a10 10 0 0 0 14.3-17.4zm-8.5 16a8 8 0 0 1-4.1-1.1l-.3-.2-2.4.6.6-2.3-.2-.3A8 8 0 1 1 12 19.5z"/></svg>
+                </div>
+                <div>
+                  <div class="contact-detail-label">WhatsApp</div>
+                  <div class="contact-detail-value"><a href="https://wa.me/919315545821" target="_blank" rel="noopener">Chat on WhatsApp</a></div>
+                </div>
+              </div>
+              <div class="contact-detail">
+                <div class="contact-detail-icon">
+                  <svg viewBox="0 0 24 24"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 2.2V18h18V7.2l-9 5.2-9-5.2zm9 3.4 9-5.2H3l9 5.2z"/></svg>
+                </div>
+                <div>
+                  <div class="contact-detail-label">Email</div>
+                  <div class="contact-detail-value"><a href="mailto:info@arambhika.com">info@arambhika.com</a></div>
+                </div>
+              </div>
+            </div>
+            <div class="office-block">
+              <h4>Our Locations</h4>
+              <div class="office-item">
+                <div class="office-name">Sales Office — Arambhika</div>
+                <div class="office-addr"><a href="https://www.google.com/maps/place/ARAMBHIKA/data=!4m2!3m1!1s0x0:0x3ac5cb134aef7161" target="_blank" rel="noopener">SK-201, Sector 116, Noida, Uttar Pradesh - 201301</a></div>
+              </div>
+              <div class="office-item">
+                <div class="office-name">Manufacturing Unit — Swastik Metal Components</div>
+                <div class="office-addr">Plot No. 153, Udyog Kendra-II, Ecotech-III, Greater Noida – 201306</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="contact-form-card">
+            <h3>Send an Inquiry</h3>
+            <p>We'll get back to you within 24 hours on WhatsApp or email.</p>
+            <form id="aboutContactForm">
+              <label>
+                <span>Mobile Number</span>
+                <div class="phone-row">
+                  <select name="countryCode" aria-label="Country code"></select>
+                  <input type="tel" name="mobile" required placeholder="Mobile number" />
+                </div>
+              </label>
+              <label>
+                <span>Email Address</span>
+                <input type="email" name="email" placeholder="you@company.com" />
+              </label>
+              <label>
+                <span>Your Requirement</span>
+                <textarea name="details" rows="4" placeholder="Describe your requirement — product, quantity, specifications (optional)"></textarea>
+              </label>
+              <label>
+                <span>Attachment (Optional)</span>
+                <input type="file" name="attachment" />
+              </label>
+              <button class="button" type="submit">Send via WhatsApp</button>
+              <p class="form-note">Opens WhatsApp with your request details pre-filled.</p>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <p class="footer-title">Sales Office</p>
+        <p><strong>Arambhika</strong></p>
+        <p class="footer-contact">
+          <span class="contact-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.5-.3.8-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v3c0 .5-.4.9-.9.9C10.4 19 5 13.6 5 7.1c0-.5.4-.9.9-.9h3c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .6-.2.8l-1.5 1.2z"/></svg>
+          </span>
+          <a href="tel:+918112662827">+91-8112662827</a>
+          <span class="divider">|</span>
+          <a href="tel:+919953255677">+91-9953255677</a>
+        </p>
+        <p class="footer-contact">
+          <span class="contact-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 2.2V18h18V7.2l-9 5.2-9-5.2zm9 3.4 9-5.2H3l9 5.2z"/></svg>
+          </span>
+          <a href="mailto:info@arambhika.com">info@arambhika.com</a>
+        </p>
+      </div>
+      <div>
+        <p class="footer-title">Email</p>
+        <p class="footer-contact">
+          <span class="contact-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 2.2V18h18V7.2l-9 5.2-9-5.2zm9 3.4 9-5.2H3l9 5.2z"/></svg>
+          </span>
+          <a href="mailto:info@arambhika.com">info@arambhika.com</a>
+        </p>
+      </div>
+      <div>
+        <p class="footer-title">Manufacturing Unit</p>
+        <p><strong>Swastik Metal Components</strong></p>
+        <p class="footer-contact"><span class="contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z"/></svg></span> Plot No. 153, Udyog Kendra-II, Ecotech-III, Greater Noida - 201306</p>
+      </div>
+    </div>
+  </footer>
+
+  <button class="mobile-fab" type="button" id="mobileFab">View Quote (0)</button>
+  <div class="mobile-sheet" id="mobileSheet" aria-hidden="true">
+    <div class="mobile-sheet-inner">
+      <div class="mobile-sheet-header">
+        <button class="sheet-close" type="button" id="mobileSheetClose" aria-label="Close">×</button>
+      </div>
+      <div class="side-panel is-active" data-panel="order">
+        <div class="panel-header">
+          <h3>View Quote</h3>
+          <button class="button ghost tiny" type="button" data-clear="order">Clear</button>
+        </div>
+        <div id="mobileOrderList" class="panel-list"></div>
+        <form class="panel-form" id="mobileOrderForm">
+          <label>
+            Mobile Number
+            <div class="phone-row">
+              <select name="countryCode" aria-label="Country code"></select>
+            </div>
+            <input type="tel" name="mobile" required placeholder="Mobile number" />
+          </label>
+          <div class="form-actions">
+            <button class="button tiny" type="submit">Proceed</button>
+          </div>
+          <p class="form-note">Opens WhatsApp with your request details.</p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

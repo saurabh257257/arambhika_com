@@ -1,0 +1,17 @@
+{
+  "name": "arambhika-store",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Arambhika Enablers storefront: static site UI served with a live Zoho Commerce product catalog",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
