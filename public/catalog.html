@@ -243,8 +243,9 @@ async function downloadCatalogPdf(sections) {
   pdf.addImage(bannerCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', MARGIN, cursorY, usableW, bannerH);
   cursorY += bannerH + 6;
 
-  const COLS = 4;
-  const GUTTER = 3;
+  const isMobile = window.innerWidth <= 700 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const COLS = isMobile ? 1 : 3;
+  const GUTTER = 4;
   const colWidth = (usableW - GUTTER * (COLS - 1)) / COLS;
 
   for (const section of sections) {
