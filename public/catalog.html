@@ -98,6 +98,18 @@
       padding: 12px 40px; font-size: 10.5px; line-height: 1.8;
     }
     .footer strong { color: #fff; }
+    .footer-top { margin-bottom: 6px; }
+    .footer-bottom {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 6px 16px;
+    }
+    .footer-numbers { text-align: left; }
+    .footer-address { text-align: right; }
+    .footer-address a { color: #c5d6f0; text-decoration: underline; }
+    @media (max-width: 500px) {
+      .footer-bottom { flex-direction: column; }
+      .footer-numbers, .footer-address { text-align: center; }
+    }
 
     .loading { text-align: center; padding: 60px; color: #888; font-size: 14px; }
 
@@ -145,13 +157,6 @@
       </div>
     </div>
 
-    <button class="header-download" onclick="window.print()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 15V3m0 12-4-4m4 4 4-4"/><path d="M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/>
-      </svg>
-      Download Catalog
-    </button>
-
     <div class="header-contact">
       <strong>Contact Us</strong><br />
       <a href="tel:+918112662827">+91-8112662827</a><br />
@@ -175,12 +180,18 @@
   </main>
 
   <footer class="footer">
-    <strong>Arambhika</strong><br />
-    Battery Pack Connectors &amp; Nickel Strip Solutions<br />
-    +91-8112662827 &nbsp;|&nbsp; +91-9953255677<br />
-    <a href="https://www.google.com/maps/place/ARAMBHIKA/data=!4m2!3m1!1s0x0:0x3ac5cb134aef7161" target="_blank" rel="noopener" style="color:#c5d6f0; text-decoration:underline;">
-      SK-201, Sector 116, Noida, Uttar Pradesh - 201301
-    </a>
+    <div class="footer-top">
+      <strong>Arambhika</strong><br />
+      Battery Pack Connectors &amp; Nickel Strip Solutions
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-numbers">+91-8112662827 &nbsp;|&nbsp; +91-9953255677</div>
+      <div class="footer-address">
+        <a href="https://www.google.com/maps/place/ARAMBHIKA/data=!4m2!3m1!1s0x0:0x3ac5cb134aef7161" target="_blank" rel="noopener">
+          SK-201, Sector 116, Noida, Uttar Pradesh - 201301
+        </a>
+      </div>
+    </div>
   </footer>
 
 <script>
