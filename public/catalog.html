@@ -177,6 +177,9 @@
       <div class="footer-contact-block">
         <strong>Contact Us</strong><br />
         +91-8112662827 &nbsp;|&nbsp; +91-9953255677<br />
+        <a href="https://www.arambhika.com" target="_blank" rel="noopener">www.arambhika.com</a>
+        &nbsp;|&nbsp;
+        <a href="mailto:info@arambhika.com">info@arambhika.com</a><br />
         <a href="https://www.google.com/maps/place/ARAMBHIKA/data=!4m2!3m1!1s0x0:0x3ac5cb134aef7161" target="_blank" rel="noopener">
           SK-201, Sector 116, Noida, Uttar Pradesh - 201301
         </a>
@@ -184,6 +187,8 @@
     </div>
   </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
 // Auto-print if ?autoprint=1 is in the URL (triggered by QR scan)
 const AUTO_PRINT = new URLSearchParams(location.search).get('autoprint') === '1';
@@ -199,32 +204,77 @@ if (AUTO_PRINT) {
   });
 }
 
-// Compress an img to a canvas JPEG — only called right before printing
-function compressImg(imgEl, size, quality) {
-  try {
-    const c = document.createElement('canvas');
-    c.width = size; c.height = size;
-    c.getContext('2d').drawImage(imgEl, 0, 0, size, size);
-    imgEl.dataset.origSrc = imgEl.src;           // save original
-    imgEl.src = c.toDataURL('image/jpeg', quality);
-  } catch(e) { /* cross-origin: skip */ }
-}
+// Builds and downloads the catalog as an actual PDF file — no print dialog,
+// no extra page. Runs entirely in the browser (html2canvas + jsPDF).
+async function downloadCatalogPdf(sections) {
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const PAGE_W = pdf.internal.pageSize.getWidth();
+  const PAGE_H = pdf.internal.pageSize.getHeight();
+  const MARGIN = 10;
+  const FOOTER_TEXT = 'www.arambhika.com   |   info@arambhika.com   |   +91-8112662827  |  +91-9953255677';
+  const usableW = PAGE_W - MARGIN * 2;
+  const usableBottom = PAGE_H - 10;
+  let cursorY = MARGIN;
 
-// Restore originals after print so screen stays sharp
-function restoreImgs() {
-  document.querySelectorAll('.product-img-wrap img[data-orig-src]').forEach(img => {
-    img.src = img.dataset.origSrc;
-    delete img.dataset.origSrc;
-  });
-}
+  const snap = (el) => html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
 
-// Before print: compress for PDF size; after print: restore crisp originals
-window.addEventListener('beforeprint', () => {
-  document.querySelectorAll('.product-img-wrap img').forEach(img => {
-    if (img.complete && img.naturalWidth) compressImg(img, 180, 0.78);
-  });
-});
-window.addEventListener('afterprint', restoreImgs);
+  function drawFooter() {
+    pdf.setFontSize(8);
+    pdf.setTextColor(90, 107, 128);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(FOOTER_TEXT, PAGE_W / 2, PAGE_H - 4, { align: 'center' });
+  }
+
+  function newPage() {
+    drawFooter();
+    pdf.addPage();
+    cursorY = MARGIN;
+  }
+
+  // Header + banner (branding: logo, WhatsApp, contact) on the cover page only
+  const headerCanvas = await snap(document.querySelector('.header'));
+  const headerH = (headerCanvas.height * usableW) / headerCanvas.width;
+  pdf.addImage(headerCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', MARGIN, cursorY, usableW, headerH);
+  cursorY += headerH + 3;
+
+  const bannerCanvas = await snap(document.querySelector('.catalog-banner'));
+  const bannerH = (bannerCanvas.height * usableW) / bannerCanvas.width;
+  pdf.addImage(bannerCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', MARGIN, cursorY, usableW, bannerH);
+  cursorY += bannerH + 6;
+
+  const COLS = 4;
+  const GUTTER = 3;
+  const colWidth = (usableW - GUTTER * (COLS - 1)) / COLS;
+
+  for (const section of sections) {
+    if (cursorY + 10 > usableBottom) newPage();
+    pdf.setFillColor(45, 106, 191);
+    pdf.rect(MARGIN, cursorY, 1.2, 5, 'F');
+    pdf.setFontSize(11);
+    pdf.setTextColor(26, 58, 107);
+    pdf.setFont(undefined, 'bold');
+    pdf.text(section.name.toUpperCase(), MARGIN + 4, cursorY + 4);
+    cursorY += 9;
+
+    for (let i = 0; i < section.cardEls.length; i += COLS) {
+      const rowCards = section.cardEls.slice(i, i + COLS);
+      const rowCanvases = await Promise.all(rowCards.map(snap));
+      const rowHeight = Math.max(...rowCanvases.map((c) => (c.height * colWidth) / c.width));
+      if (cursorY + rowHeight > usableBottom) newPage();
+      rowCanvases.forEach((canvas, idx) => {
+        const x = MARGIN + idx * (colWidth + GUTTER);
+        const h = (canvas.height * colWidth) / canvas.width;
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', x, cursorY, colWidth, h);
+      });
+      cursorY += rowHeight + GUTTER;
+    }
+    cursorY += 4;
+  }
+
+  drawFooter();
+  pdf.save('Arambhika_Catalog.pdf');
+}
 
 fetch('products.json?v=' + Date.now(), { cache: 'no-store' })
   .then(r => r.json())
@@ -281,30 +331,37 @@ fetch('products.json?v=' + Date.now(), { cache: 'no-store' })
       root.appendChild(sec);
     });
 
-    // Auto-print: wait for images to load then trigger print dialog
+    // Auto-download: wait for images to load, then build and save the PDF directly.
     if (AUTO_PRINT) {
+      const sections = Array.from(root.querySelectorAll('.category-section')).map((sec) => ({
+        name: sec.querySelector('h3')?.textContent || '',
+        cardEls: Array.from(sec.querySelectorAll('.product-card')),
+      }));
       const allImgs = Array.from(root.querySelectorAll('img'));
       let loaded = 0;
       const total = allImgs.length;
 
-      function tryPrint() {
+      function tryDownload() {
         loaded++;
         if (loaded >= total) {
-          // Extra 800ms buffer for render to settle
-          setTimeout(() => {
+          setTimeout(async () => {
             const b = document.getElementById('autoBanner');
-            if (b) b.textContent = '📄 Opening download dialog…';
-            setTimeout(() => window.print(), 400);
-          }, 800);
+            if (b) b.textContent = '📄 Preparing your PDF…';
+            try {
+              await downloadCatalogPdf(sections);
+            } finally {
+              if (b) b.remove();
+            }
+          }, 500);
         }
       }
 
       if (total === 0) {
-        setTimeout(() => window.print(), 1200);
+        downloadCatalogPdf(sections);
       } else {
         allImgs.forEach(img => {
-          if (img.complete) { tryPrint(); }
-          else { img.addEventListener('load', tryPrint); img.addEventListener('error', tryPrint); }
+          if (img.complete) { tryDownload(); }
+          else { img.addEventListener('load', tryDownload); img.addEventListener('error', tryDownload); }
         });
       }
     }
