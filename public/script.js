@@ -1220,3 +1220,22 @@ window.addEventListener("hashchange", () => {
     pendingProductCode = productCode;
   }
 });
+
+/* ── Nav catalog dropdown ── */
+document.querySelectorAll(".nav-dropdown-toggle").forEach((toggle) => {
+  const dropdown = toggle.closest(".nav-dropdown");
+  toggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    dropdown.classList.toggle("open");
+  });
+});
+document.addEventListener("click", (event) => {
+  document.querySelectorAll(".nav-dropdown.open").forEach((dropdown) => {
+    if (!dropdown.contains(event.target)) dropdown.classList.remove("open");
+  });
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    document.querySelectorAll(".nav-dropdown.open").forEach((d) => d.classList.remove("open"));
+  }
+});
