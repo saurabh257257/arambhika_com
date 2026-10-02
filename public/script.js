@@ -695,7 +695,7 @@ const createCard = (product, categoryName) => {
       <div class="details-bottom">
         <h3>
           <a class="product-title-link" href="${card.dataset.productLink}" data-product-link="${name}">
-            ${name}${sku ? ` <span style="color:#ea580c;font-size:0.78em;font-weight:500;">(${sku})</span>` : ""}
+            ${name}${sku ? ` <span style="color:#007185;font-size:0.78em;font-weight:500;">(${sku})</span>` : ""}
           </a>
         </h3>
         <p class="sku">${dimensionHtml}</p>
@@ -993,6 +993,10 @@ if (globalSearch) {
   globalSearch.addEventListener("input", (event) => {
     handleSearchInput(event.target.value);
   });
+  document.querySelector("#searchGo")?.addEventListener("click", () => {
+    globalSearch.focus();
+    handleSearchInput(globalSearch.value);
+  });
 }
 
 const buildPdfPage = (className, innerHtml) => {
@@ -1200,7 +1204,7 @@ const renderSuggestions = (term) => {
 
 document.addEventListener("click", (event) => {
   if (!searchSuggestions) return;
-  if (!searchSuggestions.contains(event.target) && event.target !== globalSearch) {
+  if (!searchSuggestions.contains(event.target) && event.target !== globalSearch && !event.target.closest("#searchGo")) {
     searchSuggestions.classList.remove("is-visible");
   }
 });
