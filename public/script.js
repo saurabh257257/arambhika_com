@@ -145,7 +145,7 @@ const filterCatalog = () => {
     const haystack = `${card.dataset.search || ""}`.toLowerCase();
     const matchesSearch = !currentSearchTerm || haystack.includes(currentSearchTerm);
     if (matchesCategory && matchesSearch) {
-      card.style.display = "block";
+      card.style.display = "";
     } else {
       card.style.display = "none";
     }

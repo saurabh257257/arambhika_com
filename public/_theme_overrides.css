@@ -189,6 +189,86 @@ body {
   color: var(--muted);
 }
 
+/* Compact card: photo on the left, details on the right */
+.catalog-grid {
+  gap: 14px;
+}
+.catalog-grid .catalog-card {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  grid-template-areas: "media body";
+  gap: 18px;
+  padding: 12px 16px 12px 12px;
+  align-items: start;
+}
+.catalog-card .carousel {
+  width: 170px;
+  max-height: none;
+  aspect-ratio: 1 / 1;
+}
+.catalog-card .catalog-body {
+  min-width: 0;
+}
+.catalog-card h3 {
+  padding-right: 86px; /* room for the Available badge */
+}
+.catalog-card .badge {
+  top: 12px;
+  right: 14px;
+}
+.catalog-card .details-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 8px;
+}
+.catalog-card .details-block {
+  display: contents; /* toggle button, spec panel and actions become siblings so they can wrap */
+}
+.catalog-card .details-toggle {
+  margin: 0;
+  flex: 0 0 auto;
+}
+.catalog-card .details {
+  order: 3;
+  flex: 1 1 100%;
+}
+.catalog-card .card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+.catalog-card .card-actions .button {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
+@media (max-width: 560px) {
+  .catalog-grid .catalog-card {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+  .catalog-card .carousel {
+    width: 112px;
+  }
+  .catalog-card h3 {
+    padding-right: 0;
+  }
+  .catalog-card .badge {
+    top: 8px;
+    right: 8px;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+  }
+  .catalog-card .carousel-btn {
+    padding: 2px 8px;
+  }
+}
+
 /* Product photos: no frame. Many photos carry their own thin coloured border, so crop it away. */
 .carousel {
   background: #fff;
@@ -198,8 +278,8 @@ body {
   cursor: zoom-in;
 }
 .carousel img {
-  /* the 4:3 box shows a centred square photo (75% wide): trim its outer 3.5% on every side */
-  clip-path: inset(3.5% 15.2%);
+  /* trim the outer 3.5% of each photo on every side */
+  clip-path: inset(3.5%);
   transform: scale(1.07);
 }
 .carousel:hover img.active {
