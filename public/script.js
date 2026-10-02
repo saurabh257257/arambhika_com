@@ -695,7 +695,7 @@ const createCard = (product, categoryName) => {
       <div class="details-bottom">
         <h3>
           <a class="product-title-link" href="${card.dataset.productLink}" data-product-link="${name}">
-            ${name}${sku ? ` <span style="color:#2d6abf;font-size:0.78em;font-weight:500;">(${sku})</span>` : ""}
+            ${name}${sku ? ` <span style="color:#ea580c;font-size:0.78em;font-weight:500;">(${sku})</span>` : ""}
           </a>
         </h3>
         <p class="sku">${dimensionHtml}</p>
