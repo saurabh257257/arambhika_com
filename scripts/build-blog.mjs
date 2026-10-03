@@ -183,15 +183,22 @@ function renderIndex(all) {
     url,
     publisher: ORG,
     inLanguage: 'en-IN',
-    hasPart: all.map((p) => ({ '@type': 'Article', headline: p.title, url: `${SITE}/blog/${p.slug}.html` })),
+    hasPart: [
+      ...all.map((p) => ({ '@type': 'Article', headline: p.title, url: `${SITE}/blog/${p.slug}.html` })),
+      ...guides.map((g) => ({ '@type': 'Article', headline: g.title, url: `${SITE}${g.href}` })),
+    ],
   }
   const tiles = all.map((p) => `
         <a class="blog-tile" href="/blog/${p.slug}.html" data-tile-cat="${esc(p.category)}">
           <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
           <div class="blog-tile-body"><span class="blog-tag">${esc(p.tag)}</span><h3>${esc(p.title)}</h3><p>${esc(p.teaser)}</p><span class="blog-more">Read blog &rarr;</span></div>
         </a>`).join('')
+  // Older guides live at their original URLs (kept for SEO) but are listed as ordinary blog tiles.
   const guideTiles = guides.map((g) => `
-        <a class="blog-guide" href="${g.href}"><h3>${esc(g.title)}</h3><p>${esc(g.text)}</p></a>`).join('')
+        <a class="blog-tile" href="${g.href}">
+          <div class="blog-tile-img"><img src="${g.heroImage}" alt="${esc(g.imageAlt)}" loading="lazy" /></div>
+          <div class="blog-tile-body"><span class="blog-tag">${esc(g.tag)}</span><h3>${esc(g.title)}</h3><p>${esc(g.text)}</p><span class="blog-more">Read guide &rarr;</span></div>
+        </a>`).join('')
 
   return `${baseHead({ title, description, keywords: 'nickel strip blog India, battery pack guide India, copper busbar guide, 18650 nickel strip India, EV battery components India', url, image: `${SITE}/assets/logo.png`, type: 'website', jsonld })}
 <body class="blog-page">
@@ -202,10 +209,7 @@ function renderIndex(all) {
       <p class="blog-tag">Arambhika Blog</p>
       <h1>Battery pack materials, explained for Indian makers</h1>
       <p class="blog-intro">One guide for each material we sell, written for e-bike, e-rickshaw, inverter and solar storage builders across India. Each guide links straight to the products with live stock and price.</p>
-      <div class="blog-tiles blog-tiles-lg">${tiles}
-      </div>
-      <h2 class="blog-sub">More guides</h2>
-      <div class="blog-guides">${guideTiles}
+      <div class="blog-tiles blog-tiles-lg">${tiles}${guideTiles}
       </div>
     </section>
   </main>

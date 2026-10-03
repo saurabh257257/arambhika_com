@@ -212,7 +212,7 @@ export const posts = [
 
 // Existing guides that predate the blog; listed on the blog index.
 export const guides = [
-  { href: '/nickel-plated-vs-pure-nickel-strip.html', title: 'Nickel-Plated vs Pure Nickel Strip', text: 'Which one to use for your battery pack: cost, conductivity and corrosion compared.' },
-  { href: '/18650-21700-32650-nickel-strip-sizing-guide.html', title: '18650 vs 21700 vs 32650: Strip Sizing Guide', text: 'Cell dimensions, current ratings and how to pick strip width and thickness.' },
-  { href: '/copper-busbar-sizing-guide-battery-packs.html', title: 'Copper Busbar Sizing Guide', text: 'How to size busbar thickness and width for your pack current.' },
+  { href: '/nickel-plated-vs-pure-nickel-strip.html', tag: 'Comparison', title: 'Nickel-Plated vs Pure Nickel Strip: Which One Do You Need?', text: 'Which one to use for your battery pack: cost, conductivity and corrosion compared.', heroImage: '/assets/products/nickel-plated/npl_10x.15mm_1.jpg', imageAlt: 'Nickel strip for battery pack welding' },
+  { href: '/18650-21700-32650-nickel-strip-sizing-guide.html', tag: 'Sizing', title: '18650 vs 21700 vs 32650: Nickel Strip Sizing Guide', text: 'Cell dimensions, current ratings and how to pick strip width and thickness.', heroImage: '/assets/products/nickel-pure/np_2p_26x.15mm_1.jpg', imageAlt: 'Pure nickel 2P strip for 18650 cells' },
+  { href: '/copper-busbar-sizing-guide-battery-packs.html', tag: 'Sizing', title: 'Copper Busbar Sizing Guide for Battery Packs', text: 'How to size busbar thickness and width for your pack current.', heroImage: '/assets/products/copper-bus-bars/universe_1.5mm_1.jpg', imageAlt: 'Copper busbars for battery packs' },
 ]
