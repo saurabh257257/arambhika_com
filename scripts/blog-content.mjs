@@ -8,6 +8,7 @@ const dateLabel = '3 October 2026'
 export const posts = [
   {
     slug: 'nickel-plated-strip-ev-battery-packs-india',
+    featured: true,
     category: 'Nickel Strip Plated',
     tag: 'Nickel Strip Plated',
     title: 'Nickel-Plated Strip for Battery Packs in India: Sizes, Uses & Buying Guide',
@@ -72,6 +73,7 @@ export const posts = [
 
   {
     slug: 'pure-nickel-strip-lithium-battery-packs-india',
+    featured: true,
     category: 'Nickel Strip Pure',
     tag: 'Nickel Strip Pure',
     title: 'Pure Nickel Strip for Lithium Battery Packs: High-Current Uses in India',
@@ -143,6 +145,7 @@ export const posts = [
 
   {
     slug: 'copper-busbar-battery-ess-india',
+    featured: true,
     category: 'Copper Bus Bar',
     tag: 'Copper Bus Bar',
     title: 'Tin-Coated Copper Busbars for EV & ESS Battery Packs in India',

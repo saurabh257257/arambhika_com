@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How to Calculate Nickel Strip Size for Battery Pack Current | Worked Examples | Arambhika</title>
+  <meta name="description" content="Learn to size nickel strip for your battery pack: cross-section, resistance and heat with worked examples for 8x0.15, 10x0.30 and 2P strips. Pure nickel vs plated steel, written for Indian pack builders." />
+  <meta name="keywords" content="nickel strip size calculator, nickel strip current rating, nickel strip resistance, battery pack strip selection, 8x0.15 nickel strip current, how thick nickel strip for battery pack, pure nickel vs plated resistance" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://www.arambhikaenablers.in/blog/how-to-calculate-nickel-strip-size-battery-pack-current.html" />
+  <meta property="og:title" content="How to Calculate Nickel Strip Size for Battery Pack Current | Worked Examples | Arambhika" />
+  <meta property="og:description" content="Learn to size nickel strip for your battery pack: cross-section, resistance and heat with worked examples for 8x0.15, 10x0.30 and 2P strips. Pure nickel vs plated steel, written for Indian pack builders." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://www.arambhikaenablers.in/blog/how-to-calculate-nickel-strip-size-battery-pack-current.html" />
+  <meta property="og:image" content="https://www.arambhikaenablers.in/assets/products/nickel-pure/np_10x.3mm_1.jpg" />
+  <meta property="og:locale" content="en_IN" />
+  <meta property="og:site_name" content="Arambhika" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="How to Calculate Nickel Strip Size for Battery Pack Current | Worked Examples | Arambhika" />
+  <meta name="twitter:description" content="Learn to size nickel strip for your battery pack: cross-section, resistance and heat with worked examples for 8x0.15, 10x0.30 and 2P strips. Pure nickel vs plated steel, written for Indian pack builders." />
+  <meta name="twitter:image" content="https://www.arambhikaenablers.in/assets/products/nickel-pure/np_10x.3mm_1.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/_theme_overrides.css" />
+  <link rel="stylesheet" href="/blog/blog.css" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BDECEEVPNW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'AW-17944658317');
+    gtag('config', 'G-BDECEEVPNW');
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "How to Calculate Nickel Strip Size for Your Battery Pack Current (With Worked Examples)",
+      "description": "Learn to size nickel strip for your battery pack: cross-section, resistance and heat with worked examples for 8x0.15, 10x0.30 and 2P strips. Pure nickel vs plated steel, written for Indian pack builders.",
+      "image": "https://www.arambhikaenablers.in/assets/products/nickel-pure/np_10x.3mm_1.jpg",
+      "author": {
+        "@type": "Organization",
+        "name": "Arambhika",
+        "url": "https://www.arambhikaenablers.in",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.arambhikaenablers.in/assets/logo.png"
+        }
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Arambhika",
+        "url": "https://www.arambhikaenablers.in",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.arambhikaenablers.in/assets/logo.png"
+        }
+      },
+      "mainEntityOfPage": "https://www.arambhikaenablers.in/blog/how-to-calculate-nickel-strip-size-battery-pack-current.html",
+      "datePublished": "2026-10-03",
+      "dateModified": "2026-10-03",
+      "inLanguage": "en-IN"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.arambhikaenablers.in/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://www.arambhikaenablers.in/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "How to Calculate Nickel Strip Size for Your Battery Pack Current (With Worked Examples)",
+          "item": "https://www.arambhikaenablers.in/blog/how-to-calculate-nickel-strip-size-battery-pack-current.html"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I find the current rating of nickel strip?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "There is no single rating, because it depends on allowed temperature rise, strip length and cooling. Calculate resistance and heat for your current as shown here, then confirm with a load test."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the resistance of 8 x 0.15 mm nickel strip?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For pure nickel, about 0.58 mΩ per 10 mm of length, from 0.07 Ω·mm²/m divided by the 1.2 mm² cross-section."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is plated steel strip worse than pure nickel for current?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The steel core has higher resistance, so the same size runs hotter. It remains fine for lighter loads."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How can I carry more current without changing the strip size?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Add strips in parallel, shorten the path, or move the main path to copper busbar."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do 2P strips carry more current than 1P?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A wider 2P strip has more cross-section, but its cut-outs reduce it. Measure the narrowest section when you calculate."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body class="blog-page">
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand brand-block">
+        <img class="brand-logo" id="brandLogo" src="/assets/logo.png" alt="Arambhika logo" />
+        <p class="brand-tag" id="brandTag">EV Battery Component Manufacturer</p>
+      </div>
+      <div class="nav-right">
+        <nav class="nav-links">
+          <div class="nav-contact">
+            <a class="phone-link" href="tel:+919315545821" id="topPhone1">
+              +91-9315545821
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.5-.3.8-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v3c0 .5-.4.9-.9.9C10.4 19 5 13.6 5 7.1c0-.5.4-.9.9-.9h3c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .6-.2.8l-1.5 1.2z"/></svg>
+            </a>
+            <a class="wa-link" href="https://wa.me/919315545821" target="_blank" rel="noopener" id="topWa1">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A10 10 0 0 0 3.2 17.9L2 22l4.2-1.1a10 10 0 0 0 14.3-17.4zm-8.5 16a8 8 0 0 1-4.1-1.1l-.3-.2-2.4.6.6-2.3-.2-.3A8 8 0 1 1 12 19.5zm4.4-6.1c-.2-.1-1.3-.6-1.5-.7-.2-.1-.4-.1-.6.1-.2.2-.7.7-.9.9-.2.2-.3.2-.6.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.9-.1-.2 0-.4.1-.5.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2.1-.4 0-.6-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.4.5.6.2 1.1.2 1.5.1.5-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1-.1-.1-.2-.2-.4-.3z"/></svg>
+            </a>
+          </div>
+          <a href="/" id="navHome">Home</a>
+          <a href="/#catalog" id="navCatalog">Product Store</a>
+          <a href="/blog/" id="navBlog">Blog</a>
+          <a href="/catalog.html?autoprint=1">Download Catalog</a>
+          <a href="/capabilities.html" id="navCapabilities">Our Capabilities</a>
+          <a href="/about.html" id="navAbout">About & Contact</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+  <main>
+    <article class="blog-article">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/blog/">Blog</a> &rsaquo; <span>Sizing</span></nav>
+      <p class="blog-tag">Sizing</p>
+      <h1>How to Calculate Nickel Strip Size for Your Battery Pack Current (With Worked Examples)</h1>
+      <p class="blog-meta">By Arambhika &middot; <time datetime="2026-10-03">3 October 2026</time> &middot; 7 min read</p>
+      <figure class="blog-hero"><img src="/assets/products/nickel-pure/np_10x.3mm_1.jpg" alt="Pure nickel strip 10 x 0.3 mm for high-current battery packs" width="720" height="480" /></figure>
+      <p class="blog-intro">Strip that is too small runs hot. Strip that is too big wastes money and is hard to weld. Instead of guessing, use three simple steps: find the current in the strip, find the cross-section you have, and check the heat. The numbers below are plain arithmetic you can repeat on a calculator.</p>
+      
+      <h2>Step 1: find the current in the strip</h2>
+      <p>Strips in different places carry different current. A strip between cells in one parallel group carries only that cell's share. A <strong>series link</strong> carries the full pack current. So a 40 A pack with 6 cells in parallel has about 6.7 A per cell, but 40 A in each series link.</p>
+
+      <h2>Step 2: find the cross-section</h2>
+      <p>Cross-section (mm&sup2;) is width times thickness. For pre-cut 2P strips the cut-outs reduce the real section, so measure the narrowest part.</p>
+      <table class="blog-table">
+        <thead><tr><th>Strip</th><th>Cross-section</th><th>Resistance per 10 mm (pure nickel)</th></tr></thead>
+        <tbody>
+          <tr><td>6 x 0.15 mm</td><td>0.90 mm&sup2;</td><td>0.78 m&Omega;</td></tr>
+          <tr><td><a href="/?product=Nickel%20Strip%20Pure%201P%208x0.15%20mm#catalog">8 x 0.15 mm</a></td><td>1.20 mm&sup2;</td><td>0.58 m&Omega;</td></tr>
+          <tr><td>10 x 0.15 mm</td><td>1.50 mm&sup2;</td><td>0.47 m&Omega;</td></tr>
+          <tr><td>10 x 0.20 mm</td><td>2.00 mm&sup2;</td><td>0.35 m&Omega;</td></tr>
+          <tr><td>8 x 0.30 mm</td><td>2.40 mm&sup2;</td><td>0.29 m&Omega;</td></tr>
+          <tr><td><a href="/?product=Nickel%20Strip%20Pure%201P%2010%20x%200.3%20mm#catalog">10 x 0.30 mm</a></td><td>3.00 mm&sup2;</td><td>0.23 m&Omega;</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Step 3: check the resistance and heat</h2>
+      <p>Resistance is <em>R = &rho; x L / A</em>. For nickel, &rho; is about 0.07 &Omega;&middot;mm&sup2;/m (roughly 7 &micro;&Omega;&middot;cm), so a 10 mm length has a resistance of about 0.7 / A m&Omega;, with A in mm&sup2;. That is how the table above was made. Heat in the strip is <em>I&sup2; x R</em>.</p>
+      <p><strong>Worked example.</strong> A 10 mm piece of 8 x 0.15 mm pure nickel is 0.58 m&Omega;. At 20 A it dissipates 20&sup2; x 0.00058 = 0.23 W. The same length of 10 x 0.30 mm is 0.23 m&Omega;, which is 0.093 W at 20 A, less than half the heat. Small numbers, but a pack has many joints, in a closed box, in an Indian summer.</p>
+      <p><strong>Plated steel runs hotter.</strong> A steel core has roughly twice the resistivity of nickel, or more, so a plated strip of the same size dissipates correspondingly more heat. This is why <a href="/blog/pure-nickel-strip-lithium-battery-packs-india.html">pure nickel</a> is preferred for heavy loads and <a href="/blog/nickel-plated-strip-ev-battery-packs-india.html">plated strip</a> for lighter ones.</p>
+
+      <h2>Rules of thumb that save mistakes</h2>
+      <ul>
+        <li>Size series links for the <strong>peak</strong> pack current, not the average.</li>
+        <li>Add strips in parallel (layers or side by side) when one strip is not enough.</li>
+        <li>Past a few tens of amps, consider <a href="/blog/copper-busbar-battery-ess-india.html">copper busbar</a>.</li>
+        <li>Joint quality matters as much as strip size. A weak weld adds resistance on its own; see <a href="/blog/battery-pack-heating-nickel-strip-weak-welds-troubleshooting.html">pack heating troubleshooting</a>.</li>
+        <li>Always confirm with a temperature test at full load.</li>
+      </ul>
+      <p>See also our <a href="/18650-21700-32650-nickel-strip-sizing-guide.html">18650 vs 21700 vs 32650 sizing guide</a>.</p>
+      <p class="blog-note">The figures use standard resistivity values for pure nickel and give a starting point only. Real strips, welds and temperatures vary. Validate with your own tests.</p>
+
+      <section class="blog-products" data-category="Nickel Strip Plated,Nickel Strip Pure" data-limit="8" aria-label="Nickel Strip Plated,Nickel Strip Pure products">
+        <h2>Strip sizes to choose from</h2>
+        <p class="blog-products-note">Live stock and price from our store. Tap a product to add it to your quote.</p>
+        <div class="blog-product-grid" id="blogProductGrid"><p class="blog-loading">Loading products&hellip;</p></div>
+        <noscript><p>Browse every size on our <a href="/#catalog">product store</a>.</p></noscript>
+        <p><a class="blog-btn blog-btn-ghost" href="/#catalog">View the full product store &rarr;</a></p>
+      </section>
+
+      <aside class="blog-cta">
+        <div>
+          <h2>Not sure which size fits your current?</h2>
+          <p>Share your pack design, quantity and city. We reply on WhatsApp with a quote and dispatch plan from Noida.</p>
+        </div>
+        <a class="blog-btn" href="https://wa.me/919315545821?text=Hi%20Arambhika%2C%20I%20read%20your%20strip%20sizing%20guide.%20Please%20suggest%20a%20size%20for%20my%20pack." target="_blank" rel="noopener">Get a quote on WhatsApp</a>
+      </aside>
+
+      <section class="blog-faq">
+        <h2>Frequently asked questions</h2>
+      <details><summary>How do I find the current rating of nickel strip?</summary><p>There is no single rating, because it depends on allowed temperature rise, strip length and cooling. Calculate resistance and heat for your current as shown here, then confirm with a load test.</p></details>
+      <details><summary>What is the resistance of 8 x 0.15 mm nickel strip?</summary><p>For pure nickel, about 0.58 mΩ per 10 mm of length, from 0.07 Ω·mm²/m divided by the 1.2 mm² cross-section.</p></details>
+      <details><summary>Is plated steel strip worse than pure nickel for current?</summary><p>Yes. The steel core has higher resistance, so the same size runs hotter. It remains fine for lighter loads.</p></details>
+      <details><summary>How can I carry more current without changing the strip size?</summary><p>Add strips in parallel, shorten the path, or move the main path to copper busbar.</p></details>
+      <details><summary>Do 2P strips carry more current than 1P?</summary><p>A wider 2P strip has more cross-section, but its cut-outs reduce it. Measure the narrowest section when you calculate.</p></details>
+      </section>
+
+      <section class="blog-related">
+        <h2>More from the Arambhika blog</h2>
+        <div class="blog-tiles">
+        <a class="blog-tile" href="/blog/battery-pack-heating-nickel-strip-weak-welds-troubleshooting.html" data-tile-cat="Nickel Strip Plated,Nickel Strip Pure">
+          <div class="blog-tile-img"><img src="/assets/products/copper-bus-bars/custom_1.jpg" alt="Custom copper busbar for battery pack interconnects" loading="lazy" /></div>
+          <div class="blog-tile-body"><span class="blog-tag">Troubleshooting</span><h3>Why Is My Lithium Battery Pack Heating Up? Nickel Strip, Weak Welds and Busbar Fixes</h3><span class="blog-more">Read blog &rarr;</span></div>
+        </a>
+        <a class="blog-tile" href="/blog/nickel-strip-price-per-kg-india-plated-vs-pure.html" data-tile-cat="Nickel Strip Plated,Nickel Strip Pure">
+          <div class="blog-tile-img"><img src="/assets/products/nickel-plated/npl_8x.15mm_1.jpg" alt="Nickel-plated strip 8 x 0.15 mm" loading="lazy" /></div>
+          <div class="blog-tile-body"><span class="blog-tag">Pricing</span><h3>Nickel Strip Price per kg in India: What Decides the Rate (Plated vs Pure)</h3><span class="blog-more">Read blog &rarr;</span></div>
+        </a>
+        <a class="blog-tile" href="/blog/nickel-plated-strip-ev-battery-packs-india.html" data-tile-cat="Nickel Strip Plated">
+          <div class="blog-tile-img"><img src="/assets/products/nickel-plated/npl_2p_31x.15mm_1.jpg" alt="Nickel-plated 2P H-type strip for 21700 battery packs" loading="lazy" /></div>
+          <div class="blog-tile-body"><span class="blog-tag">Nickel Strip Plated</span><h3>Nickel-Plated Strip for Battery Packs in India: Sizes, Uses &amp; Buying Guide</h3><span class="blog-more">Read blog &rarr;</span></div>
+        </a>
+        </div>
+      </section>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <p class="footer-title">Sales Office</p>
+        <p><strong>Arambhika</strong></p>
+        <p class="footer-contact"><span class="contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z"/></svg></span> <a href="https://www.google.com/maps/place/ARAMBHIKA/data=!4m2!3m1!1s0x0:0x3ac5cb134aef7161" target="_blank" rel="noopener">SK-201, Sector 116, Noida, Uttar Pradesh - 201301</a></p>
+        <p class="footer-contact">
+          <span class="contact-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.5-.3.8-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v3c0 .5-.4.9-.9.9C10.4 19 5 13.6 5 7.1c0-.5.4-.9.9-.9h3c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .6-.2.8l-1.5 1.2z"/></svg>
+          </span>
+          <a href="tel:+918112662827">+91-8112662827</a>
+          <span class="divider">|</span>
+          <a href="tel:+919953255677">+91-9953255677</a>
+        </p>
+        <p class="footer-contact">
+          <span class="contact-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 2.2V18h18V7.2l-9 5.2-9-5.2zm9 3.4 9-5.2H3l9 5.2z"/>
+            </svg>
+          </span>
+          <a href="mailto:info@arambhika.com">info@arambhika.com</a>
+        </p>
+      </div>
+      <div>
+        <p class="footer-title">Email</p>
+        <p class="footer-contact">
+          <span class="contact-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 2.2V18h18V7.2l-9 5.2-9-5.2zm9 3.4 9-5.2H3l9 5.2z"/>
+            </svg>
+          </span>
+          <a href="mailto:info@arambhika.com">info@arambhika.com</a>
+        </p>
+      </div>
+      <div>
+        <p class="footer-title">Manufacturing Unit</p>
+        <p><strong>Swastik Metal Components</strong></p>
+        <p class="footer-contact"><span class="contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z"/></svg></span> Plot No. 153, Udyog Kendra-II, Ecotech-III, Greater Noida - 201306</p>
+      </div>
+    </div>
+  </footer>
+  <script src="/blog/blog.js" defer></script>
+</body>
+</html>

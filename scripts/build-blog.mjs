@@ -5,7 +5,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { posts, guides } from './blog-content.mjs'
+import { posts as materialPosts, guides } from './blog-content.mjs'
+import { posts as howtoPosts } from './blog-content-howto.mjs'
+
+const posts = [...materialPosts, ...howtoPosts]
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public')
 const OUT = path.join(ROOT, 'blog')
@@ -111,7 +114,8 @@ function renderPost(post, all) {
   }
   const jsonld = { '@context': 'https://schema.org', '@graph': [articleLd, crumbLd, faqLd] }
 
-  const related = all.filter((p) => p.slug !== post.slug).map((p) => `
+  const at = all.findIndex((p) => p.slug === post.slug)
+  const related = [1, 2, 3].map((n) => all[(at + n) % all.length]).map((p) => `
         <a class="blog-tile" href="/blog/${p.slug}.html" data-tile-cat="${esc(p.category)}">
           <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
           <div class="blog-tile-body"><span class="blog-tag">${esc(p.tag)}</span><h3>${esc(p.title)}</h3><span class="blog-more">Read blog &rarr;</span></div>
@@ -211,6 +215,19 @@ function renderIndex(all) {
 </html>
 `
 }
+
+// Home page: refresh the featured blog tiles between the markers in index.html.
+const BOOK_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:4px"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h6M8 11h6"/></svg>'
+const homeTile = (p) => `
+          <a class="blog-tile" href="/blog/${p.slug}.html">
+            <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
+            <div class="blog-tile-body"><span class="blog-tag">${BOOK_ICON}Blog &middot; ${esc(p.tag)}</span><h3>${esc(p.title)}</h3><p>${esc(p.teaser)}</p><span class="blog-more">Read blog &rarr;</span></div>
+          </a>`
+const homeHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
+fs.writeFileSync(path.join(ROOT, 'index.html'), homeHtml.replace(
+  /<!-- blog-tiles:start -->[\s\S]*?<!-- blog-tiles:end -->/,
+  () => `<!-- blog-tiles:start -->${posts.filter((p) => p.featured).map(homeTile).join('')}\n        <!-- blog-tiles:end -->`,
+))
 
 fs.mkdirSync(OUT, { recursive: true })
 for (const post of posts) {

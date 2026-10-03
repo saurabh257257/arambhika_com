@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>48V (13S) Lithium Battery Pack for Electric Scooter India: Nickel Strip &amp; Layout Guide | Arambhika</title>
+  <meta name="description" content="Planning a 48V 13S lithium pack for an e-scooter in India? Learn the pack math, how to choose nickel strip for parallel groups and series links, where copper helps, and the safety checks that matter." />
+  <meta name="keywords" content="48V lithium battery pack India, 13S battery pack, electric scooter battery pack, 21700 battery pack nickel strip, e-bike battery building India, series parallel battery pack, BMS for 48V pack" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://www.arambhikaenablers.in/blog/build-48v-lithium-battery-pack-electric-scooter-india.html" />
+  <meta property="og:title" content="48V (13S) Lithium Battery Pack for Electric Scooter India: Nickel Strip &amp; Layout Guide | Arambhika" />
+  <meta property="og:description" content="Planning a 48V 13S lithium pack for an e-scooter in India? Learn the pack math, how to choose nickel strip for parallel groups and series links, where copper helps, and the safety checks that matter." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://www.arambhikaenablers.in/blog/build-48v-lithium-battery-pack-electric-scooter-india.html" />
+  <meta property="og:image" content="https://www.arambhikaenablers.in/assets/products/nickel-pure/np_2p_31x.15mm_1.jpg" />
+  <meta property="og:locale" content="en_IN" />
+  <meta property="og:site_name" content="Arambhika" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="48V (13S) Lithium Battery Pack for Electric Scooter India: Nickel Strip &amp; Layout Guide | Arambhika" />
+  <meta name="twitter:description" content="Planning a 48V 13S lithium pack for an e-scooter in India? Learn the pack math, how to choose nickel strip for parallel groups and series links, where copper helps, and the safety checks that matter." />
+  <meta name="twitter:image" content="https://www.arambhikaenablers.in/assets/products/nickel-pure/np_2p_31x.15mm_1.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/_theme_overrides.css" />
+  <link rel="stylesheet" href="/blog/blog.css" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BDECEEVPNW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'AW-17944658317');
+    gtag('config', 'G-BDECEEVPNW');
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Building a 48V Lithium Battery Pack for an Electric Scooter in India: Strip and Layout Guide",
+      "description": "Planning a 48V 13S lithium pack for an e-scooter in India? Learn the pack math, how to choose nickel strip for parallel groups and series links, where copper helps, and the safety checks that matter.",
+      "image": "https://www.arambhikaenablers.in/assets/products/nickel-pure/np_2p_31x.15mm_1.jpg",
+      "author": {
+        "@type": "Organization",
+        "name": "Arambhika",
+        "url": "https://www.arambhikaenablers.in",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.arambhikaenablers.in/assets/logo.png"
+        }
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Arambhika",
+        "url": "https://www.arambhikaenablers.in",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.arambhikaenablers.in/assets/logo.png"
+        }
+      },
+      "mainEntityOfPage": "https://www.arambhikaenablers.in/blog/build-48v-lithium-battery-pack-electric-scooter-india.html",
+      "datePublished": "2026-10-03",
+      "dateModified": "2026-10-03",
+      "inLanguage": "en-IN"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.arambhikaenablers.in/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://www.arambhikaenablers.in/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Building a 48V Lithium Battery Pack for an Electric Scooter in India: Strip and Layout Guide",
+          "item": "https://www.arambhikaenablers.in/blog/build-48v-lithium-battery-pack-electric-scooter-india.html"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How many cells do I need for a 48V pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A 13S Li-ion pack needs 13 cells in series for about 48 V. Multiply by the parallel count for capacity. For example, 13S6P needs 78 cells."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What strip joins the cells in a parallel group?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Most builders use a 2P pre-cut strip or a plain strip across the group. Pick a width that matches your cell spacing and weld pattern."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why do series links need thicker strip?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Series links carry the full pack current, while each parallel cell carries only a share of it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is 48 V LFP different from 48 V Li-ion?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. LFP packs usually use 16 cells in series (about 51.2 V), against 13 for Li-ion. Chargers, BMS and cut-off voltages are different."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use plated strip for an e-scooter?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For low-current builds, often yes. For heavy-current or hot-climate scooters we recommend pure nickel or parallel strips. Send us your pack current and we will suggest a size."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body class="blog-page">
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand brand-block">
+        <img class="brand-logo" id="brandLogo" src="/assets/logo.png" alt="Arambhika logo" />
+        <p class="brand-tag" id="brandTag">EV Battery Component Manufacturer</p>
+      </div>
+      <div class="nav-right">
+        <nav class="nav-links">
+          <div class="nav-contact">
+            <a class="phone-link" href="tel:+919315545821" id="topPhone1">
+              +91-9315545821
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.5-.3.8-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v3c0 .5-.4.9-.9.9C10.4 19 5 13.6 5 7.1c0-.5.4-.9.9-.9h3c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .6-.2.8l-1.5 1.2z"/></svg>
+            </a>
+            <a class="wa-link" href="https://wa.me/919315545821" target="_blank" rel="noopener" id="topWa1">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A10 10 0 0 0 3.2 17.9L2 22l4.2-1.1a10 10 0 0 0 14.3-17.4zm-8.5 16a8 8 0 0 1-4.1-1.1l-.3-.2-2.4.6.6-2.3-.2-.3A8 8 0 1 1 12 19.5zm4.4-6.1c-.2-.1-1.3-.6-1.5-.7-.2-.1-.4-.1-.6.1-.2.2-.7.7-.9.9-.2.2-.3.2-.6.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.9-.1-.2 0-.4.1-.5.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2.1-.4 0-.6-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.4.5.6.2 1.1.2 1.5.1.5-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1-.1-.1-.2-.2-.4-.3z"/></svg>
+            </a>
+          </div>
+          <a href="/" id="navHome">Home</a>
+          <a href="/#catalog" id="navCatalog">Product Store</a>
+          <a href="/blog/" id="navBlog">Blog</a>
+          <a href="/catalog.html?autoprint=1">Download Catalog</a>
+          <a href="/capabilities.html" id="navCapabilities">Our Capabilities</a>
+          <a href="/about.html" id="navAbout">About & Contact</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+  <main>
+    <article class="blog-article">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/blog/">Blog</a> &rsaquo; <span>Pack Building</span></nav>
+      <p class="blog-tag">Pack Building</p>
+      <h1>Building a 48V Lithium Battery Pack for an Electric Scooter in India: Strip and Layout Guide</h1>
+      <p class="blog-meta">By Arambhika &middot; <time datetime="2026-10-03">3 October 2026</time> &middot; 7 min read</p>
+      <figure class="blog-hero"><img src="/assets/products/nickel-pure/np_2p_31x.15mm_1.jpg" alt="Pure nickel 2P strip for 21700 cell battery pack" width="720" height="480" /></figure>
+      <p class="blog-intro">Electric scooters and e-bikes are the biggest battery pack market in India, and most use 48 V lithium-ion packs. If you are designing or repairing one, the pack maths and the strip layout decide how cool and how long it will run. This guide walks through both.</p>
+      
+      <h2>Pack maths: what 13S means</h2>
+      <p>A lithium-ion cell is about 3.6 V nominal and 4.2 V fully charged. Thirteen cells in series (<strong>13S</strong>) give about 46.8 V nominal and 54.6 V full, which is the usual "48 V" pack. The number after S is how many cells sit in series; the number with P is how many sit in parallel. A <strong>13S6P</strong> pack of 21700 cells has 78 cells. If each cell is 4.5 Ah, the pack is 27 Ah, or roughly 1.26 kWh (13 x 3.6 V x 27 Ah). Treat this as an illustration, since your cell and range target will differ.</p>
+
+      <h2>Two kinds of connection, two different jobs</h2>
+      <ul>
+        <li><strong>Parallel groups.</strong> The cells in one P-group share the current. A <a href="/?product=Nickel%20Strip%20Pure%202P(21700)%2031x0.15%20mm%20without%20holder%20CD%2022.5#catalog">2P strip</a> joins two cells at a time and speeds up assembly.</li>
+        <li><strong>Series links.</strong> These carry the <em>whole pack current</em>. At a 40 A controller limit, every series link carries up to 40 A, so it needs far more cross-section than a cell-to-cell strip.</li>
+      </ul>
+
+      <h2>Choosing strip for each job</h2>
+      <p>Inside a P-group, the current splits across cells. With 6 cells in parallel at 40 A, each cell carries about 6.7 A, which should sit within the cell's continuous rating. The series links are the weak point. Options:</p>
+      <ol>
+        <li>Use a <strong>wide, thick strip</strong> such as <a href="/?product=Nickel%20Strip%20Pure%201P%2010%20x%200.3%20mm#catalog">10 x 0.30 mm</a>.</li>
+        <li>Use <strong>two or more strips in parallel</strong> across each series link.</li>
+        <li>Move the main current path to <a href="/blog/copper-busbar-battery-ess-india.html">copper busbar</a> where the layout allows.</li>
+      </ol>
+      <p>Not sure of the numbers? Use our <a href="/blog/how-to-calculate-nickel-strip-size-battery-pack-current.html">strip sizing calculation guide</a>. For hot Indian summers and heavy hill climbing, pure nickel gives more thermal headroom than plated; see the <a href="/blog/pure-nickel-strip-lithium-battery-packs-india.html">pure nickel guide</a>.</p>
+
+      <h2>Do not skip these</h2>
+      <ul>
+        <li><strong>A BMS rated above your peak current</strong> with proper balancing and temperature sensing.</li>
+        <li><strong>A fuse or breaker</strong> in the main path.</li>
+        <li><strong>Cell holders or spacers</strong> so cells cannot touch or move.</li>
+        <li><strong>Matched cells</strong> from one batch and the same grade.</li>
+        <li><strong>A thermal test</strong> at full load before sale or use.</li>
+      </ul>
+      <p>If you manufacture packs for sale, India's norms for electric two-wheelers (such as AIS-156) and your type-approval requirements apply to the complete pack. A good strip choice helps, but it does not replace testing.</p>
+      <p class="blog-note">General guidance only. Validate strip size, welding settings and pack safety against your own design and the standards that apply to your product.</p>
+
+      <section class="blog-products" data-category="Nickel Strip Pure" data-limit="8" aria-label="Nickel Strip Pure products">
+        <h2>Strips used in 13S 18650 and 21700 packs</h2>
+        <p class="blog-products-note">Live stock and price from our store. Tap a product to add it to your quote.</p>
+        <div class="blog-product-grid" id="blogProductGrid"><p class="blog-loading">Loading products&hellip;</p></div>
+        <noscript><p>Browse every size on our <a href="/#catalog">product store</a>.</p></noscript>
+        <p><a class="blog-btn blog-btn-ghost" href="/#catalog">View the full product store &rarr;</a></p>
+      </section>
+
+      <aside class="blog-cta">
+        <div>
+          <h2>Designing a 48V pack and want strip advice?</h2>
+          <p>Share your pack design, quantity and city. We reply on WhatsApp with a quote and dispatch plan from Noida.</p>
+        </div>
+        <a class="blog-btn" href="https://wa.me/919315545821?text=Hi%20Arambhika%2C%20I%20am%20building%20a%2048V%20lithium%20pack%20and%20need%20nickel%20strip%20advice." target="_blank" rel="noopener">Get a quote on WhatsApp</a>
+      </aside>
+
+      <section class="blog-faq">
+        <h2>Frequently asked questions</h2>
+      <details><summary>How many cells do I need for a 48V pack?</summary><p>A 13S Li-ion pack needs 13 cells in series for about 48 V. Multiply by the parallel count for capacity. For example, 13S6P needs 78 cells.</p></details>
+      <details><summary>What strip joins the cells in a parallel group?</summary><p>Most builders use a 2P pre-cut strip or a plain strip across the group. Pick a width that matches your cell spacing and weld pattern.</p></details>
+      <details><summary>Why do series links need thicker strip?</summary><p>Series links carry the full pack current, while each parallel cell carries only a share of it.</p></details>
+      <details><summary>Is 48 V LFP different from 48 V Li-ion?</summary><p>Yes. LFP packs usually use 16 cells in series (about 51.2 V), against 13 for Li-ion. Chargers, BMS and cut-off voltages are different.</p></details>
+      <details><summary>Can I use plated strip for an e-scooter?</summary><p>For low-current builds, often yes. For heavy-current or hot-climate scooters we recommend pure nickel or parallel strips. Send us your pack current and we will suggest a size.</p></details>
+      </section>
+
+      <section class="blog-related">
+        <h2>More from the Arambhika blog</h2>
+        <div class="blog-tiles">
+        <a class="blog-tile" href="/blog/lfp-battery-pack-solar-inverter-nickel-strip-busbar-india.html" data-tile-cat="Nickel Strip Pure,Copper Bus Bar">
+          <div class="blog-tile-img"><img src="/assets/products/copper-bus-bars/universe_2mm_1.jpg" alt="Tin-coated universal copper busbars for LFP battery packs" loading="lazy" /></div>
+          <div class="blog-tile-body"><span class="blog-tag">Solar &amp; Inverter</span><h3>LFP Battery Packs for Solar and Home Inverters in India: Strip and Busbar Choices</h3><span class="blog-more">Read blog &rarr;</span></div>
+        </a>
+        <a class="blog-tile" href="/blog/how-to-calculate-nickel-strip-size-battery-pack-current.html" data-tile-cat="Nickel Strip Plated,Nickel Strip Pure">
+          <div class="blog-tile-img"><img src="/assets/products/nickel-pure/np_10x.3mm_1.jpg" alt="Pure nickel strip 10 x 0.3 mm for high-current battery packs" loading="lazy" /></div>
+          <div class="blog-tile-body"><span class="blog-tag">Sizing</span><h3>How to Calculate Nickel Strip Size for Your Battery Pack Current (With Worked Examples)</h3><span class="blog-more">Read blog &rarr;</span></div>
+        </a>
+        <a class="blog-tile" href="/blog/battery-pack-heating-nickel-strip-weak-welds-troubleshooting.html" data-tile-cat="Nickel Strip Plated,Nickel Strip Pure">
+          <div class="blog-tile-img"><img src="/assets/products/copper-bus-bars/custom_1.jpg" alt="Custom copper busbar for battery pack interconnects" loading="lazy" /></div>
+          <div class="blog-tile-body"><span class="blog-tag">Troubleshooting</span><h3>Why Is My Lithium Battery Pack Heating Up? Nickel Strip, Weak Welds and Busbar Fixes</h3><span class="blog-more">Read blog &rarr;</span></div>
+        </a>
+        </div>
+      </section>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <p class="footer-title">Sales Office</p>
+        <p><strong>Arambhika</strong></p>
+        <p class="footer-contact"><span class="contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z"/></svg></span> <a href="https://www.google.com/maps/place/ARAMBHIKA/data=!4m2!3m1!1s0x0:0x3ac5cb134aef7161" target="_blank" rel="noopener">SK-201, Sector 116, Noida, Uttar Pradesh - 201301</a></p>
+        <p class="footer-contact">
+          <span class="contact-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6.6 10.2c1.2 2.4 3.1 4.3 5.5 5.5l1.8-1.8c.2-.2.5-.3.8-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v3c0 .5-.4.9-.9.9C10.4 19 5 13.6 5 7.1c0-.5.4-.9.9-.9h3c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .6-.2.8l-1.5 1.2z"/></svg>
+          </span>
+          <a href="tel:+918112662827">+91-8112662827</a>
+          <span class="divider">|</span>
+          <a href="tel:+919953255677">+91-9953255677</a>
+        </p>
+        <p class="footer-contact">
+          <span class="contact-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 2.2V18h18V7.2l-9 5.2-9-5.2zm9 3.4 9-5.2H3l9 5.2z"/>
+            </svg>
+          </span>
+          <a href="mailto:info@arambhika.com">info@arambhika.com</a>
+        </p>
+      </div>
+      <div>
+        <p class="footer-title">Email</p>
+        <p class="footer-contact">
+          <span class="contact-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 2.2V18h18V7.2l-9 5.2-9-5.2zm9 3.4 9-5.2H3l9 5.2z"/>
+            </svg>
+          </span>
+          <a href="mailto:info@arambhika.com">info@arambhika.com</a>
+        </p>
+      </div>
+      <div>
+        <p class="footer-title">Manufacturing Unit</p>
+        <p><strong>Swastik Metal Components</strong></p>
+        <p class="footer-contact"><span class="contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z"/></svg></span> Plot No. 153, Udyog Kendra-II, Ecotech-III, Greater Noida - 201306</p>
+      </div>
+    </div>
+  </footer>
+  <script src="/blog/blog.js" defer></script>
+</body>
+</html>

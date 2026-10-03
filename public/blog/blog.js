@@ -27,8 +27,14 @@
   fetch('/products.json')
     .then(function (r) { return r.json(); })
     .then(function (data) {
-      var cat = (data.categories || []).filter(function (c) { return c.name === category; })[0];
-      var items = cat ? cat.products.slice(0, limit) : [];
+      // data-category may list several categories, separated by commas; share the limit between them.
+      var wanted = category.split(',').map(function (s) { return s.trim(); });
+      var each = Math.ceil(limit / wanted.length);
+      var items = [];
+      wanted.forEach(function (name) {
+        var cat = (data.categories || []).filter(function (c) { return c.name === name; })[0];
+        if (cat) items = items.concat(cat.products.slice(0, each));
+      });
       grid.innerHTML = items.length ? items.map(tile).join('') : '<p>Browse all sizes in our <a href="/#catalog">product store</a>.</p>';
     })
     .catch(function () {
