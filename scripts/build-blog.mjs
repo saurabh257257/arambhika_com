@@ -33,13 +33,11 @@ const footer = absolutize(grab(/<footer class="site-footer">[\s\S]*?<\/footer>/)
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 const productLink = (name) => `/?product=${encodeURIComponent(name)}#catalog`
 
-const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-BDECEEVPNW"></script>
+const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-HREHJPZYC1"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'AW-17944658317');
-    gtag('config', 'G-BDECEEVPNW');
     gtag('config', 'G-HREHJPZYC1');
   </script>`
 
