@@ -40,6 +40,7 @@ const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-BDE
     gtag('js', new Date());
     gtag('config', 'AW-17944658317');
     gtag('config', 'G-BDECEEVPNW');
+    gtag('config', 'G-HREHJPZYC1');
   </script>`
 
 const baseHead = ({ title, description, keywords, url, image, type, jsonld }) => `<!DOCTYPE html>
