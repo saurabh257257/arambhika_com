@@ -3,3 +3,5 @@
 data/snapshot.json
 data/snapshot.json.tmp
 data/images/
+data/test-store.json
+data/zoho_refresh_token

@@ -85,6 +85,7 @@ const normalizeCatalogData = (data) => {
           "Minimum Quantity": Number(product["Minimum Quantity"] || 1),
           Product_Dimensions: String(product.Product_Dimensions || "").trim(),
           SKU: product.SKU || "",
+          ZohoVariantId: product.ZohoVariantId || "",
           Additional_Details: Array.isArray(product.Additional_Details)
             ? product.Additional_Details
             : product.Additional_Details

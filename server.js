@@ -2,8 +2,13 @@ import express from 'express'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import crypto from 'node:crypto'
 import { fetchStorefrontCatalog, fetchImage } from './lib/zoho.js'
 import { buildCatalog } from './lib/catalog.js'
+import * as zohoAuth from './lib/zoho-oauth.js'
+import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
+import { findRecentSalesOrderByPhone, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
+import * as testStore from './lib/test-store.js'
 
 try { process.loadEnvFile() } catch {}
 
@@ -161,6 +166,173 @@ function pruneImages(data) {
 
 const app = express()
 app.disable('x-powered-by')
+
+// ---- Zoho connection: one-time authorization, then the server refreshes its own token ----
+function adminRequired(req, res, next) {
+  const token = process.env.ADMIN_TOKEN
+  if (!token) return res.status(503).send('Set ADMIN_TOKEN in .env to use the admin pages.')
+  const given = req.query.token || ''
+  const a = Buffer.from(String(given))
+  const b = Buffer.from(token)
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.status(401).send('Invalid admin token.')
+  next()
+}
+
+app.get('/admin/zoho-connect', adminRequired, (req, res) => {
+  if (!zohoAuth.isConfigured()) return res.status(503).send('Set ZOHO_CLIENT_ID and ZOHO_CLIENT_SECRET in .env first.')
+  if (zohoAuth.isConnected()) {
+    return res.send('Zoho is already connected. <a href="/admin/zoho-connect?token=' + encodeURIComponent(req.query.token) + '&force=1">Reconnect anyway</a>')
+  }
+  res.redirect(zohoAuth.buildAuthorizeUrl(req))
+})
+
+app.get('/oauth/zoho/callback', async (req, res) => {
+  const { code, error } = req.query
+  if (error || !code) return res.status(400).send(`Zoho authorization was not completed (${error || 'no code received'}).`)
+  try {
+    await zohoAuth.exchangeCodeForTokens(code, req)
+    res.send('<h1>Connected to Zoho</h1><p>You can close this tab. Orders can now be pushed to Zoho automatically.</p>')
+  } catch (err) {
+    console.error('[zoho-oauth] token exchange failed:', err.message)
+    res.status(502).send(`Could not complete the Zoho connection: ${err.message}`)
+  }
+})
+
+app.get('/admin/zoho-status', adminRequired, (req, res) => {
+  res.json({ configured: zohoAuth.isConfigured(), connected: zohoAuth.isConnected() })
+})
+
+// ---- TEMPORARY test-mode login, account, checkout and orders ----
+// Login is restricted to one hardcoded number and skips real OTP verification entirely,
+// so this can be tested today while MSG91's DLT registration is still pending. Before any
+// real customer can use this, swap this block for the real MSG91 OTP flow.
+const ALLOWED_TEST_MOBILE = process.env.ALLOWED_TEST_MOBILE || '8886772827'
+const TEST_SESSION_COOKIE = 'arambhika_test_session'
+
+function testSessionRequired(req, res, next) {
+  const cookies = Object.fromEntries((req.headers.cookie || '').split(';').map((p) => p.trim().split('=')))
+  if (cookies[TEST_SESSION_COOKIE] !== ALLOWED_TEST_MOBILE) return res.status(401).json({ error: 'Please log in first' })
+  next()
+}
+
+app.post('/api/test-auth/login', express.json(), (req, res) => {
+  const mobile = String(req.body?.mobile || '').replace(/\D/g, '').slice(-10)
+  if (mobile !== ALLOWED_TEST_MOBILE) {
+    return res.status(401).json({ error: `This test build only accepts ${ALLOWED_TEST_MOBILE}. Real OTP login for any number comes once MSG91 is approved.` })
+  }
+  res.cookie(TEST_SESSION_COOKIE, mobile, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: req.secure,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: '/',
+  })
+  res.json({ ok: true, mobile })
+})
+
+app.get('/api/test-auth/me', (req, res) => {
+  const cookies = Object.fromEntries((req.headers.cookie || '').split(';').map((p) => p.trim().split('=')))
+  const mobile = cookies[TEST_SESSION_COOKIE]
+  res.json(mobile === ALLOWED_TEST_MOBILE ? { loggedIn: true, mobile } : { loggedIn: false })
+})
+
+app.post('/api/test-auth/logout', (req, res) => {
+  res.clearCookie(TEST_SESSION_COOKIE, { path: '/' })
+  res.json({ ok: true })
+})
+
+app.get('/api/test-account', testSessionRequired, (req, res) => {
+  res.json({ profile: testStore.getProfile() })
+})
+
+app.post('/api/test-account', express.json(), testSessionRequired, (req, res) => {
+  const { firstName, lastName, email, address, city, state, postalCode } = req.body || {}
+  if (!firstName || !address || !city || !state || !postalCode) {
+    return res.status(400).json({ error: 'Please fill in name, address, city, state and PIN code' })
+  }
+  const profile = testStore.saveProfile({ firstName, lastName: lastName || '', email: email || '', phone: ALLOWED_TEST_MOBILE, address, city, state, postalCode })
+  res.json({ ok: true, profile })
+})
+
+// Places a real order on Zoho (cart -> address -> shipping -> offline payment), then
+// verifies against the Admin API that Zoho actually created it before reporting success.
+app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, res) => {
+  const profile = testStore.getProfile()
+  if (!profile) return res.status(400).json({ error: 'Please fill in your profile/address first' })
+
+  const items = Array.isArray(req.body?.items) ? req.body.items : []
+  if (!items.length) return res.status(400).json({ error: 'Your cart is empty' })
+  for (const it of items) {
+    if (!it.variantId) return res.status(400).json({ error: `${it.label || 'A product'} can't be ordered online yet (missing Zoho variant id)` })
+  }
+
+  const localOrder = testStore.addOrder({
+    id: `local_${Date.now()}`,
+    placedAt: new Date().toISOString(),
+    items,
+    status: 'placing',
+  })
+
+  try {
+    const result = await placeOrder({ items, customer: profile })
+    if (!result.hadShippingMethod) {
+      testStore.updateOrder(localOrder.id, { status: 'failed', note: 'No shipping method is configured in Zoho Commerce (Settings > Shipping) — the order could not complete.' })
+      return res.status(409).json({ error: 'No shipping method is configured in Zoho yet. Add one under Settings > Shipping in Zoho Commerce, then try again.' })
+    }
+
+    // Zoho's offline-payment response is unreliable to parse directly, so confirm for real.
+    await new Promise((r) => setTimeout(r, 2000))
+    const salesOrder = await findRecentSalesOrderByPhone(profile.phone)
+    if (!salesOrder) {
+      testStore.updateOrder(localOrder.id, { status: 'unconfirmed', note: 'Checkout completed but no matching Sales Order was found in Zoho yet.' })
+      return res.status(502).json({ error: 'Checkout ran, but Zoho has not shown the Sales Order yet. Check /admin/zoho-orders in a minute.' })
+    }
+
+    testStore.updateOrder(localOrder.id, {
+      status: 'confirmed',
+      zohoSalesOrderId: salesOrder.salesorder_id,
+      zohoSalesOrderNumber: salesOrder.salesorder_number,
+    })
+    res.json({ ok: true, salesOrderNumber: salesOrder.salesorder_number })
+  } catch (err) {
+    console.error('[test-checkout] failed:', err.message)
+    testStore.updateOrder(localOrder.id, { status: 'failed', note: err.message })
+    const status = err instanceof CheckoutError ? 400 : 502
+    res.status(status).json({ error: err.message })
+  }
+})
+
+app.get('/api/test-orders', testSessionRequired, async (req, res) => {
+  const orders = testStore.getOrders()
+  const enriched = await Promise.all(orders.map(async (o) => {
+    if (!o.zohoSalesOrderId) return o
+    try {
+      const live = await getSalesOrderStatus(o.zohoSalesOrderId)
+      return { ...o, live }
+    } catch (err) {
+      return { ...o, liveError: err.message }
+    }
+  }))
+  res.json({ orders: enriched })
+})
+
+app.get('/api/test-orders/:id/invoice', testSessionRequired, async (req, res) => {
+  const order = testStore.getOrders().find((o) => o.id === req.params.id)
+  if (!order?.zohoSalesOrderNumber) return res.status(404).json({ error: 'Order not found' })
+  try {
+    const invoice = await findInvoiceForSalesOrder(order.zohoSalesOrderNumber, process.env.ZOHO_BOOKS_ORG_ID)
+    if (!invoice) return res.json({ invoice: null, message: 'No invoice has been raised for this order yet.' })
+    let ewaybill = null
+    try { ewaybill = await findEwayBillForInvoice(invoice.invoice_id, process.env.ZOHO_INVENTORY_ORG_ID) } catch {}
+    res.json({ invoice, ewaybill })
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
+app.get('/admin/zoho-orders', adminRequired, (req, res) => {
+  res.json({ orders: testStore.getOrders() })
+})
 
 app.get('/products.json', (req, res) => {
   res.set({

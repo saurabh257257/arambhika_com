@@ -155,6 +155,7 @@
           <a href="catalog.html?autoprint=1">Download Catalog</a>
           <a href="capabilities.html" id="navCapabilities">Our Capabilities</a>
           <a href="about.html" id="navAbout">About & Contact</a>
+          <button class="nav-login-btn" type="button" id="testAcctBtn">Login</button>
         </nav>
       </div>
     </div>
@@ -199,6 +200,11 @@
               </div>
               <p class="form-note">Opens WhatsApp with your quote details.</p>
             </form>
+            <div class="test-pay-block" id="testPayBlock">
+              <div class="pay-online-divider"><span>or (test)</span></div>
+              <button class="button test-pay-btn" type="button" id="testPayBtn">Place Order on Zoho</button>
+              <p class="form-note" id="testPayNote">Log in to place a real test order in Zoho.</p>
+            </div>
           </div>
         </aside>
       </div>
@@ -392,7 +398,49 @@
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <div class="acct-modal" id="testAcctModal" hidden>
+    <div class="acct-modal-card">
+      <button class="acct-modal-close" type="button" id="testAcctClose" aria-label="Close">&times;</button>
+
+      <div class="acct-step" id="testStepLogin">
+        <h3>Log in (test build)</h3>
+        <p class="form-note">Real OTP login is pending MSG91 approval. For now, only one test number works.</p>
+        <label>Mobile Number
+          <input type="tel" id="testMobileInput" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" value="8886772827" />
+        </label>
+        <button class="button" type="button" id="testLoginBtn">Verify &amp; Log in</button>
+        <p class="acct-error" id="testLoginError"></p>
+      </div>
+
+      <div class="acct-step" id="testStepAccount" hidden>
+        <h3>My Account</h3>
+        <p class="form-note">Logged in as <strong id="testAccountMobile"></strong></p>
+        <form id="testProfileForm">
+          <label>First name <input type="text" name="firstName" required /></label>
+          <label>Last name <input type="text" name="lastName" /></label>
+          <label>Email <input type="email" name="email" /></label>
+          <label>Address <input type="text" name="address" required /></label>
+          <label>City <input type="text" name="city" required /></label>
+          <label>State <input type="text" name="state" required placeholder="e.g. Uttar Pradesh" /></label>
+          <label>PIN code <input type="text" name="postalCode" required maxlength="6" /></label>
+          <button class="button" type="submit">Save Profile</button>
+        </form>
+        <p class="acct-error" id="testProfileError"></p>
+        <p class="acct-ok" id="testProfileOk"></p>
+        <button class="button ghost tiny" type="button" id="testMyOrdersBtn">My Orders</button>
+        <button class="button ghost tiny" type="button" id="testLogoutBtn">Log out</button>
+      </div>
+
+      <div class="acct-step" id="testStepOrders" hidden>
+        <h3>My Orders</h3>
+        <button class="acct-link-btn" type="button" id="testBackToAccount">&larr; Back</button>
+        <div id="testOrdersList" class="acct-orders-list"></div>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
+  <script src="test-account.js"></script>
 </body>
 </html>
 

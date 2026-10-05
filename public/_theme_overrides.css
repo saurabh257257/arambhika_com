@@ -457,3 +457,183 @@ body {
   border-top: 0;
   box-shadow: inset 0 4px 0 var(--nav-2);
 }
+
+/* ---- Login / account (test build) ---- */
+.nav-login-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.nav-login-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pay-online-divider,
+.test-pay-block .pay-online-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.pay-online-divider::before,
+.pay-online-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.test-pay-btn {
+  width: 100%;
+  background: var(--buy);
+  color: #fff;
+  font-weight: 700;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+}
+.test-pay-btn:hover {
+  background: var(--buy-dark);
+}
+.test-pay-btn:disabled {
+  background: #d5d9d9;
+  color: #767676;
+  cursor: not-allowed;
+}
+
+.acct-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 17, 17, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 16px;
+}
+.acct-modal-card {
+  background: #fff;
+  border-radius: 10px;
+  width: min(420px, 100%);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 28px 24px 22px;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+.acct-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: none;
+  border: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+.acct-step h3 {
+  margin-bottom: 10px;
+  color: var(--ink);
+}
+.acct-step label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.acct-step input {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+}
+.acct-step .button {
+  width: 100%;
+  margin-top: 4px;
+  background: var(--yellow);
+  color: var(--ink);
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.acct-step .button:hover {
+  background: var(--yellow-dark);
+}
+.acct-step .button.ghost {
+  background: #fff;
+  border: 1px solid #a2a6ac;
+  margin-top: 10px;
+  width: auto;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+.acct-error {
+  color: #c0392b;
+  font-size: 0.85rem;
+  margin-top: 8px;
+  min-height: 1em;
+}
+.acct-ok {
+  color: var(--ok);
+  font-size: 0.85rem;
+  margin-top: 8px;
+  min-height: 1em;
+}
+.acct-link-btn {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 14px;
+}
+.acct-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.acct-order-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 0.86rem;
+}
+.acct-order-head {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.acct-order-status {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+.acct-order-status.is-confirmed { background: #e6f4ea; color: var(--ok); }
+.acct-order-status.is-failed,
+.acct-order-status.is-unconfirmed { background: #fdecea; color: #c0392b; }
+.acct-order-status.is-placing { background: #f0f2f2; color: var(--muted); }
+.acct-order-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 6px;
+}
