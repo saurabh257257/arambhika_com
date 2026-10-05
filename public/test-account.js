@@ -40,7 +40,8 @@
   modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
   function updateHeaderAndPayBlock() {
-    navBtn.textContent = session.loggedIn ? session.mobile : "Login";
+    navBtn.classList.toggle("is-logged-in", session.loggedIn);
+    navBtn.title = session.loggedIn ? `Account (${session.mobile})` : "Account";
     if (!payBlock) return;
     if (!session.loggedIn) {
       payBtn.disabled = false;

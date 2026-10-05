@@ -461,17 +461,31 @@ body {
 /* ---- Login / account (test build) ---- */
 .nav-login-btn {
   background: none;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #fff;
-  font: inherit;
-  font-weight: 600;
-  padding: 5px 14px;
+  border: 0;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 4px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.12s ease;
+  display: inline-flex;
+  position: relative;
+  transition: color 0.12s ease;
 }
 .nav-login-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.nav-login-btn.is-logged-in {
+  color: rgba(255, 255, 255, 0.9);
+}
+.nav-login-btn.is-logged-in::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  border: 1px solid var(--nav);
 }
 
 .pay-online-divider,
@@ -519,6 +533,9 @@ body {
   justify-content: center;
   z-index: 500;
   padding: 16px;
+}
+.acct-modal[hidden] {
+  display: none; /* a plain class rule like the one above beats the browser's own [hidden] default, so this must be explicit */
 }
 .acct-modal-card {
   background: #fff;
