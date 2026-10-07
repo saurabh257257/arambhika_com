@@ -4,8 +4,6 @@ const globalSearch = document.querySelector("#globalSearch");
 const searchSuggestions = document.querySelector("#searchSuggestions");
 const orderList = document.querySelector("#orderList");
 const mobileOrderList = document.querySelector("#mobileOrderList");
-const orderForm = document.querySelector("#orderForm");
-const mobileOrderForm = document.querySelector("#mobileOrderForm");
 const mobileFab = document.querySelector("#mobileFab");
 const mobileSheet = document.querySelector("#mobileSheet");
 const mobileSheetClose = document.querySelector("#mobileSheetClose");
@@ -881,49 +879,9 @@ const populateCountrySelects = () => {
   });
 };
 
-const openWhatsApp = (items, form) => {
-  const formData = new FormData(form);
-  const countryCode = formData.get("countryCode") || "+91";
-  const mobile = String(formData.get("mobile") || "").trim();
-  if (!mobile) return;
-  const lines = items.length ? items : ["No products selected."];
-  const body = [
-    "Quote Request",
-    "",
-    "Selected products:",
-    ...lines,
-    "",
-    `Mobile: ${countryCode} ${mobile}`.trim()
-  ].join("\n");
-  const whatsapp = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(body)}`;
-  window.open(whatsapp, "_blank");
-  form.reset();
-  window.location.href = "completed.html";
-};
-
-if (orderForm) {
-  orderForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const items = Object.values(getOrder()).map((item) => `• ${item.name} (${item.qty} ${item.unit})`);
-    if (items.length === 0) {
-      alert("Add at least one item before submitting.");
-      return;
-    }
-    openWhatsApp(items, orderForm);
-  });
-}
-
-if (mobileOrderForm) {
-  mobileOrderForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const items = Object.values(getOrder()).map((item) => `• ${item.name} (${item.qty} ${item.unit})`);
-    if (items.length === 0) {
-      alert("Add at least one item before submitting.");
-      return;
-    }
-    openWhatsApp(items, mobileOrderForm);
-  });
-}
+// Ordering now goes through login + the real checkout flow (see test-account.js),
+// not a WhatsApp-form submission. WhatsApp remains available only as a contact channel
+// (header phone/WhatsApp icons).
 
 if (mobileFab && mobileSheet) {
   mobileFab.addEventListener("click", () => {

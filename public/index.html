@@ -151,10 +151,18 @@
           </div>
           <a href="#home" id="navHome">Home</a>
           <a href="#catalog" id="navCatalog">Product Store</a>
-          <a href="/blog/" id="navBlog">Blog</a>
-          <a href="catalog.html?autoprint=1">Download Catalog</a>
-          <a href="capabilities.html" id="navCapabilities">Our Capabilities</a>
-          <a href="about.html" id="navAbout">About & Contact</a>
+          <div class="nav-dropdown">
+            <button type="button" class="nav-dropdown-toggle">
+              Company
+              <svg class="nav-dropdown-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="nav-dropdown-menu">
+              <a href="/blog/" id="navBlog">Blog</a>
+              <a href="catalog.html?autoprint=1">Download Catalog</a>
+              <a href="capabilities.html" id="navCapabilities">Our Capabilities</a>
+              <a href="about.html" id="navAbout">About & Contact</a>
+            </div>
+          </div>
           <button class="nav-login-btn" type="button" id="testAcctBtn" aria-label="Account" title="Account">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           </button>
@@ -189,23 +197,11 @@
               <button class="button ghost tiny" type="button" data-clear="order">Clear</button>
             </div>
             <div id="orderList" class="panel-list"></div>
-            <form class="panel-form" id="orderForm">
-              <label>
-                Mobile Number
-                <div class="phone-row">
-                  <select name="countryCode" aria-label="Country code"></select>
-                </div>
-                <input type="tel" name="mobile" required placeholder="Mobile number" />
-              </label>
+            <div class="panel-form">
               <div class="form-actions">
-                <button class="button tiny" type="submit">Proceed</button>
+                <button class="button tiny" type="button" id="orderProceedBtn">Proceed</button>
               </div>
-              <p class="form-note">Opens WhatsApp with your quote details.</p>
-            </form>
-            <div class="test-pay-block" id="testPayBlock">
-              <div class="pay-online-divider"><span>or (test)</span></div>
-              <button class="button test-pay-btn" type="button" id="testPayBtn">Place Order on Zoho</button>
-              <p class="form-note" id="testPayNote">Log in to place a real test order in Zoho.</p>
+              <p class="form-note" id="orderProceedNote">Log in to proceed with your order.</p>
             </div>
           </div>
         </aside>
@@ -381,19 +377,12 @@
           <button class="button ghost tiny" type="button" data-clear="order">Clear</button>
         </div>
         <div id="mobileOrderList" class="panel-list"></div>
-        <form class="panel-form" id="mobileOrderForm">
-          <label>
-            Mobile Number
-            <div class="phone-row">
-              <select name="countryCode" aria-label="Country code"></select>
-            </div>
-            <input type="tel" name="mobile" required placeholder="Mobile number" />
-          </label>
+        <div class="panel-form">
           <div class="form-actions">
-            <button class="button tiny" type="submit">Proceed</button>
+            <button class="button tiny" type="button" id="mobileOrderProceedBtn">Proceed</button>
           </div>
-          <p class="form-note">Opens WhatsApp with your quote details.</p>
-        </form>
+          <p class="form-note" id="mobileOrderProceedNote">Log in to proceed with your order.</p>
+        </div>
       </div>
     </div>
   </div>

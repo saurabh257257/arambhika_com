@@ -1,6 +1,13 @@
 // TEMPORARY test-mode login + checkout UI. Loads after script.js, reusing its cart helpers
 // (getOrder, clearOrder, renderOrderList, cachedCatalog) as plain globals — classic scripts
 // in one page share a global scope. Replace once real MSG91 OTP login is wired up.
+//
+// Order flow: one "Proceed" button (desktop panel + mobile sheet). Clicking it:
+//   - not logged in      -> opens the login step
+//   - logged in, no profile saved -> opens the account/profile step
+//   - logged in, profile saved    -> places the order immediately
+// Each step remembers to resume straight into the next one, so the customer only clicks
+// Proceed once and is walked through whatever's missing.
 (() => {
   const modal = document.getElementById("testAcctModal");
   const navBtn = document.getElementById("testAcctBtn");
@@ -24,12 +31,16 @@
   const ordersList = document.getElementById("testOrdersList");
   const closeBtn = document.getElementById("testAcctClose");
 
-  const payBlock = document.getElementById("testPayBlock");
-  const payBtn = document.getElementById("testPayBtn");
-  const payNote = document.getElementById("testPayNote");
+  // Desktop panel + mobile sheet share the same logic, driven off two independent note targets.
+  const proceedButtons = [
+    { btn: document.getElementById("orderProceedBtn"), note: document.getElementById("orderProceedNote") },
+    { btn: document.getElementById("mobileOrderProceedBtn"), note: document.getElementById("mobileOrderProceedNote") },
+  ].filter((x) => x.btn);
 
   let session = { loggedIn: false, mobile: "" };
   let profile = null;
+  let resumeProceedAfterLogin = false;
+  let resumeProceedAfterProfile = false;
 
   const showStep = (name) => {
     Object.entries(steps).forEach(([key, el]) => { if (el) el.hidden = key !== name; });
@@ -39,19 +50,25 @@
   closeBtn?.addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
-  function updateHeaderAndPayBlock() {
+  function setProceedNote(text) {
+    proceedButtons.forEach(({ note }) => { if (note) note.textContent = text; });
+  }
+  function setProceedDisabled(disabled) {
+    proceedButtons.forEach(({ btn }) => { btn.disabled = disabled; });
+  }
+
+  function updateHeaderAndProceed() {
     navBtn.classList.toggle("is-logged-in", session.loggedIn);
     navBtn.title = session.loggedIn ? `Account (${session.mobile})` : "Account";
-    if (!payBlock) return;
     if (!session.loggedIn) {
-      payBtn.disabled = false;
-      payNote.textContent = "Log in to place a real test order in Zoho.";
+      setProceedDisabled(false);
+      setProceedNote("Log in to proceed with your order.");
     } else if (!profile) {
-      payBtn.disabled = true;
-      payNote.textContent = "Add your delivery address in My Account first.";
+      setProceedDisabled(false);
+      setProceedNote("Add your delivery address to proceed.");
     } else {
-      payBtn.disabled = false;
-      payNote.textContent = `Logged in as ${session.mobile}. This places a REAL test order in Zoho.`;
+      setProceedDisabled(false);
+      setProceedNote(`Logged in as ${session.mobile}.`);
     }
   }
 
@@ -60,7 +77,7 @@
       session = await fetch("/api/test-auth/me").then((r) => r.json());
     } catch { session = { loggedIn: false }; }
     if (session.loggedIn) await loadProfile();
-    updateHeaderAndPayBlock();
+    updateHeaderAndProceed();
   }
 
   async function loadProfile() {
@@ -103,9 +120,15 @@
       if (!res.ok) throw new Error(data.error || "Could not log in");
       session = { loggedIn: true, mobile: data.mobile };
       await loadProfile();
-      updateHeaderAndPayBlock();
-      accountMobile.textContent = session.mobile;
-      showStep("account");
+      updateHeaderAndProceed();
+
+      if (resumeProceedAfterLogin) {
+        resumeProceedAfterLogin = false;
+        continueProceed();
+      } else {
+        accountMobile.textContent = session.mobile;
+        showStep("account");
+      }
     } catch (err) {
       loginError.textContent = err.message;
     } finally {
@@ -129,7 +152,12 @@
       if (!res.ok) throw new Error(data.error || "Could not save profile");
       profile = data.profile;
       profileOk.textContent = "Saved.";
-      updateHeaderAndPayBlock();
+      updateHeaderAndProceed();
+
+      if (resumeProceedAfterProfile) {
+        resumeProceedAfterProfile = false;
+        continueProceed();
+      }
     } catch (err) {
       profileError.textContent = err.message;
     }
@@ -142,7 +170,7 @@
     await fetch("/api/test-auth/logout", { method: "POST" }).catch(() => {});
     session = { loggedIn: false, mobile: "" };
     profile = null;
-    updateHeaderAndPayBlock();
+    updateHeaderAndProceed();
     closeModal();
   });
 
@@ -183,12 +211,34 @@
     }).join("");
   }
 
-  payBtn?.addEventListener("click", async () => {
-    if (payBtn.disabled) return;
+  // ---- The single "Proceed" entry point ----
+  function onProceedClick() {
+    const order = typeof getOrder === "function" ? getOrder() : {};
+    if (!Object.keys(order).length) {
+      setProceedNote("Add at least one item to your quote first.");
+      return;
+    }
+    if (!session.loggedIn) {
+      resumeProceedAfterLogin = true;
+      loginError.textContent = "";
+      openModal("login");
+      return;
+    }
+    if (!profile) {
+      resumeProceedAfterProfile = true;
+      accountMobile.textContent = session.mobile;
+      openModal("account");
+      return;
+    }
+    continueProceed();
+  }
+  proceedButtons.forEach(({ btn }) => btn.addEventListener("click", onProceedClick));
+
+  async function continueProceed() {
     const order = typeof getOrder === "function" ? getOrder() : {};
     const entries = Object.values(order);
     if (!entries.length) {
-      payNote.textContent = "Add at least one item to your quote first.";
+      setProceedNote("Add at least one item to your quote first.");
       return;
     }
 
@@ -197,14 +247,14 @@
     for (const it of entries) {
       const product = catalogProducts.find((p) => p.ProductCode === it.name);
       if (!product?.ZohoVariantId) {
-        payNote.textContent = `${it.name} can't be ordered online yet (no Zoho variant id).`;
+        setProceedNote(`${it.name} can't be ordered online yet.`);
         return;
       }
       items.push({ variantId: product.ZohoVariantId, qty: Number(it.qty) || 1, label: it.name });
     }
 
-    payBtn.disabled = true;
-    payNote.textContent = "Placing a real order on Zoho…";
+    setProceedDisabled(true);
+    setProceedNote("Placing your order…");
     try {
       const res = await fetch("/api/test-checkout", {
         method: "POST",
@@ -212,15 +262,15 @@
         body: JSON.stringify({ items }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Checkout failed");
+      if (!res.ok) throw new Error(data.error || "Could not place your order");
       if (typeof clearOrder === "function") clearOrder();
-      payNote.textContent = `Order placed in Zoho: ${data.salesOrderNumber}`;
+      setProceedNote(`Order placed: ${data.salesOrderNumber}`);
     } catch (err) {
-      payNote.textContent = err.message;
+      setProceedNote(err.message);
     } finally {
-      payBtn.disabled = false;
+      setProceedDisabled(false);
     }
-  });
+  }
 
   loadSession();
 })();
