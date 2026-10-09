@@ -7,8 +7,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { posts as materialPosts, guides } from './blog-content.mjs'
 import { posts as howtoPosts } from './blog-content-howto.mjs'
+import { posts as morePosts } from './blog-content-more.mjs'
 
-const posts = [...materialPosts, ...howtoPosts]
+const posts = [...materialPosts, ...howtoPosts, ...morePosts]
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public')
 const OUT = path.join(ROOT, 'blog')
