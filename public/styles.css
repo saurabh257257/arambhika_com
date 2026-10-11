@@ -1325,6 +1325,73 @@ img {
   background: var(--fab-icon) center/contain no-repeat;
 }
 
+/* Bottom tab bar (index.html, mobile only): replaces the old floating "View Quote" pill
+   with a persistent, always-visible nav so Home/Store/Quote/Account/WhatsApp never require
+   scrolling to reach, the way the single-row header strip used to. */
+.mobile-tabbar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  background: #fff;
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 16px rgba(15, 17, 17, 0.1);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.is-mobile .mobile-tabbar {
+  display: flex;
+}
+.mobile-tab {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+.mobile-tab span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.mobile-tab.is-active {
+  color: var(--accent-dark);
+}
+.mobile-tab-icon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.mobile-tab-badge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--buy);
+  color: var(--ink);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+.is-mobile:has(.mobile-tabbar) {
+  padding-bottom: calc(54px + env(safe-area-inset-bottom));
+}
+
 .mobile-sheet {
   position: fixed;
   inset: 0;
@@ -1996,6 +2063,15 @@ img {
   }
   .search-active .site-header.has-search .nav-right {
     display: none; /* reclaim vertical space for results while actively typing a search */
+  }
+  /* Home, Store, Account and WhatsApp now live in the bottom tab bar on mobile, so the top
+     strip only needs the phone number and the Company menu — no horizontal scrolling needed. */
+  .site-header.has-search #navHome,
+  .site-header.has-search #navCatalog,
+  .site-header.has-search #testAcctBtn,
+  .site-header.has-search .nav-contact .wa-link,
+  .site-header.has-search .nav-contact .divider {
+    display: none;
   }
 
   .catalog-grid {

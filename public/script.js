@@ -420,6 +420,11 @@ const updateActionCounts = () => {
     mobileFab.textContent = `View Quote (${orderCount})`;
     mobileFab.classList.toggle("has-items", orderCount > 0);
   }
+  const tabBadge = document.querySelector("#mobileTabBadge");
+  if (tabBadge) {
+    tabBadge.textContent = String(orderCount);
+    tabBadge.hidden = orderCount === 0;
+  }
 };
 
 const applySiteConfig = (config) => {
@@ -890,11 +895,47 @@ const populateCountrySelects = () => {
 // not a WhatsApp-form submission. WhatsApp remains available only as a contact channel
 // (header phone/WhatsApp icons).
 
+const openMobileSheet = () => {
+  if (!mobileSheet) return;
+  mobileSheet.classList.add("is-open");
+  mobileSheet.setAttribute("aria-hidden", "false");
+};
+
 if (mobileFab && mobileSheet) {
-  mobileFab.addEventListener("click", () => {
-    mobileSheet.classList.add("is-open");
-    mobileSheet.setAttribute("aria-hidden", "false");
+  mobileFab.addEventListener("click", openMobileSheet);
+}
+
+// The bottom tab bar's Quote tab (index.html only) opens the same cart sheet as the old
+// floating "View Quote" pill it replaced there.
+document.querySelector("#mobileTabQuote")?.addEventListener("click", openMobileSheet);
+
+// Highlight whichever tab the visitor tapped (Account/WhatsApp navigate away, so they're
+// left as tapped briefly without needing to track that).
+const mobileTabs = document.querySelectorAll(".mobile-tab");
+mobileTabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    mobileTabs.forEach((t) => t.classList.remove("is-active"));
+    tab.classList.add("is-active");
   });
+});
+// Home and Store also reflect which section is actually in view while scrolling, since
+// both stay on the page (unlike Account/WhatsApp, which navigate away).
+const homeTab = document.querySelector('.mobile-tab[data-tab="home"]');
+const storeTab = document.querySelector('.mobile-tab[data-tab="store"]');
+const catalogSection = document.querySelector("#catalog");
+if (homeTab && storeTab && catalogSection && "IntersectionObserver" in window) {
+  const sectionObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        mobileTabs.forEach((t) => t.classList.remove("is-active"));
+        (entry.target === catalogSection ? storeTab : homeTab).classList.add("is-active");
+      });
+    },
+    { rootMargin: "-45% 0px -45% 0px" }
+  );
+  sectionObserver.observe(document.querySelector("#home"));
+  sectionObserver.observe(catalogSection);
 }
 
 if (mobileSheetClose && mobileSheet) {
