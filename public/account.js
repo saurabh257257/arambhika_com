@@ -14,7 +14,11 @@
   const sidebarName = document.getElementById("acctSidebarName");
   const sidebarPhone = document.getElementById("acctSidebarPhone");
   const tabBtns = document.querySelectorAll(".acct-tab-btn");
-  const panels = { profile: document.getElementById("acctPanelProfile"), orders: document.getElementById("acctPanelOrders") };
+  const panels = {
+    profile: document.getElementById("acctPanelProfile"),
+    orders: document.getElementById("acctPanelOrders"),
+    invoices: document.getElementById("acctPanelInvoices"),
+  };
   const logoutBtn = document.getElementById("acctLogoutBtn");
   const profileForm = document.getElementById("acctProfileForm");
   const profileError = document.getElementById("acctProfileError");
@@ -22,18 +26,29 @@
   const profilePhone = document.getElementById("acctProfilePhone");
   const ordersList = document.getElementById("acctOrdersList");
   const refreshBtn = document.getElementById("acctRefreshOrders");
+  const invoicesList = document.getElementById("acctInvoicesList");
+  const refreshInvoicesBtn = document.getElementById("acctRefreshInvoices");
+  const orderFilters = document.getElementById("acctOrderFilters");
 
   let session = { loggedIn: false, mobile: "" };
   let profile = null;
   let ordersLoadedOnce = false;
+  let invoicesLoadedOnce = false;
+  let allOrders = [];
+  let orderFilter = "active"; // active = confirmed + pending (everything but failed) — the default view
 
   const showGuest = () => { guestView.hidden = false; dashboard.hidden = true; };
   const showDashboard = () => { guestView.hidden = true; dashboard.hidden = false; };
 
   function switchTab(name) {
+    if (!panels[name]) name = "profile";
     tabBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === name));
     Object.entries(panels).forEach(([key, el]) => { if (el) el.hidden = key !== name; });
+    const url = new URL(location.href);
+    url.searchParams.set("tab", name);
+    history.replaceState(null, "", url);
     if (name === "orders" && !ordersLoadedOnce) loadOrders();
+    if (name === "invoices" && !invoicesLoadedOnce) loadInvoices();
   }
   tabBtns.forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 
@@ -61,7 +76,8 @@
     await loadProfile();
     updateSidebar();
     showDashboard();
-    switchTab("profile");
+    const requestedTab = new URLSearchParams(location.search).get("tab");
+    switchTab(requestedTab || "profile");
   }
 
   async function loadProfile() {
@@ -89,7 +105,8 @@
       if (profile) fillProfileForm(profile);
       updateSidebar();
       showDashboard();
-      switchTab("profile");
+      const requestedTab = new URLSearchParams(location.search).get("tab");
+      switchTab(requestedTab || "profile");
     } catch (err) {
       loginError.textContent = err.message;
     } finally {
@@ -126,6 +143,8 @@
     session = { loggedIn: false, mobile: "" };
     profile = null;
     ordersLoadedOnce = false;
+    invoicesLoadedOnce = false;
+    allOrders = [];
     showGuest();
   });
 
@@ -135,6 +154,14 @@
     catch { return d || ""; }
   };
 
+  function matchesOrderFilter(order, filter) {
+    if (filter === "all") return true;
+    if (filter === "confirmed") return order.status === "confirmed";
+    if (filter === "pending") return order.status === "awaiting_payment";
+    if (filter === "failed") return order.status === "failed";
+    return order.status !== "failed"; // "active" (default): confirmed + pending, hides failed
+  }
+
   async function loadOrders() {
     ordersList.innerHTML = "<p class='form-note'>Loading&hellip;</p>";
     try {
@@ -142,40 +169,97 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not load orders");
       ordersLoadedOnce = true;
-      renderOrders(data.orders || []);
+      allOrders = data.orders || [];
+      renderOrders();
     } catch (err) {
       ordersList.innerHTML = `<p class="acct-error">${err.message}</p>`;
     }
   }
   refreshBtn.addEventListener("click", loadOrders);
 
-  function renderOrders(orders) {
-    if (!orders.length) {
+  orderFilters?.querySelectorAll(".acct-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      orderFilter = chip.dataset.filter;
+      orderFilters.querySelectorAll(".acct-chip").forEach((c) => c.classList.toggle("is-active", c === chip));
+      renderOrders();
+    });
+  });
+
+  function renderOrders() {
+    const filtered = allOrders.filter((o) => matchesOrderFilter(o, orderFilter));
+    if (!allOrders.length) {
       ordersList.innerHTML = "<p class='form-note'>No orders yet &mdash; place your first order from the Store.</p>";
       return;
     }
+    if (!filtered.length) {
+      ordersList.innerHTML = "<p class='form-note'>No orders match this filter.</p>";
+      return;
+    }
     ordersList.innerHTML = "";
-    orders.forEach((o) => ordersList.appendChild(buildOrderCard(o)));
+    filtered.forEach((o) => ordersList.appendChild(buildOrderCard(o)));
   }
 
+  async function loadInvoices() {
+    invoicesList.innerHTML = "<p class='form-note'>Loading&hellip;</p>";
+    try {
+      const res = await fetch("/api/test-orders");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not load transaction history");
+      invoicesLoadedOnce = true;
+      const withInvoice = (data.orders || []).filter((o) => o.zohoSalesOrderNumber);
+      if (!withInvoice.length) {
+        invoicesList.innerHTML = "<p class='form-note'>No completed transactions yet &mdash; this fills in once an order is paid for.</p>";
+        return;
+      }
+      invoicesList.innerHTML = "";
+      withInvoice.forEach((o) => invoicesList.appendChild(buildOrderCard(o)));
+    } catch (err) {
+      invoicesList.innerHTML = `<p class="acct-error">${err.message}</p>`;
+    }
+  }
+  refreshInvoicesBtn.addEventListener("click", loadInvoices);
+
+  // Each order card opens on click to reveal its items, live status and invoice — only the
+  // order number, date and status badge show until then.
   function buildOrderCard(o) {
     const card = document.createElement("div");
     card.className = "acct-order-card2";
     const live = o.live;
     const statusLabel = live?.status || o.status;
+    const itemCount = (o.items || []).reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
     const itemLines = (o.items || []).map((it) => `<div class="acct-order-item">${it.label || it.variantId} &times; ${it.qty}</div>`).join("");
-    card.innerHTML = `
-      <div class="acct-order-head2">
-        <div>
-          <div class="acct-order-number">${o.zohoSalesOrderNumber || o.id}</div>
-          <div class="acct-order-date">${fmtDate(o.placedAt)}</div>
-        </div>
-        <span class="acct-order-status is-${o.status}">${statusLabel}</span>
+
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "acct-order-head2";
+    head.innerHTML = `
+      <div>
+        <div class="acct-order-number">${o.zohoSalesOrderNumber || o.id}</div>
+        <div class="acct-order-date">${fmtDate(o.placedAt)} &middot; ${itemCount} item${itemCount === 1 ? "" : "s"}${o.total ? ` &middot; ${fmtMoney(o.total)}` : ""}</div>
       </div>
+      <div class="acct-order-head-right">
+        <span class="acct-order-status is-${o.status}">${statusLabel}</span>
+        <svg class="acct-order-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    `;
+
+    const body = document.createElement("div");
+    body.className = "acct-order-body";
+    body.hidden = true;
+    body.innerHTML = `
       <div class="acct-order-items">${itemLines}</div>
       ${live ? `<div class="acct-order-note">Shipped: ${live.shippedStatus || "-"} &middot; Invoiced: ${live.invoicedStatus || "-"}${live.total ? ` &middot; Total: ${fmtMoney(live.total)}` : ""}</div>` : ""}
       ${o.note ? `<div class="acct-order-note">${o.note}</div>` : ""}
     `;
+
+    head.addEventListener("click", () => {
+      body.hidden = !body.hidden;
+      card.classList.toggle("is-open", !body.hidden);
+    });
+
+    card.appendChild(head);
+    card.appendChild(body);
+
     if (o.zohoSalesOrderNumber) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -206,8 +290,8 @@
           btn.textContent = "View Invoice";
         }
       });
-      card.appendChild(btn);
-      card.appendChild(invoiceArea);
+      body.appendChild(btn);
+      body.appendChild(invoiceArea);
     }
     return card;
   }

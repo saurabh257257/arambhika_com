@@ -78,7 +78,11 @@
                 </button>
                 <button type="button" class="acct-tab-btn" data-tab="orders">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
-                  Orders &amp; Invoices
+                  Orders
+                </button>
+                <button type="button" class="acct-tab-btn" data-tab="invoices">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M15 3v4h4"/><path d="M8.5 13h7M8.5 16.5h7"/></svg>
+                  Transaction History
                 </button>
               </nav>
               <button type="button" class="acct-logout-btn" id="acctLogoutBtn">Log out</button>
@@ -112,10 +116,28 @@
               <section class="acct-panel" id="acctPanelOrders" hidden>
                 <div class="acct-card">
                   <div class="acct-card-head">
-                    <h2>Orders &amp; Invoices</h2>
+                    <h2>Orders</h2>
                     <button class="button ghost tiny" type="button" id="acctRefreshOrders">Refresh</button>
                   </div>
+                  <div class="acct-filter-chips" id="acctOrderFilters">
+                    <button type="button" class="acct-chip is-active" data-filter="active">Active</button>
+                    <button type="button" class="acct-chip" data-filter="all">All</button>
+                    <button type="button" class="acct-chip" data-filter="confirmed">Confirmed</button>
+                    <button type="button" class="acct-chip" data-filter="pending">Pending</button>
+                    <button type="button" class="acct-chip" data-filter="failed">Failed</button>
+                  </div>
                   <div id="acctOrdersList" class="acct-orders-list2"><p class="form-note">Loading&hellip;</p></div>
+                </div>
+              </section>
+
+              <section class="acct-panel" id="acctPanelInvoices" hidden>
+                <div class="acct-card">
+                  <div class="acct-card-head">
+                    <h2>Transaction History</h2>
+                    <button class="button ghost tiny" type="button" id="acctRefreshInvoices">Refresh</button>
+                  </div>
+                  <p class="form-note">Orders that have reached payment &mdash; each one's invoice and e-way bill, when raised.</p>
+                  <div id="acctInvoicesList" class="acct-orders-list2"><p class="form-note">Loading&hellip;</p></div>
                 </div>
               </section>
             </div>

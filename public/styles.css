@@ -202,6 +202,35 @@ img {
   font-weight: 600;
 }
 
+/* Second row under the main header, shown only once logged in (index.html, desktop) —
+   quick icon links into the account page's Profile / Orders / Transaction History tabs. */
+.acct-subnav {
+  background: rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.acct-subnav-inner {
+  display: flex;
+  gap: 28px;
+  padding: 9px 0;
+}
+.acct-subnav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+.acct-subnav-link:hover {
+  color: #ffffff;
+}
+@media (max-width: 900px) {
+  .acct-subnav {
+    display: none !important; /* mobile reaches the same tabs via the bottom tab bar's Account tab */
+  }
+}
+
 .nav-links a {
   color: #ffffff;
   transition: color 0.2s ease;
@@ -1368,6 +1397,9 @@ img {
 }
 .mobile-tab.is-active {
   color: var(--accent-dark);
+}
+.mobile-tab[data-tab="whatsapp"] {
+  color: #25d366; /* WhatsApp's own brand green, always — not tied to the active/muted state */
 }
 .mobile-tab-icon-wrap {
   position: relative;

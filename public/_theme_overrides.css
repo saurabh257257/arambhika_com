@@ -860,6 +860,31 @@ body {
 .acct-span-2 { grid-column: span 2; }
 .acct-profile-form .acct-btn-primary { margin-top: 10px; }
 
+.acct-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.acct-chip {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.acct-chip:hover { background: var(--surface-alt); }
+.acct-chip.is-active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
 .acct-orders-list2 {
   display: flex;
   flex-direction: column;
@@ -868,13 +893,38 @@ body {
 .acct-order-card2 {
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 18px 20px;
+  overflow: hidden;
 }
 .acct-order-head2 {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 18px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.acct-order-head2:hover {
+  background: var(--surface-alt);
+}
+.acct-order-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.acct-order-chevron {
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.acct-order-card2.is-open .acct-order-chevron {
+  transform: rotate(180deg);
 }
 .acct-order-number {
   font-weight: 700;
@@ -885,6 +935,9 @@ body {
   color: var(--muted);
   font-size: 0.78rem;
   margin-top: 2px;
+}
+.acct-order-body {
+  padding: 0 18px 18px;
 }
 .acct-order-items {
   font-size: 0.86rem;
