@@ -463,12 +463,26 @@ body {
   background: none;
   border: 0;
   color: rgba(255, 255, 255, 0.55);
-  padding: 4px;
+  padding: 4px 8px 4px 4px;
   border-radius: 999px;
   cursor: pointer;
   display: inline-flex;
+  align-items: center;
   position: relative;
-  transition: color 0.12s ease;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.nav-login-btn.is-logged-in {
+  background: rgba(255, 255, 255, 0.08);
+}
+.nav-login-name {
+  display: none;
+  margin-left: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.nav-login-btn.is-logged-in .nav-login-name:not(:empty) {
+  display: inline;
 }
 .nav-login-btn:hover {
   color: #fff;

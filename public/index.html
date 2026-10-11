@@ -165,6 +165,7 @@
           </div>
           <button class="nav-login-btn" type="button" id="testAcctBtn" aria-label="Account" title="Account">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span class="nav-login-name" id="testAcctName"></span>
           </button>
         </nav>
       </div>
@@ -410,10 +411,11 @@
           <label>First name <input type="text" name="firstName" required /></label>
           <label>Last name <input type="text" name="lastName" /></label>
           <label>Email <input type="email" name="email" /></label>
-          <label>Address <input type="text" name="address" required /></label>
-          <label>City <input type="text" name="city" required /></label>
-          <label>State <input type="text" name="state" required placeholder="e.g. Uttar Pradesh" /></label>
-          <label>PIN code <input type="text" name="postalCode" required maxlength="6" /></label>
+          <p class="form-note">Address is optional for now — only needed when you actually place an order.</p>
+          <label>Address <input type="text" name="address" /></label>
+          <label>City <input type="text" name="city" /></label>
+          <label>State <input type="text" name="state" placeholder="e.g. Uttar Pradesh" /></label>
+          <label>PIN code <input type="text" name="postalCode" maxlength="6" /></label>
           <button class="button" type="submit">Save Profile</button>
         </form>
         <p class="acct-error" id="testProfileError"></p>

@@ -30,6 +30,14 @@
   const backBtn = document.getElementById("testBackToAccount");
   const ordersList = document.getElementById("testOrdersList");
   const closeBtn = document.getElementById("testAcctClose");
+  const nameEl = document.getElementById("testAcctName");
+
+  // Full address (plus last name and email — Zoho's checkout API rejects either if blank) is
+  // only required at the moment of actually checking out. Saving a profile with just a first
+  // name is fine before that.
+  function profileAddressIsComplete(p) {
+    return Boolean(p?.firstName && p?.lastName && p?.email && p?.address && p?.city && p?.state && p?.postalCode);
+  }
 
   // Desktop panel + mobile sheet share the same logic, driven off two independent note targets.
   const proceedButtons = [
@@ -112,15 +120,16 @@
   function updateHeaderAndProceed() {
     navBtn.classList.toggle("is-logged-in", session.loggedIn);
     navBtn.title = session.loggedIn ? `Account (${session.mobile})` : "Account";
+    if (nameEl) nameEl.textContent = session.loggedIn && profile?.firstName ? profile.firstName : "";
     if (!session.loggedIn) {
       setProceedDisabled(false);
       setProceedNote("Log in to proceed with your order.");
-    } else if (!profile) {
+    } else if (!profileAddressIsComplete(profile)) {
       setProceedDisabled(false);
       setProceedNote("Add your delivery address to proceed.");
     } else {
       setProceedDisabled(false);
-      setProceedNote(`Logged in as ${session.mobile}.`);
+      setProceedNote(`Logged in as ${profile.firstName || session.mobile}.`);
     }
   }
 
@@ -128,8 +137,46 @@
     try {
       session = await fetch("/api/test-auth/me").then((r) => r.json());
     } catch { session = { loggedIn: false }; }
-    if (session.loggedIn) await loadProfile();
+    if (session.loggedIn) {
+      await loadProfile();
+      await restoreCartAfterLogin();
+    }
     updateHeaderAndProceed();
+  }
+
+  // ---- Cart persistence for a logged-in customer (survives closing the browser) ----
+  let restoringCart = false;
+  window.onCartChanged = (cart) => {
+    if (session.loggedIn && !restoringCart) syncCartToServer(cart);
+  };
+
+  async function syncCartToServer(cart) {
+    try {
+      await fetch("/api/test-cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cart }),
+      });
+    } catch {}
+  }
+
+  // Items added before logging in (this session) win; otherwise restore what was saved last time.
+  async function restoreCartAfterLogin(serverCartGiven) {
+    const localCart = typeof getOrder === "function" ? getOrder() : {};
+    if (Object.keys(localCart).length) {
+      syncCartToServer(localCart);
+      return;
+    }
+    let serverCart = serverCartGiven;
+    if (!serverCart) {
+      try { serverCart = await fetch("/api/test-cart").then((r) => r.json()).then((d) => d.cart); } catch { serverCart = {}; }
+    }
+    if (serverCart && Object.keys(serverCart).length && typeof setOrder === "function") {
+      restoringCart = true;
+      setOrder(serverCart);
+      restoringCart = false;
+      if (typeof renderOrderList === "function") renderOrderList();
+    }
   }
 
   async function loadProfile() {
@@ -171,7 +218,9 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not log in");
       session = { loggedIn: true, mobile: data.mobile };
-      await loadProfile();
+      profile = data.profile || null;
+      if (profile) fillProfileForm(profile);
+      await restoreCartAfterLogin(data.cart);
       updateHeaderAndProceed();
 
       if (resumeProceedAfterLogin) {
@@ -276,9 +325,11 @@
       openModal("login");
       return;
     }
-    if (!profile) {
+    if (!profileAddressIsComplete(profile)) {
       resumeProceedAfterProfile = true;
       accountMobile.textContent = session.mobile;
+      profileError.textContent = "";
+      profileOk.textContent = "Complete your last name and shipping address below to place this order.";
       openModal("account");
       return;
     }

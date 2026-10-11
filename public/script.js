@@ -52,6 +52,9 @@ const getOrder = () => {
 
 const setOrder = (order) => {
   sessionStorage.setItem(ORDER_KEY, JSON.stringify(order));
+  // Lets test-account.js sync the cart to a logged-in customer's profile without this file
+  // needing to know anything about login state.
+  if (typeof window.onCartChanged === "function") window.onCartChanged(order);
 };
 
 const normalizeCatalogData = (data) => {
@@ -407,6 +410,7 @@ const removeFromOrder = (productId) => {
 const clearOrder = () => {
   sessionStorage.removeItem(ORDER_KEY);
   renderOrderList();
+  if (typeof window.onCartChanged === "function") window.onCartChanged({});
 };
 
 const updateActionCounts = () => {

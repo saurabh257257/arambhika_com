@@ -227,7 +227,9 @@ app.post('/api/test-auth/login', express.json(), (req, res) => {
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: '/',
   })
-  res.json({ ok: true, mobile })
+  // Hand back anything saved from a previous session, so the browser can restore it —
+  // the profile's name for the header, and any cart left over from before they logged in.
+  res.json({ ok: true, mobile, profile: testStore.getProfile(), cart: testStore.getCart() })
 })
 
 app.get('/api/test-auth/me', (req, res) => {
@@ -245,20 +247,50 @@ app.get('/api/test-account', testSessionRequired, (req, res) => {
   res.json({ profile: testStore.getProfile() })
 })
 
+// Only the name is required to save a profile at all — full address is checked separately,
+// only at the moment of actually checking out (see /api/test-checkout below).
 app.post('/api/test-account', express.json(), testSessionRequired, (req, res) => {
   const { firstName, lastName, email, address, city, state, postalCode } = req.body || {}
-  if (!firstName || !address || !city || !state || !postalCode) {
-    return res.status(400).json({ error: 'Please fill in name, address, city, state and PIN code' })
-  }
-  const profile = testStore.saveProfile({ firstName, lastName: lastName || '', email: email || '', phone: ALLOWED_TEST_MOBILE, address, city, state, postalCode })
+  if (!firstName) return res.status(400).json({ error: 'Please enter your name' })
+  const profile = testStore.saveProfile({
+    firstName,
+    lastName: lastName || '',
+    email: email || '',
+    phone: ALLOWED_TEST_MOBILE,
+    address: address || '',
+    city: city || '',
+    state: state || '',
+    postalCode: postalCode || '',
+  })
   res.json({ ok: true, profile })
+})
+
+// Zoho's checkout API rejects the order if last_name or email is blank ("Mandatory field ...
+// is not given"), confirmed live one at a time — so both are required at checkout time too,
+// not just the address fields.
+function profileAddressIsComplete(profile) {
+  return Boolean(
+    profile?.firstName && profile?.lastName && profile?.email &&
+    profile?.address && profile?.city && profile?.state && profile?.postalCode
+  )
+}
+
+app.get('/api/test-cart', testSessionRequired, (req, res) => {
+  res.json({ cart: testStore.getCart() })
+})
+
+app.post('/api/test-cart', express.json(), testSessionRequired, (req, res) => {
+  const cart = testStore.saveCart(req.body?.cart || {})
+  res.json({ ok: true, cart })
 })
 
 // Places a real order on Zoho (cart -> address -> shipping -> offline payment), then
 // verifies against the Admin API that Zoho actually created it before reporting success.
 app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, res) => {
   const profile = testStore.getProfile()
-  if (!profile) return res.status(400).json({ error: 'Please fill in your profile/address first' })
+  if (!profileAddressIsComplete(profile)) {
+    return res.status(400).json({ error: 'Please add your shipping address to checkout', code: 'ADDRESS_REQUIRED' })
+  }
 
   const items = Array.isArray(req.body?.items) ? req.body.items : []
   if (!items.length) return res.status(400).json({ error: 'Your cart is empty' })
