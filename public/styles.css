@@ -1990,6 +1990,10 @@ img {
     flex: 0 0 auto;
     justify-content: flex-start;
   }
+  /* Let the Company dropdown's panel escape the scroll strip instead of being clipped by it. */
+  .site-header.has-search .nav-links.has-open-dropdown {
+    overflow: visible;
+  }
   .search-active .site-header.has-search .nav-right {
     display: none; /* reclaim vertical space for results while actively typing a search */
   }

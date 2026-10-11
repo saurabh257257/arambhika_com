@@ -1218,20 +1218,35 @@ window.addEventListener("hashchange", () => {
 });
 
 /* ── Nav catalog dropdown ── */
+// On mobile the nav links sit in a horizontally-scrollable strip (overflow-x: auto), which
+// would otherwise clip this dropdown's open panel since it needs to escape that row's bounds.
+// So the scroller's overflow is relaxed to visible for as long as a dropdown inside it is open.
+const syncNavLinksOverflow = (navLinks) => {
+  if (!navLinks) return;
+  navLinks.classList.toggle("has-open-dropdown", !!navLinks.querySelector(".nav-dropdown.open"));
+};
 document.querySelectorAll(".nav-dropdown-toggle").forEach((toggle) => {
   const dropdown = toggle.closest(".nav-dropdown");
+  const navLinks = toggle.closest(".nav-links");
   toggle.addEventListener("click", (event) => {
     event.stopPropagation();
     dropdown.classList.toggle("open");
+    syncNavLinksOverflow(navLinks);
   });
 });
 document.addEventListener("click", (event) => {
   document.querySelectorAll(".nav-dropdown.open").forEach((dropdown) => {
-    if (!dropdown.contains(event.target)) dropdown.classList.remove("open");
+    if (!dropdown.contains(event.target)) {
+      dropdown.classList.remove("open");
+      syncNavLinksOverflow(dropdown.closest(".nav-links"));
+    }
   });
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    document.querySelectorAll(".nav-dropdown.open").forEach((d) => d.classList.remove("open"));
+    document.querySelectorAll(".nav-dropdown.open").forEach((d) => {
+      d.classList.remove("open");
+      syncNavLinksOverflow(d.closest(".nav-links"));
+    });
   }
 });
