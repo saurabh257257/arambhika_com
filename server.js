@@ -253,7 +253,9 @@ app.get('/api/test-account', testSessionRequired, (req, res) => {
 app.post('/api/test-account', express.json(), testSessionRequired, async (req, res) => {
   const { firstName, lastName, email, address, city, state, postalCode } = req.body || {}
   if (!firstName) return res.status(400).json({ error: 'Please enter your name' })
+  const known = testStore.getProfile()?.zohoContacts || {}
   const profile = testStore.saveProfile({
+    zohoContacts: known,
     firstName,
     lastName: lastName || '',
     email: email || '',
@@ -265,8 +267,12 @@ app.post('/api/test-account', express.json(), testSessionRequired, async (req, r
   })
   // Saved locally first, so a Zoho problem never loses the edit. Then pushed to the Zoho Books /
   // Inventory contact with the same mobile number (the session cookie is that number).
-  const zoho = await syncProfileToZoho(profile)
-  res.json({ ok: true, profile, zoho })
+  const zoho = await syncProfileToZoho(profile, known)
+  // Remember which Zoho contact was matched, so later saves keep updating that same one.
+  const zohoContacts = { ...known }
+  for (const r of zoho) if (r.status === 'updated') zohoContacts[r.key] = r.contactId
+  const saved = testStore.saveProfile({ ...profile, zohoContacts })
+  res.json({ ok: true, profile: saved, zoho })
 })
 
 // Zoho's checkout API rejects the order if last_name or email is blank ("Mandatory field ...
