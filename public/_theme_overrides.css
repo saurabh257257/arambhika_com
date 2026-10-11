@@ -668,3 +668,259 @@ body {
   font-size: 0.8rem;
   margin-top: 6px;
 }
+
+/* ---- Dedicated "My Account" page ---- */
+.acct-page {
+  padding: 48px 0 90px;
+  min-height: 60vh;
+  background: var(--surface-alt);
+}
+.acct-btn-primary {
+  background: var(--yellow);
+  color: var(--ink);
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 22px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.acct-btn-primary:hover { background: var(--yellow-dark); }
+.acct-btn-primary:disabled { background: #ebeef0; color: var(--muted); cursor: not-allowed; }
+
+.acct-guest {
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+}
+.acct-guest[hidden] { display: none; }
+.acct-dashboard[hidden] { display: none; }
+.acct-guest-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 36px 32px;
+  width: min(420px, 100%);
+}
+.acct-guest-card h1 {
+  font-family: "Poppins", serif;
+  font-size: 1.5rem;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+.acct-guest-card label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 18px 0 6px;
+}
+.acct-guest-card input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+.acct-guest-card .acct-btn-primary { width: 100%; margin-top: 16px; }
+
+.acct-dash-head h1 {
+  font-family: "Poppins", serif;
+  font-size: 1.8rem;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.acct-dash-head {
+  margin-bottom: 28px;
+}
+.acct-dash-grid {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+.acct-sidebar {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px 22px;
+  text-align: center;
+  position: sticky;
+  top: 24px;
+}
+.acct-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: #fff;
+  font-family: "Poppins", serif;
+  font-weight: 700;
+  font-size: 1.6rem;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+}
+.acct-sidebar-name {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 1rem;
+}
+.acct-sidebar-phone {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 2px;
+  margin-bottom: 22px;
+}
+.acct-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+.acct-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.acct-tab-btn:hover { background: var(--surface-alt); color: var(--ink); }
+.acct-tab-btn.is-active {
+  background: #eef4ff;
+  color: var(--accent);
+}
+.acct-logout-btn {
+  width: 100%;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  border-left: 0; border-right: 0; border-bottom: 0;
+  background: none;
+  color: #c0392b;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.acct-content { min-width: 0; }
+.acct-panel[hidden] { display: none; }
+.acct-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 32px;
+}
+.acct-card h2 {
+  font-family: "Poppins", serif;
+  font-size: 1.25rem;
+  color: var(--navy);
+  margin-bottom: 20px;
+}
+.acct-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.acct-card-head h2 { margin-bottom: 0; }
+.acct-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 18px;
+  margin-bottom: 6px;
+}
+.acct-form-grid label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.acct-form-grid input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  color: var(--ink);
+}
+.acct-form-grid input:disabled { background: var(--surface-alt); color: var(--muted); }
+.acct-span-2 { grid-column: span 2; }
+.acct-profile-form .acct-btn-primary { margin-top: 10px; }
+
+.acct-orders-list2 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.acct-order-card2 {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.acct-order-head2 {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.acct-order-number {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 0.95rem;
+}
+.acct-order-date {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+.acct-order-items {
+  font-size: 0.86rem;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.acct-order-item { padding: 2px 0; }
+.acct-invoice-area {
+  display: none;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+.acct-invoice-area.is-open { display: block; }
+.acct-invoice-block {
+  display: grid;
+  gap: 8px;
+}
+.acct-invoice-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+.acct-invoice-row span { color: var(--muted); }
+
+@media (max-width: 860px) {
+  .acct-dash-grid { grid-template-columns: 1fr; }
+  .acct-sidebar { position: static; }
+  .acct-form-grid { grid-template-columns: 1fr; }
+  .acct-span-2 { grid-column: span 1; }
+}
+@media (max-width: 480px) {
+  .acct-page { padding: 32px 0 60px; }
+  .acct-card, .acct-guest-card { padding: 24px 18px; }
+}

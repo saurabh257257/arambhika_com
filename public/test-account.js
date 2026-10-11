@@ -195,14 +195,11 @@
     }
   }
 
+  // Clicking the header icon directly (not via the Proceed/checkout flow) now goes to the
+  // dedicated My Account page, which handles its own login + shows profile/orders/invoices
+  // together. The modal below stays only for the in-checkout login/profile steps.
   navBtn.addEventListener("click", () => {
-    if (session.loggedIn) {
-      accountMobile.textContent = session.mobile;
-      openModal("account");
-    } else {
-      loginError.textContent = "";
-      openModal("login");
-    }
+    window.location.href = "account.html";
   });
 
   loginBtn.addEventListener("click", async () => {
@@ -275,7 +272,7 @@
     closeModal();
   });
 
-  const fmtMoney = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
+  const fmtMoney = (n) => `₹${Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   async function loadOrders() {
     ordersList.innerHTML = "<p class='form-note'>Loading…</p>";
