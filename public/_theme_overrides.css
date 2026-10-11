@@ -1195,3 +1195,128 @@ body.acct-fixed-layout #acctInvoicesList {
   min-height: 0;
   overflow-y: auto;
 }
+
+/* ---- My Account as a centered window (desktop) / compact stacked layout (mobile) ----
+   Overrides the full-viewport fixed layout above: on desktop the dashboard is a bounded
+   window floating over a tinted backdrop so the site header and page edges stay visible;
+   the old top toolbar becomes a left sidebar inside the window. */
+body.acct-fixed-layout main {
+  background:
+    radial-gradient(circle at 12% 18%, #dbe7ff 0, transparent 38%),
+    radial-gradient(circle at 88% 82%, #d9f3ee 0, transparent 38%),
+    var(--surface-alt);
+}
+body.acct-fixed-layout .acct-page {
+  background: transparent;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 24px;
+}
+body.acct-fixed-layout .acct-page .container {
+  width: min(980px, 100%);
+  flex: 0 1 auto;
+  margin: 0;
+}
+body.acct-fixed-layout .acct-page .container:has(.acct-dashboard:not([hidden])) {
+  height: min(620px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+body.acct-fixed-layout .acct-dashboard:not([hidden]) {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  height: 100%;
+}
+body.acct-fixed-layout .acct-toolbar {
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 18px;
+  margin: 0;
+  padding: 22px 16px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface-alt);
+}
+body.acct-fixed-layout .acct-tabs {
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+}
+body.acct-fixed-layout .acct-tab-btn {
+  border-radius: 12px;
+  padding: 11px 14px;
+}
+body.acct-fixed-layout .acct-logout-btn { align-self: stretch; }
+body.acct-fixed-layout .acct-content {
+  padding: 24px 26px;
+  overflow: hidden;
+}
+body.acct-fixed-layout .acct-dash-hero h1 { font-size: 1.45rem; }
+body.acct-fixed-layout .acct-stat-grid { grid-template-columns: repeat(2, 1fr); }
+body.acct-fixed-layout .acct-quick-grid { grid-template-columns: repeat(2, 1fr); }
+/* The panel already sits inside the window, so cards drop their own frame to avoid a box in a box */
+body.acct-fixed-layout .acct-card {
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+}
+
+@media (max-width: 860px) {
+  body.acct-fixed-layout .acct-page { padding: 0; align-items: stretch; }
+  body.acct-fixed-layout .acct-page .container,
+  body.acct-fixed-layout .acct-page .container:has(.acct-dashboard:not([hidden])) {
+    width: 100%;
+    height: auto;
+    flex: 1 1 auto;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  body.acct-fixed-layout .acct-guest { align-items: flex-start; padding: 16px; }
+  body.acct-fixed-layout .acct-dashboard:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+  }
+  /* user row + logout on one line, tabs as an even 4-up icon grid instead of a sideways scroll */
+  body.acct-fixed-layout .acct-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 12px;
+    padding: 12px 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  body.acct-fixed-layout .acct-toolbar-user { width: auto; min-width: 0; }
+  body.acct-fixed-layout .acct-toolbar-user { grid-column: 1; grid-row: 1; }
+  body.acct-fixed-layout .acct-logout-btn { grid-column: 2; grid-row: 1; align-self: center; padding: 8px 14px; }
+  body.acct-fixed-layout .acct-tabs {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex-direction: row;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    overflow: visible;
+  }
+  body.acct-fixed-layout .acct-tab-btn {
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 2px;
+    font-size: 0.7rem;
+    border-radius: 12px;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.15;
+  }
+  body.acct-fixed-layout .acct-content { padding: 16px 14px 20px; }
+  body.acct-fixed-layout .acct-stat-grid { gap: 10px; margin-bottom: 16px; }
+  body.acct-fixed-layout .acct-quick-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  body.acct-fixed-layout .acct-quick-card { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; }
+  body.acct-fixed-layout .acct-quick-sub { display: none; }
+}
