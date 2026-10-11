@@ -85,19 +85,22 @@
           </div>
           <a href="index.html#home" id="navHome">Home</a>
           <a href="index.html#catalog" id="navCatalog">Store</a>
-          <a href="/blog/" id="navBlog">Blog</a>
           <div class="nav-dropdown">
             <button type="button" class="nav-dropdown-toggle">
-              Catalog
+              More
               <svg class="nav-dropdown-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
             </button>
             <div class="nav-dropdown-menu">
-              <a href="catalog.html">View Catalog</a>
+              <a href="/blog/" id="navBlog">Blog</a>
               <a href="catalog.html?autoprint=1">Download Catalog</a>
+              <a href="capabilities.html" id="navCapabilities">Our Capabilities</a>
+              <a href="about.html" id="navAbout">About &amp; Contact</a>
             </div>
           </div>
-          <a href="capabilities.html" id="navCapabilities">Our Capabilities</a>
-          <a href="about.html" id="navAbout">About & Contact</a>
+          <a href="account.html" class="nav-login-btn" id="testAcctBtn" aria-label="Account" title="Account">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span class="nav-login-name" id="testAcctName"></span>
+          </a>
         </nav>
       </div>
     </div>
@@ -188,6 +191,7 @@
   </div>
 
   <script src="script.js"></script>
+  <script src="header-session.js"></script>
 </body>
 </html>
 

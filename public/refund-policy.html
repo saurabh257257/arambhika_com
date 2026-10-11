@@ -44,11 +44,24 @@
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A10 10 0 0 0 3.2 17.9L2 22l4.2-1.1a10 10 0 0 0 14.3-17.4zm-8.5 16a8 8 0 0 1-4.1-1.1l-.3-.2-2.4.6.6-2.3-.2-.3A8 8 0 1 1 12 19.5zm4.4-6.1c-.2-.1-1.3-.6-1.5-.7-.2-.1-.4-.1-.6.1-.2.2-.7.7-.9.9-.2.2-.3.2-.6.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.9-.1-.2 0-.4.1-.5.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2.1-.4 0-.6-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.1 0 1.2.9 2.4 1 2.6.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.4.5.6.2 1.1.2 1.5.1.5-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1-.1-.1-.2-.2-.4-.3z"/></svg>
             </a>
           </div>
-          <a href="index.html#home">Home</a>
-          <a href="index.html#catalog">Store</a>
-          <a href="/blog/">Blog</a>
-          <a href="capabilities.html">Our Capabilities</a>
-          <a href="about.html">About & Contact</a>
+          <a href="index.html#home" id="navHome">Home</a>
+          <a href="index.html#catalog" id="navCatalog">Store</a>
+          <div class="nav-dropdown">
+            <button type="button" class="nav-dropdown-toggle">
+              More
+              <svg class="nav-dropdown-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="nav-dropdown-menu">
+              <a href="/blog/" id="navBlog">Blog</a>
+              <a href="catalog.html?autoprint=1">Download Catalog</a>
+              <a href="capabilities.html" id="navCapabilities">Our Capabilities</a>
+              <a href="about.html" id="navAbout">About &amp; Contact</a>
+            </div>
+          </div>
+          <a href="account.html" class="nav-login-btn" id="testAcctBtn" aria-label="Account" title="Account">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span class="nav-login-name" id="testAcctName"></span>
+          </a>
         </nav>
       </div>
     </div>
@@ -126,5 +139,7 @@
       </div>
     </div>
   </footer>
+  <script src="script.js"></script>
+  <script src="header-session.js"></script>
 </body>
 </html>
