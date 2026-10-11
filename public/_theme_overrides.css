@@ -1120,3 +1120,77 @@ body {
   .acct-stat-card { padding: 14px 16px; }
   .acct-stat-num { font-size: 1.4rem; }
 }
+
+/* My Account fills the viewport instead of the page itself scrolling — each tab's own list
+   (orders, invoices) scrolls within its card, with the heading/filters staying put above it.
+   The footer is dropped from this page since there's no page scroll left to reach it with. */
+body.acct-fixed-layout {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+body.acct-fixed-layout .site-header { flex-shrink: 0; }
+body.acct-fixed-layout .site-footer { display: none; }
+body.acct-fixed-layout main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+body.acct-fixed-layout .acct-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+body.acct-fixed-layout .acct-page .container {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+body.acct-fixed-layout .acct-guest {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 0;
+}
+body.acct-fixed-layout .acct-dashboard {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+body.acct-fixed-layout .acct-toolbar { flex-shrink: 0; }
+body.acct-fixed-layout .acct-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+body.acct-fixed-layout .acct-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto; /* Dashboard and Profile: the whole panel scrolls as one unit */
+}
+body.acct-fixed-layout #acctPanelOrders:not([hidden]),
+body.acct-fixed-layout #acctPanelInvoices:not([hidden]) {
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+}
+body.acct-fixed-layout #acctPanelOrders .acct-card,
+body.acct-fixed-layout #acctPanelInvoices .acct-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+body.acct-fixed-layout #acctOrdersList,
+body.acct-fixed-layout #acctInvoicesList {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
