@@ -62,34 +62,99 @@
         </div>
 
         <div id="acctDashboard" class="acct-dashboard" hidden>
-          <div class="acct-dash-head">
-            <h1>My Account</h1>
-            <p class="form-note">Manage your profile, track orders, and view invoices &mdash; all in one place.</p>
-          </div>
-          <div class="acct-dash-grid">
-            <aside class="acct-sidebar">
+          <div class="acct-toolbar">
+            <div class="acct-toolbar-user">
               <div class="acct-avatar" id="acctAvatar">S</div>
-              <div class="acct-sidebar-name" id="acctSidebarName">&mdash;</div>
-              <div class="acct-sidebar-phone" id="acctSidebarPhone">&mdash;</div>
-              <nav class="acct-tabs">
-                <button type="button" class="acct-tab-btn is-active" data-tab="profile">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                  Profile
-                </button>
-                <button type="button" class="acct-tab-btn" data-tab="orders">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
-                  Orders
-                </button>
-                <button type="button" class="acct-tab-btn" data-tab="invoices">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M15 3v4h4"/><path d="M8.5 13h7M8.5 16.5h7"/></svg>
-                  Transaction History
-                </button>
-              </nav>
-              <button type="button" class="acct-logout-btn" id="acctLogoutBtn">Log out</button>
-            </aside>
+              <div>
+                <div class="acct-sidebar-name" id="acctSidebarName">&mdash;</div>
+                <div class="acct-sidebar-phone" id="acctSidebarPhone">&mdash;</div>
+              </div>
+            </div>
+            <nav class="acct-tabs" id="acctTabs">
+              <button type="button" class="acct-tab-btn is-active" data-tab="dashboard">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+                Dashboard
+              </button>
+              <button type="button" class="acct-tab-btn" data-tab="profile">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                Profile
+              </button>
+              <button type="button" class="acct-tab-btn" data-tab="orders">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+                Orders
+              </button>
+              <button type="button" class="acct-tab-btn" data-tab="invoices">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M15 3v4h4"/><path d="M8.5 13h7M8.5 16.5h7"/></svg>
+                Transaction History
+              </button>
+            </nav>
+            <button type="button" class="acct-logout-btn" id="acctLogoutBtn">Log out</button>
+          </div>
 
-            <div class="acct-content">
-              <section class="acct-panel is-active" id="acctPanelProfile">
+          <div class="acct-content">
+              <section class="acct-panel is-active" id="acctPanelDashboard">
+                <div class="acct-dash-hero">
+                  <h1 id="acctDashGreeting">Dashboard</h1>
+                  <p class="form-note">Track your orders, shipments, invoices and transactions &mdash; all in one place.</p>
+                </div>
+                <div class="acct-stat-grid">
+                  <div class="acct-stat-card acct-stat-blue">
+                    <span class="acct-stat-num" id="statTotal">0</span>
+                    <span class="acct-stat-label">Total Orders</span>
+                  </div>
+                  <div class="acct-stat-card acct-stat-orange">
+                    <span class="acct-stat-num" id="statPending">0</span>
+                    <span class="acct-stat-label">Pending</span>
+                  </div>
+                  <div class="acct-stat-card acct-stat-green">
+                    <span class="acct-stat-num" id="statConfirmed">0</span>
+                    <span class="acct-stat-label">Confirmed</span>
+                  </div>
+                  <div class="acct-stat-card acct-stat-teal">
+                    <span class="acct-stat-num" id="statInvoices">0</span>
+                    <span class="acct-stat-label">Invoices Raised</span>
+                  </div>
+                </div>
+                <div class="acct-quick-grid">
+                  <button type="button" class="acct-quick-card acct-quick-blue" data-goto="orders">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+                    <div>
+                      <div class="acct-quick-title">Track Your Order</div>
+                      <div class="acct-quick-sub">See status and what's next</div>
+                    </div>
+                  </button>
+                  <button type="button" class="acct-quick-card acct-quick-orange" data-goto="orders">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
+                    <div>
+                      <div class="acct-quick-title">Shipment</div>
+                      <div class="acct-quick-sub">Dispatch and delivery progress</div>
+                    </div>
+                  </button>
+                  <button type="button" class="acct-quick-card acct-quick-teal" data-goto="invoices">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M15 3v4h4"/><path d="M8.5 13h7M8.5 16.5h7"/></svg>
+                    <div>
+                      <div class="acct-quick-title">Invoices</div>
+                      <div class="acct-quick-sub">View and open each invoice</div>
+                    </div>
+                  </button>
+                  <button type="button" class="acct-quick-card acct-quick-green" data-goto="invoices">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+                    <div>
+                      <div class="acct-quick-title">Transaction History</div>
+                      <div class="acct-quick-sub">Every payment that's gone through</div>
+                    </div>
+                  </button>
+                  <button type="button" class="acct-quick-card acct-quick-navy" data-goto="profile">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                    <div>
+                      <div class="acct-quick-title">Profile</div>
+                      <div class="acct-quick-sub">Name, email and delivery address</div>
+                    </div>
+                  </button>
+                </div>
+              </section>
+
+              <section class="acct-panel" id="acctPanelProfile" hidden>
                 <div class="acct-card">
                   <h2>Profile</h2>
                   <form id="acctProfileForm" class="acct-profile-form">
@@ -117,7 +182,10 @@
                 <div class="acct-card">
                   <div class="acct-card-head">
                     <h2>Orders</h2>
-                    <button class="button ghost tiny" type="button" id="acctRefreshOrders">Refresh</button>
+                    <div class="acct-card-head-actions">
+                      <button class="button ghost tiny" type="button" id="acctDownloadOrders">Download Report</button>
+                      <button class="button ghost tiny" type="button" id="acctRefreshOrders">Refresh</button>
+                    </div>
                   </div>
                   <div class="acct-filter-chips" id="acctOrderFilters">
                     <button type="button" class="acct-chip is-active" data-filter="active">Active</button>
@@ -140,7 +208,6 @@
                   <div id="acctInvoicesList" class="acct-orders-list2"><p class="form-note">Loading&hellip;</p></div>
                 </div>
               </section>
-            </div>
           </div>
         </div>
 

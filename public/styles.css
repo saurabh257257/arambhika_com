@@ -210,6 +210,7 @@ img {
 }
 .acct-subnav-inner {
   display: flex;
+  justify-content: flex-end;
   gap: 28px;
   padding: 9px 0;
 }

@@ -15,10 +15,17 @@
   const sidebarPhone = document.getElementById("acctSidebarPhone");
   const tabBtns = document.querySelectorAll(".acct-tab-btn");
   const panels = {
+    dashboard: document.getElementById("acctPanelDashboard"),
     profile: document.getElementById("acctPanelProfile"),
     orders: document.getElementById("acctPanelOrders"),
     invoices: document.getElementById("acctPanelInvoices"),
   };
+  const dashGreeting = document.getElementById("acctDashGreeting");
+  const statTotal = document.getElementById("statTotal");
+  const statPending = document.getElementById("statPending");
+  const statConfirmed = document.getElementById("statConfirmed");
+  const statInvoices = document.getElementById("statInvoices");
+  const downloadOrdersBtn = document.getElementById("acctDownloadOrders");
   const logoutBtn = document.getElementById("acctLogoutBtn");
   const profileForm = document.getElementById("acctProfileForm");
   const profileError = document.getElementById("acctProfileError");
@@ -41,16 +48,19 @@
   const showDashboard = () => { guestView.hidden = true; dashboard.hidden = false; };
 
   function switchTab(name) {
-    if (!panels[name]) name = "profile";
+    if (!panels[name]) name = "dashboard";
     tabBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.tab === name));
     Object.entries(panels).forEach(([key, el]) => { if (el) el.hidden = key !== name; });
     const url = new URL(location.href);
     url.searchParams.set("tab", name);
     history.replaceState(null, "", url);
-    if (name === "orders" && !ordersLoadedOnce) loadOrders();
+    if ((name === "orders" || name === "dashboard") && !ordersLoadedOnce) loadOrders();
     if (name === "invoices" && !invoicesLoadedOnce) loadInvoices();
   }
   tabBtns.forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+  document.querySelectorAll("[data-goto]").forEach((el) => {
+    el.addEventListener("click", () => switchTab(el.dataset.goto));
+  });
 
   function fillProfileForm(p) {
     if (!p) return;
@@ -66,6 +76,7 @@
     sidebarPhone.textContent = session.mobile;
     avatar.textContent = (profile?.firstName || session.mobile || "?").charAt(0).toUpperCase();
     profilePhone.value = session.mobile;
+    if (dashGreeting) dashGreeting.textContent = profile?.firstName ? `${profile.firstName}'s Dashboard` : "Your Dashboard";
   }
 
   async function loadSession() {
@@ -77,7 +88,7 @@
     updateSidebar();
     showDashboard();
     const requestedTab = new URLSearchParams(location.search).get("tab");
-    switchTab(requestedTab || "profile");
+    switchTab(requestedTab || "dashboard");
   }
 
   async function loadProfile() {
@@ -106,7 +117,7 @@
       updateSidebar();
       showDashboard();
       const requestedTab = new URLSearchParams(location.search).get("tab");
-      switchTab(requestedTab || "profile");
+      switchTab(requestedTab || "dashboard");
     } catch (err) {
       loginError.textContent = err.message;
     } finally {
@@ -171,11 +182,45 @@
       ordersLoadedOnce = true;
       allOrders = data.orders || [];
       renderOrders();
+      updateDashboardStats();
     } catch (err) {
       ordersList.innerHTML = `<p class="acct-error">${err.message}</p>`;
     }
   }
   refreshBtn.addEventListener("click", loadOrders);
+
+  function updateDashboardStats() {
+    if (!statTotal) return;
+    statTotal.textContent = String(allOrders.length);
+    statPending.textContent = String(allOrders.filter((o) => o.status === "awaiting_payment").length);
+    statConfirmed.textContent = String(allOrders.filter((o) => o.status === "confirmed").length);
+    statInvoices.textContent = String(allOrders.filter((o) => o.zohoSalesOrderNumber).length);
+  }
+
+  function ordersToCsv(orders) {
+    const header = ["Order Number", "Date", "Status", "Items", "Total"];
+    const rows = orders.map((o) => [
+      o.zohoSalesOrderNumber || o.id,
+      fmtDate(o.placedAt),
+      o.status,
+      (o.items || []).map((it) => `${it.label || it.variantId} x${it.qty}`).join("; "),
+      o.total != null ? o.total : "",
+    ]);
+    const escape = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    return [header, ...rows].map((row) => row.map(escape).join(",")).join("\r\n");
+  }
+
+  downloadOrdersBtn?.addEventListener("click", () => {
+    const filtered = allOrders.filter((o) => matchesOrderFilter(o, orderFilter));
+    const csv = ordersToCsv(filtered);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `arambhika-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 
   orderFilters?.querySelectorAll(".acct-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
@@ -219,6 +264,34 @@
   }
   refreshInvoicesBtn.addEventListener("click", loadInvoices);
 
+  // A simple 4-stage progress tracker built from what Zoho actually reports for a sales
+  // order: our own local status (confirmed once payment clears) plus Zoho's live
+  // shipped_status once a live lookup has succeeded. Failed orders get their own notice
+  // instead, since "placed → confirmed → shipped" doesn't apply to them.
+  function buildOrderStepper(o) {
+    if (o.status === "failed") {
+      return `<div class="acct-stepper-fail">This order could not be completed${o.note ? `: ${o.note}` : "."}</div>`;
+    }
+    const shipped = String(o.live?.shippedStatus || "").toLowerCase();
+    const steps = [
+      { label: "Order Placed", done: true },
+      { label: "Confirmed", done: o.status === "confirmed" },
+      { label: "Shipped", done: ["shipped", "fulfilled", "delivered"].includes(shipped) },
+      { label: "Delivered", done: shipped === "delivered" },
+    ];
+    let currentIndex = 0;
+    steps.forEach((s, i) => { if (s.done) currentIndex = i; });
+    const stepsHtml = steps
+      .map((s, i) => `
+        <div class="acct-step${i <= currentIndex ? " is-done" : ""}${i === currentIndex ? " is-current" : ""}">
+          <span class="acct-step-dot"></span>
+          <span class="acct-step-label">${s.label}</span>
+        </div>
+      `)
+      .join('<span class="acct-step-line"></span>');
+    return `<div class="acct-stepper">${stepsHtml}</div>`;
+  }
+
   // Each order card opens on click to reveal its items, live status and invoice — only the
   // order number, date and status badge show until then.
   function buildOrderCard(o) {
@@ -247,6 +320,7 @@
     body.className = "acct-order-body";
     body.hidden = true;
     body.innerHTML = `
+      ${buildOrderStepper(o)}
       <div class="acct-order-items">${itemLines}</div>
       ${live ? `<div class="acct-order-note">Shipped: ${live.shippedStatus || "-"} &middot; Invoiced: ${live.invoicedStatus || "-"}${live.total ? ` &middot; Total: ${fmtMoney(live.total)}` : ""}</div>` : ""}
       ${o.note ? `<div class="acct-order-note">${o.note}</div>` : ""}
@@ -311,6 +385,7 @@
       <div class="acct-invoice-row"><span>Status</span><strong>${inv.status || "-"}</strong></div>
       <div class="acct-invoice-row"><span>Total</span><strong>${inv.total != null ? fmtMoney(inv.total) : "-"}</strong></div>
       <div class="acct-invoice-row"><span>Balance Due</span><strong>${inv.balance != null ? fmtMoney(inv.balance) : "-"}</strong></div>
+      ${inv.invoice_url ? `<a class="acct-invoice-download" href="${String(inv.invoice_url).trim()}" target="_blank" rel="noopener">Open / Download Invoice &rarr;</a>` : ""}
       ${ew
         ? `<div class="acct-invoice-row"><span>E-Way Bill No.</span><strong>${ew.ewaybill_number || "-"}</strong></div>
            <div class="acct-invoice-row"><span>E-Way Bill Status</span><strong>${ew.status || "-"}</strong></div>`
