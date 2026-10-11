@@ -181,7 +181,7 @@ function adminRequired(req, res, next) {
 
 app.get('/admin/zoho-connect', adminRequired, (req, res) => {
   if (!zohoAuth.isConfigured()) return res.status(503).send('Set ZOHO_CLIENT_ID and ZOHO_CLIENT_SECRET in .env first.')
-  if (zohoAuth.isConnected()) {
+  if (zohoAuth.isConnected() && req.query.force !== '1') {
     return res.send('Zoho is already connected. <a href="/admin/zoho-connect?token=' + encodeURIComponent(req.query.token) + '&force=1">Reconnect anyway</a>')
   }
   res.redirect(zohoAuth.buildAuthorizeUrl(req))
