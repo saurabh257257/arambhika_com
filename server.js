@@ -7,7 +7,7 @@ import { fetchStorefrontCatalog, fetchImage } from './lib/zoho.js'
 import { buildCatalog } from './lib/catalog.js'
 import * as zohoAuth from './lib/zoho-oauth.js'
 import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
-import { findRecentSalesOrderByPhone, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
+import { findRecentSalesOrderByEmail, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
 import * as testStore from './lib/test-store.js'
 
 try { process.loadEnvFile() } catch {}
@@ -328,7 +328,7 @@ app.post('/api/test-orders/:id/confirm-payment', testSessionRequired, async (req
   if (!order) return res.status(404).json({ error: 'Order not found' })
   const profile = testStore.getProfile()
   try {
-    const salesOrder = await findRecentSalesOrderByPhone(profile.phone, 30)
+    const salesOrder = await findRecentSalesOrderByEmail(profile.email, 30)
     if (!salesOrder) {
       return res.json({ ok: false, message: "Zoho hasn't shown a confirmed order yet. If you completed payment, wait a moment and check again." })
     }
