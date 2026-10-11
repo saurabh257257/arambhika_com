@@ -955,6 +955,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
+  flex-shrink: 0; /* keep natural height when the list's own box is shorter than its content — scroll instead of squeeze */
 }
 .acct-order-head2 {
   display: flex;
@@ -1157,7 +1158,7 @@ body.acct-fixed-layout .acct-guest {
   min-height: 0;
   padding-top: 0;
 }
-body.acct-fixed-layout .acct-dashboard {
+body.acct-fixed-layout .acct-dashboard:not([hidden]) {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
