@@ -943,9 +943,15 @@ const handleSearchInput = (value) => {
   currentSearchTerm = String(value || "").trim().toLowerCase();
   filterCatalog();
   if (currentSearchTerm) {
+    const wasAlreadyActive = document.body.classList.contains("search-active");
     document.body.classList.add("search-active");
-    const catalog = document.querySelector("#catalog");
-    if (catalog) catalog.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Scroll only once, when search first becomes active — not on every keystroke. On
+    // mobile, repeating this on each keystroke fights the keyboard's own focus-scroll and
+    // makes the sticky header (which holds the search box) jump and partly hide.
+    if (!wasAlreadyActive) {
+      const catalog = document.querySelector("#catalog");
+      if (catalog) catalog.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   } else {
     document.body.classList.remove("search-active");
   }
