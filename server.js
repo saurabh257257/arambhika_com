@@ -270,35 +270,44 @@ app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, 
     id: `local_${Date.now()}`,
     placedAt: new Date().toISOString(),
     items,
-    status: 'placing',
+    status: 'awaiting_payment',
   })
 
   try {
+    // Gets the cart through address + shipping and hands back Zoho's real payment page
+    // (Razorpay, configured in Zoho Commerce). Zoho creates the Sales Order itself only once
+    // the customer actually pays there — see /api/test-orders/:id/confirm-payment below.
     const result = await placeOrder({ items, customer: profile })
-    if (!result.hadShippingMethod) {
-      testStore.updateOrder(localOrder.id, { status: 'failed', note: 'No shipping method is configured in Zoho Commerce (Settings > Shipping) — the order could not complete.' })
-      return res.status(409).json({ error: 'No shipping method is configured in Zoho yet. Add one under Settings > Shipping in Zoho Commerce, then try again.' })
-    }
+    testStore.updateOrder(localOrder.id, { total: result.total })
+    res.json({ ok: true, orderId: localOrder.id, paymentUrl: result.paymentUrl, total: result.total })
+  } catch (err) {
+    console.error('[test-checkout] failed:', err.message)
+    testStore.updateOrder(localOrder.id, { status: 'failed', note: err.message })
+    const status = err instanceof CheckoutError ? 400 : 502
+    res.status(status).json({ error: err.message })
+  }
+})
 
-    // Zoho's offline-payment response is unreliable to parse directly, so confirm for real.
-    await new Promise((r) => setTimeout(r, 2000))
-    const salesOrder = await findRecentSalesOrderByPhone(profile.phone)
+// Called after the customer returns from Zoho's payment page. We don't get a webhook here
+// (that would need its own Zoho setup), so we just check whether a matching Sales Order has
+// shown up yet — true once Zoho has actually processed the payment.
+app.post('/api/test-orders/:id/confirm-payment', testSessionRequired, async (req, res) => {
+  const order = testStore.getOrders().find((o) => o.id === req.params.id)
+  if (!order) return res.status(404).json({ error: 'Order not found' })
+  const profile = testStore.getProfile()
+  try {
+    const salesOrder = await findRecentSalesOrderByPhone(profile.phone, 30)
     if (!salesOrder) {
-      testStore.updateOrder(localOrder.id, { status: 'unconfirmed', note: 'Checkout completed but no matching Sales Order was found in Zoho yet.' })
-      return res.status(502).json({ error: 'Checkout ran, but Zoho has not shown the Sales Order yet. Check /admin/zoho-orders in a minute.' })
+      return res.json({ ok: false, message: "Zoho hasn't shown a confirmed order yet. If you completed payment, wait a moment and check again." })
     }
-
-    testStore.updateOrder(localOrder.id, {
+    testStore.updateOrder(order.id, {
       status: 'confirmed',
       zohoSalesOrderId: salesOrder.salesorder_id,
       zohoSalesOrderNumber: salesOrder.salesorder_number,
     })
     res.json({ ok: true, salesOrderNumber: salesOrder.salesorder_number })
   } catch (err) {
-    console.error('[test-checkout] failed:', err.message)
-    testStore.updateOrder(localOrder.id, { status: 'failed', note: err.message })
-    const status = err instanceof CheckoutError ? 400 : 502
-    res.status(status).json({ error: err.message })
+    res.status(502).json({ error: err.message })
   }
 })
 

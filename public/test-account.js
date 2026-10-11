@@ -53,6 +53,58 @@
   function setProceedNote(text) {
     proceedButtons.forEach(({ note }) => { if (note) note.textContent = text; });
   }
+
+  // After checkout, the note area becomes a small mini-UI: a link to Zoho's real payment
+  // page, a status line, and a button to check back once payment is done (there's no webhook
+  // wired up here, so confirmation is "check again" rather than automatic).
+  function showPaymentStep(orderId, paymentUrl, total, statusText) {
+    proceedButtons.forEach(({ note }) => {
+      if (!note) return;
+      note.textContent = "";
+      if (total) {
+        const amountLine = document.createElement("div");
+        amountLine.textContent = `Total: ₹${Number(total).toLocaleString("en-IN")}`;
+        note.appendChild(amountLine);
+      }
+      if (statusText) {
+        const statusLine = document.createElement("div");
+        statusLine.textContent = statusText;
+        note.appendChild(statusLine);
+      }
+      const actions = document.createElement("div");
+      const payLink = document.createElement("a");
+      payLink.href = paymentUrl;
+      payLink.target = "_blank";
+      payLink.rel = "noopener";
+      payLink.className = "acct-link-btn";
+      payLink.textContent = "Pay Now";
+      payLink.style.marginRight = "10px";
+      const confirmBtn = document.createElement("button");
+      confirmBtn.type = "button";
+      confirmBtn.className = "acct-link-btn";
+      confirmBtn.textContent = "I've paid — check order";
+      confirmBtn.addEventListener("click", () => confirmPayment(orderId, paymentUrl, total));
+      actions.appendChild(payLink);
+      actions.appendChild(confirmBtn);
+      note.appendChild(actions);
+    });
+  }
+
+  async function confirmPayment(orderId, paymentUrl, total) {
+    setProceedNote("Checking with Zoho…");
+    try {
+      const res = await fetch(`/api/test-orders/${orderId}/confirm-payment`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (data.ok) {
+        if (typeof clearOrder === "function") clearOrder();
+        setProceedNote(`Order placed: ${data.salesOrderNumber}`);
+      } else {
+        showPaymentStep(orderId, paymentUrl, total, data.message || data.error || "Not confirmed yet — pay first, then check again.");
+      }
+    } catch (err) {
+      showPaymentStep(orderId, paymentUrl, total, err.message);
+    }
+  }
   function setProceedDisabled(disabled) {
     proceedButtons.forEach(({ btn }) => { btn.disabled = disabled; });
   }
@@ -254,7 +306,7 @@
     }
 
     setProceedDisabled(true);
-    setProceedNote("Placing your order…");
+    setProceedNote("Preparing your order…");
     try {
       const res = await fetch("/api/test-checkout", {
         method: "POST",
@@ -263,8 +315,10 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not place your order");
-      if (typeof clearOrder === "function") clearOrder();
-      setProceedNote(`Order placed: ${data.salesOrderNumber}`);
+      // Opens Zoho's real payment page automatically; the customer also gets a "Pay Now" link
+      // in case the popup was blocked.
+      window.open(data.paymentUrl, "_blank", "noopener");
+      showPaymentStep(data.orderId, data.paymentUrl, data.total, "A payment tab has opened. Complete payment there, then come back and click below.");
     } catch (err) {
       setProceedNote(err.message);
     } finally {
