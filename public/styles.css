@@ -10,8 +10,7 @@
   --surface-alt: #f5f8ff;
   --line: #e2e8f0;
   --shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
-  --search-bar-height: 1cm;
-  --search-bar-gap: 2mm;
+  --search-bar-height: 40px;
   --header-height: 70px;
 }
 
@@ -27,7 +26,6 @@ body {
   background: var(--surface);
   line-height: 1.6;
   font-size: 15px;
-  padding-top: calc(var(--search-bar-height) + var(--search-bar-gap));
 }
 
 a {
@@ -51,6 +49,17 @@ img {
   background: var(--navy);
   z-index: 10;
   border-bottom: 1px solid #0b1220;
+}
+
+/* Pages with a search bar in the header (currently just index.html) keep it reachable while
+   scrolling, since it replaced a bar that used to stay pinned to the top on its own. */
+.site-header.has-search {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.site-header.has-search .brand {
+  flex: 0 0 auto; /* so .header-search's auto margins (not brand growth) absorb the free space and center it */
 }
 
 
@@ -693,15 +702,11 @@ img {
   font-size: 0.9rem;
 }
 
-.global-search-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 40;
-  background: #fdebd3;
-  border-bottom: 1px solid #f2c99c;
-  padding: 8px 16px;
+.header-search {
+  position: relative;
+  flex: 0 1 640px;
+  min-width: 0;
+  margin: 0 auto;
 }
 
 .search-suggestions {
@@ -759,7 +764,7 @@ img {
   min-width: 0;
 }
 
-.global-search-bar input {
+.header-search input {
   width: 100%;
   height: var(--search-bar-height);
   border-radius: 12px;
@@ -1906,6 +1911,64 @@ img {
     flex-wrap: wrap;
   }
 
+  /* Logo + search on one compact row, the menu as its own thin strip below. */
+  .site-header.has-search .nav {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "brand search"
+      "navright navright";
+    align-items: center;
+    row-gap: 8px;
+    column-gap: 12px;
+  }
+  .site-header.has-search .brand {
+    grid-area: brand;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+  }
+  .site-header.has-search .brand-tag {
+    display: none;
+  }
+  .site-header.has-search .brand-logo {
+    width: 110px;
+    height: 36px;
+  }
+  .site-header.has-search .header-search {
+    grid-area: search;
+    flex: 1 1 auto;
+    max-width: none;
+    margin: 0;
+  }
+  .site-header.has-search .nav-right {
+    grid-area: navright;
+    width: 100%;
+    align-items: stretch; /* let .nav-links take the full width below instead of sizing to its own (wider) content */
+  }
+  .site-header.has-search .nav-links {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    justify-content: flex-start;
+    gap: 14px;
+    padding-bottom: 2px;
+  }
+  .site-header.has-search .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+  .site-header.has-search .nav-links .nav-contact {
+    width: auto;
+    flex: 0 0 auto;
+    justify-content: flex-start;
+  }
+  .search-active .site-header.has-search .nav-right {
+    display: none; /* reclaim vertical space for results while actively typing a search */
+  }
+
   .catalog-grid {
     grid-template-columns: 1fr;
   }
@@ -1970,14 +2033,6 @@ img {
 
 .search-active main > section:not(#catalog) {
   display: none;
-}
-
-.search-active .site-header {
-  display: none;
-}
-
-.search-active {
-  padding-top: var(--search-bar-height);
 }
 
 
