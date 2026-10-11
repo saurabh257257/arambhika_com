@@ -9,6 +9,7 @@ import * as zohoAuth from './lib/zoho-oauth.js'
 import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
 import { findRecentSalesOrderByEmail, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
 import * as testStore from './lib/test-store.js'
+import { syncProfileToZoho } from './lib/zoho-contacts.js'
 
 try { process.loadEnvFile() } catch {}
 
@@ -249,7 +250,7 @@ app.get('/api/test-account', testSessionRequired, (req, res) => {
 
 // Only the name is required to save a profile at all — full address is checked separately,
 // only at the moment of actually checking out (see /api/test-checkout below).
-app.post('/api/test-account', express.json(), testSessionRequired, (req, res) => {
+app.post('/api/test-account', express.json(), testSessionRequired, async (req, res) => {
   const { firstName, lastName, email, address, city, state, postalCode } = req.body || {}
   if (!firstName) return res.status(400).json({ error: 'Please enter your name' })
   const profile = testStore.saveProfile({
@@ -262,7 +263,10 @@ app.post('/api/test-account', express.json(), testSessionRequired, (req, res) =>
     state: state || '',
     postalCode: postalCode || '',
   })
-  res.json({ ok: true, profile })
+  // Saved locally first, so a Zoho problem never loses the edit. Then pushed to the Zoho Books /
+  // Inventory contact with the same mobile number (the session cookie is that number).
+  const zoho = await syncProfileToZoho(profile)
+  res.json({ ok: true, profile, zoho })
 })
 
 // Zoho's checkout API rejects the order if last_name or email is blank ("Mandatory field ...

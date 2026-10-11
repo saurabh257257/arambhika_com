@@ -142,7 +142,12 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not save profile");
       profile = data.profile;
-      profileOk.textContent = "Saved.";
+      const results = data.zoho || [];
+      const failed = results.filter((r) => r.status === "error");
+      profileOk.textContent = results.some((r) => r.status === "updated")
+        ? "Saved and synced with your customer record."
+        : "Saved.";
+      if (failed.length) profileError.textContent = "Saved here, but syncing to our records failed. We'll retry on your next save.";
       updateSidebar();
     } catch (err) {
       profileError.textContent = err.message;
