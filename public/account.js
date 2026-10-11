@@ -151,7 +151,7 @@
 
   function renderOrders(orders) {
     if (!orders.length) {
-      ordersList.innerHTML = "<p class='form-note'>No orders yet &mdash; place your first order from the Product Store.</p>";
+      ordersList.innerHTML = "<p class='form-note'>No orders yet &mdash; place your first order from the Store.</p>";
       return;
     }
     ordersList.innerHTML = "";

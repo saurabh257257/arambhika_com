@@ -89,6 +89,9 @@ body {
 .suggestion-item:hover {
   background: #f0f2f2;
 }
+.suggestion-price {
+  color: #b12704;
+}
 
 /* Header tier 2 */
 .site-header {

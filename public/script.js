@@ -814,7 +814,10 @@ const renderCatalog = (categories) => {
         id: card.id,
         key: card.dataset.productCodeKey,
         link: buildProductPageLink(card.dataset.productCode),
-        image: thumbImg ? thumbImg.getAttribute("src") : ""
+        image: thumbImg ? thumbImg.getAttribute("src") : "",
+        price: product.Price || "",
+        unit: product.Unit || "",
+        category: category.name || ""
       });
     }
     cardCount += 1;
@@ -1149,10 +1152,30 @@ const renderSuggestions = (term) => {
       btn.appendChild(thumb);
     }
 
+    const textCol = document.createElement("span");
+    textCol.className = "suggestion-text";
+
     const label = document.createElement("span");
     label.className = "suggestion-label";
     label.textContent = item.code;
-    btn.appendChild(label);
+    textCol.appendChild(label);
+
+    if (item.category) {
+      const category = document.createElement("span");
+      category.className = "suggestion-category";
+      category.textContent = item.category;
+      textCol.appendChild(category);
+    }
+
+    btn.appendChild(textCol);
+
+    if (item.price) {
+      const showUnit = item.unit && !/per\s+/i.test(item.price) && !/\//.test(item.price);
+      const price = document.createElement("span");
+      price.className = "suggestion-price";
+      price.textContent = `${item.price}${showUnit ? `/${item.unit}` : ""}`;
+      btn.appendChild(price);
+    }
 
     btn.addEventListener("click", () => {
       if (item.code) {
