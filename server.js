@@ -236,7 +236,7 @@ function startSession(req, res, mobile) {
 }
 
 app.get('/api/test-auth/config', (req, res) => {
-  res.json({ otp: otp.isConfigured(), otpLength: otp.OTP_LENGTH, testMode: !otp.isConfigured() })
+  res.json({ otp: otp.isConfigured(), otpLength: otp.otpLength(), testMode: !otp.isConfigured() })
 })
 
 app.post('/api/test-auth/send-otp', express.json(), async (req, res) => {
@@ -274,7 +274,7 @@ app.post('/api/test-auth/verify-otp', express.json(), async (req, res) => {
   if (!otp.isConfigured()) {
     if (mobile !== ALLOWED_TEST_MOBILE) return res.status(401).json({ error: 'Login is not switched on yet for this number.' })
   } else {
-    if (code.length !== otp.OTP_LENGTH) return res.status(400).json({ error: `Enter the ${otp.OTP_LENGTH}-digit OTP.` })
+    if (code.length !== otp.otpLength()) return res.status(400).json({ error: `Enter the ${otp.otpLength()}-digit OTP.` })
     if (otp.verifyLocked(mobile)) {
       return res.status(429).json({ error: 'Too many wrong attempts. Please request a new OTP.' })
     }
