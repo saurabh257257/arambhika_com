@@ -7,7 +7,7 @@ import { fetchStorefrontCatalog, fetchImage } from './lib/zoho.js'
 import { buildCatalog } from './lib/catalog.js'
 import * as zohoAuth from './lib/zoho-oauth.js'
 import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
-import { findRecentSalesOrderByEmail, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
+import { listSalesOrdersByEmail, getSalesOrderItems, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
 import * as testStore from './lib/test-store.js'
 import { syncProfileToZoho, fetchProfileFromZoho, clearContactCache } from './lib/zoho-contacts.js'
 
@@ -365,31 +365,68 @@ app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, 
   }
 })
 
-// Called after the customer returns from Zoho's payment page. We don't get a webhook here
-// (that would need its own Zoho setup), so we just check whether a matching Sales Order has
-// shown up yet — true once Zoho has actually processed the payment.
+// There is no payment webhook, so paid orders are found by listing the customer's Zoho sales
+// orders (matched by email) and linking every one not yet on the account:
+//  - to the closest earlier local order still awaiting payment, or
+//  - as a new confirmed order of its own if none is waiting (e.g. paid after the page closed,
+//    or two payments close together), so a paid order can never go missing.
+let lastReconcileAt = 0
+async function reconcileOrders({ force = false } = {}) {
+  const profile = testStore.getProfile()
+  if (!profile?.email) return
+  if (!force && Date.now() - lastReconcileAt < 15000) return
+  lastReconcileAt = Date.now()
+  let rows
+  try { rows = await listSalesOrdersByEmail(profile.email) } catch (err) {
+    console.warn('[orders] could not list Zoho sales orders:', err.message)
+    return
+  }
+  for (const so of rows) {
+    const orders = testStore.getOrders()
+    if (orders.some((o) => o.zohoSalesOrderId === so.salesorder_id)) continue
+    const created = new Date(so.created_time).getTime()
+    const waiting = orders
+      .filter((o) => !o.zohoSalesOrderId && o.status === 'awaiting_payment')
+      .filter((o) => !Number.isFinite(created) || new Date(o.placedAt).getTime() <= created + 60000)
+      .sort((a, b) => new Date(b.placedAt) - new Date(a.placedAt))[0]
+    const link = {
+      status: 'confirmed',
+      zohoSalesOrderId: so.salesorder_id,
+      zohoSalesOrderNumber: so.salesorder_number,
+      total: so.total,
+    }
+    if (waiting) {
+      testStore.updateOrder(waiting.id, link)
+    } else {
+      let items = []
+      try { items = await getSalesOrderItems(so.salesorder_id) } catch {}
+      testStore.addOrder({
+        id: `zoho_${so.salesorder_id}`,
+        placedAt: so.created_time || new Date().toISOString(),
+        items,
+        ...link,
+      })
+    }
+  }
+}
+
+// Called by the payment screen while it waits for the customer to finish paying.
 app.post('/api/test-orders/:id/confirm-payment', testSessionRequired, async (req, res) => {
   const order = testStore.getOrders().find((o) => o.id === req.params.id)
   if (!order) return res.status(404).json({ error: 'Order not found' })
-  const profile = testStore.getProfile()
   try {
-    const salesOrder = await findRecentSalesOrderByEmail(profile.email, 30)
-    if (!salesOrder) {
-      return res.json({ ok: false, message: "Zoho hasn't shown a confirmed order yet. If you completed payment, wait a moment and check again." })
-    }
-    testStore.updateOrder(order.id, {
-      status: 'confirmed',
-      zohoSalesOrderId: salesOrder.salesorder_id,
-      zohoSalesOrderNumber: salesOrder.salesorder_number,
-    })
-    res.json({ ok: true, salesOrderNumber: salesOrder.salesorder_number })
+    await reconcileOrders({ force: true })
+    const now = testStore.getOrders().find((o) => o.id === order.id)
+    if (now?.zohoSalesOrderNumber) return res.json({ ok: true, salesOrderNumber: now.zohoSalesOrderNumber })
+    res.json({ ok: false, message: 'Waiting for your payment to reach Zoho…' })
   } catch (err) {
     res.status(502).json({ error: err.message })
   }
 })
 
 app.get('/api/test-orders', testSessionRequired, async (req, res) => {
-  const orders = testStore.getOrders()
+  await reconcileOrders()
+  const orders = [...testStore.getOrders()].sort((a, b) => new Date(b.placedAt) - new Date(a.placedAt))
   const enriched = await Promise.all(orders.map(async (o) => {
     if (!o.zohoSalesOrderId) return o
     try {

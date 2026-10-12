@@ -98,14 +98,43 @@
     });
   }
 
+  // Once the payment tab is open, keep checking in the background (every 5s, and straight away
+  // when the customer comes back to this tab) so the confirmation appears on this same screen
+  // without having to press anything.
+  let payPoll = null;
+  function stopPaymentPolling() { if (payPoll) { clearInterval(payPoll.timer); payPoll = null; } }
+  function startPaymentPolling(orderId) {
+    stopPaymentPolling();
+    let tries = 0;
+    const check = async () => {
+      if (!payPoll || payPoll.busy) return;
+      payPoll.busy = true;
+      try {
+        const res = await fetch(`/api/test-orders/${orderId}/confirm-payment`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (data.ok) {
+          stopPaymentPolling();
+          if (typeof clearOrder === "function") clearOrder();
+          setProceedNote(`Payment received. Order ${data.salesOrderNumber} is confirmed.`);
+          return;
+        }
+      } catch {}
+      if (payPoll) payPoll.busy = false;
+      if (++tries >= 120) stopPaymentPolling(); // gives up after ~10 minutes; the button still works
+    };
+    payPoll = { timer: setInterval(check, 5000), busy: false, check };
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && payPoll) payPoll.check(); });
+
   async function confirmPayment(orderId, paymentUrl, total) {
     setProceedNote("Checking with Zoho…");
     try {
       const res = await fetch(`/api/test-orders/${orderId}/confirm-payment`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (data.ok) {
+        stopPaymentPolling();
         if (typeof clearOrder === "function") clearOrder();
-        setProceedNote(`Order placed: ${data.salesOrderNumber}`);
+        setProceedNote(`Payment received. Order ${data.salesOrderNumber} is confirmed.`);
       } else {
         showPaymentStep(orderId, paymentUrl, total, data.message || data.error || "Not confirmed yet — pay first, then check again.");
       }
@@ -368,7 +397,8 @@
       // Opens Zoho's real payment page automatically; the customer also gets a "Pay Now" link
       // in case the popup was blocked.
       window.open(data.paymentUrl, "_blank", "noopener");
-      showPaymentStep(data.orderId, data.paymentUrl, data.total, "A payment tab has opened. Complete payment there, then come back and click below.");
+      showPaymentStep(data.orderId, data.paymentUrl, data.total, "A payment tab has opened. Complete payment there; this page confirms your order automatically.");
+      startPaymentPolling(data.orderId);
     } catch (err) {
       setProceedNote(err.message);
     } finally {
