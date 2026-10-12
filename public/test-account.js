@@ -326,7 +326,13 @@
   }
 
   // ---- The single "Proceed" entry point ----
-  function onProceedClick() {
+  // Resolves once the login check on page load has finished. Without waiting for it, a quick
+  // click on Proceed could run before we knew the customer was already logged in and ask them
+  // to log in again.
+  let sessionReady = Promise.resolve();
+
+  async function onProceedClick() {
+    await sessionReady;
     const order = typeof getOrder === "function" ? getOrder() : {};
     if (!Object.keys(order).length) {
       setProceedNote("Add at least one item to your quote first.");
@@ -377,6 +383,14 @@
         body: JSON.stringify({ items }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        // The login really has lapsed (expired or logged out elsewhere): ask once, then carry on.
+        session = { loggedIn: false, mobile: "" };
+        updateHeaderAndProceed();
+        resumeProceedAfterLogin = true;
+        openModal("login");
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "Could not place your order");
       // Opens Zoho's real payment page automatically; the customer also gets a "Pay Now" link
       // in case the popup was blocked.
@@ -390,5 +404,5 @@
     }
   }
 
-  loadSession();
+  sessionReady = loadSession();
 })();
