@@ -91,12 +91,16 @@
     switchTab(requestedTab || "dashboard");
   }
 
-  async function loadProfile() {
+  async function loadProfile({ silent = false } = {}) {
     try {
       const data = await fetch("/api/test-account").then((r) => r.json());
-      profile = data.profile || null;
-      if (profile) fillProfileForm(profile);
-    } catch { profile = null; }
+      const next = data.profile || null;
+      if (silent && JSON.stringify(next) === JSON.stringify(profile)) return;
+      profile = next;
+      // Don't overwrite fields while the customer is typing in the profile form.
+      if (profile && !(silent && profileForm.contains(document.activeElement))) fillProfileForm(profile);
+      if (silent) updateSidebar();
+    } catch { if (!silent) profile = null; }
   }
 
   async function doLogin() {
@@ -178,21 +182,36 @@
     return order.status !== "failed"; // "active" (default): confirmed + pending, hides failed
   }
 
-  async function loadOrders() {
-    ordersList.innerHTML = "<p class='form-note'>Loading&hellip;</p>";
+  // Cards the customer has opened, so a background refresh doesn't snap them shut.
+  const openOrderIds = (container) =>
+    new Set([...container.querySelectorAll(".acct-order-card2.is-open")].map((c) => c.dataset.orderId));
+  const reopenOrders = (container, ids) => {
+    container.querySelectorAll(".acct-order-card2").forEach((c) => {
+      if (ids.has(c.dataset.orderId)) c.querySelector(".acct-order-head2")?.click();
+    });
+  };
+  let lastOrdersSig = "";
+
+  async function loadOrders({ silent = false } = {}) {
+    if (!silent) ordersList.innerHTML = "<p class='form-note'>Loading&hellip;</p>";
     try {
       const res = await fetch("/api/test-orders");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not load orders");
       ordersLoadedOnce = true;
+      const sig = JSON.stringify(data.orders || []);
+      if (silent && sig === lastOrdersSig) return;
+      lastOrdersSig = sig;
+      const open = silent ? openOrderIds(ordersList) : new Set();
       allOrders = data.orders || [];
       renderOrders();
+      reopenOrders(ordersList, open);
       updateDashboardStats();
     } catch (err) {
-      ordersList.innerHTML = `<p class="acct-error">${err.message}</p>`;
+      if (!silent) ordersList.innerHTML = `<p class="acct-error">${err.message}</p>`;
     }
   }
-  refreshBtn.addEventListener("click", loadOrders);
+  refreshBtn.addEventListener("click", () => loadOrders());
 
   function updateDashboardStats() {
     if (!statTotal) return;
@@ -249,25 +268,31 @@
     filtered.forEach((o) => ordersList.appendChild(buildOrderCard(o)));
   }
 
-  async function loadInvoices() {
-    invoicesList.innerHTML = "<p class='form-note'>Loading&hellip;</p>";
+  let lastInvoicesSig = "";
+  async function loadInvoices({ silent = false } = {}) {
+    if (!silent) invoicesList.innerHTML = "<p class='form-note'>Loading&hellip;</p>";
     try {
       const res = await fetch("/api/test-orders");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not load transaction history");
       invoicesLoadedOnce = true;
       const withInvoice = (data.orders || []).filter((o) => o.zohoSalesOrderNumber);
+      const sig = JSON.stringify(withInvoice);
+      if (silent && sig === lastInvoicesSig) return;
+      lastInvoicesSig = sig;
+      const open = silent ? openOrderIds(invoicesList) : new Set();
       if (!withInvoice.length) {
         invoicesList.innerHTML = "<p class='form-note'>No completed transactions yet &mdash; this fills in once an order is paid for.</p>";
         return;
       }
       invoicesList.innerHTML = "";
       withInvoice.forEach((o) => invoicesList.appendChild(buildOrderCard(o)));
+      reopenOrders(invoicesList, open);
     } catch (err) {
-      invoicesList.innerHTML = `<p class="acct-error">${err.message}</p>`;
+      if (!silent) invoicesList.innerHTML = `<p class="acct-error">${err.message}</p>`;
     }
   }
-  refreshInvoicesBtn.addEventListener("click", loadInvoices);
+  refreshInvoicesBtn.addEventListener("click", () => loadInvoices());
 
   // A simple 4-stage progress tracker built from what Zoho actually reports for a sales
   // order: our own local status (confirmed once payment clears) plus Zoho's live
@@ -302,6 +327,7 @@
   function buildOrderCard(o) {
     const card = document.createElement("div");
     card.className = "acct-order-card2";
+    card.dataset.orderId = o.id;
     const live = o.live;
     const statusLabel = live?.status || o.status;
     const itemCount = (o.items || []).reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
@@ -398,6 +424,17 @@
     `;
     return wrap;
   }
+
+  // Everything on this page refreshes itself every 30s while it is visible and logged in, so
+  // changes made in Zoho (profile, order status, invoices) appear without a manual reload.
+  async function refreshAll() {
+    if (document.hidden || !session.loggedIn) return;
+    await loadProfile({ silent: true });
+    loadOrders({ silent: true });
+    if (invoicesLoadedOnce) loadInvoices({ silent: true });
+  }
+  setInterval(refreshAll, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshAll(); });
 
   loadSession();
 })();

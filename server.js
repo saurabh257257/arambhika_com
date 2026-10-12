@@ -9,7 +9,7 @@ import * as zohoAuth from './lib/zoho-oauth.js'
 import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
 import { findRecentSalesOrderByEmail, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
 import * as testStore from './lib/test-store.js'
-import { syncProfileToZoho } from './lib/zoho-contacts.js'
+import { syncProfileToZoho, fetchProfileFromZoho, clearContactCache } from './lib/zoho-contacts.js'
 
 try { process.loadEnvFile() } catch {}
 
@@ -244,8 +244,33 @@ app.post('/api/test-auth/logout', (req, res) => {
   res.json({ ok: true })
 })
 
-app.get('/api/test-account', testSessionRequired, (req, res) => {
-  res.json({ profile: testStore.getProfile() })
+const SYNCED_FIELDS = ['firstName', 'lastName', 'email', 'address', 'city', 'state', 'postalCode']
+
+// The page polls this every 30s. Zoho -> website: if the matched Zoho contact now differs from
+// what we last pushed/read (zohoSnapshot), a change was made in Zoho and non-empty values are
+// adopted into the profile. The first read only records a baseline so nothing is overwritten.
+app.get('/api/test-account', testSessionRequired, async (req, res) => {
+  let profile = testStore.getProfile()
+  if (profile?.zohoContacts && Object.keys(profile.zohoContacts).length) {
+    const remote = await fetchProfileFromZoho(profile.zohoContacts, ALLOWED_TEST_MOBILE)
+    if (remote) {
+      const snap = profile.zohoSnapshot
+      const next = { ...profile }
+      const nextSnap = { ...(snap || {}) }
+      let changed = !snap
+      for (const f of SYNCED_FIELDS) {
+        if (!remote[f]) continue // empty in Zoho never blanks what the customer has
+        if (snap && remote[f] !== snap[f]) {
+          next[f] = remote[f] // edited in Zoho since we last looked
+          changed = true
+        }
+        nextSnap[f] = remote[f]
+      }
+      next.zohoSnapshot = nextSnap
+      if (changed) profile = testStore.saveProfile(next)
+    }
+  }
+  res.json({ profile })
 })
 
 // Only the name is required to save a profile at all — full address is checked separately,
@@ -254,6 +279,7 @@ app.post('/api/test-account', express.json(), testSessionRequired, async (req, r
   const { firstName, lastName, email, address, city, state, postalCode } = req.body || {}
   if (!firstName) return res.status(400).json({ error: 'Please enter your name' })
   const known = testStore.getProfile()?.zohoContacts || {}
+  const prevSnapshot = testStore.getProfile()?.zohoSnapshot || {}
   const profile = testStore.saveProfile({
     zohoContacts: known,
     firstName,
@@ -271,7 +297,16 @@ app.post('/api/test-account', express.json(), testSessionRequired, async (req, r
   // Remember which Zoho contact was matched, so later saves keep updating that same one.
   const zohoContacts = { ...known }
   for (const r of zoho) if (r.status === 'updated') zohoContacts[r.key] = r.contactId
-  const saved = testStore.saveProfile({ ...profile, zohoContacts })
+  // Record what Zoho now holds, so the next poll doesn't mistake our own push for a Zoho-side edit.
+  const zohoSnapshot = { ...prevSnapshot }
+  if (zoho.some((r) => r.status === 'updated')) {
+    for (const f of ['firstName', 'lastName', 'email']) zohoSnapshot[f] = profile[f]
+    if (profile.address && profile.city && profile.state && profile.postalCode) {
+      for (const f of ['address', 'city', 'state', 'postalCode']) zohoSnapshot[f] = profile[f]
+    }
+  }
+  clearContactCache()
+  const saved = testStore.saveProfile({ ...profile, zohoContacts, zohoSnapshot })
   res.json({ ok: true, profile: saved, zoho })
 })
 
