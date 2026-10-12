@@ -2,6 +2,8 @@
 
 import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import path from 'node:path'
 import { startApp } from '../test-helpers/server.js'
 
 describe('production server', () => {
@@ -68,8 +70,6 @@ describe('dev (non-production) server', () => {
 })
 
 describe('retired domain notice page', () => {
-  const fs = await import('node:fs')
-  const path = await import('node:path')
   const page = fs.readFileSync(path.join(import.meta.dirname, '..', 'deploy', 'old-domain', 'index.html'), 'utf8')
 
   test('tells visitors to go to www.arambhika.com and links there', () => {
