@@ -1320,3 +1320,20 @@ body.acct-fixed-layout .acct-card {
   body.acct-fixed-layout .acct-quick-card { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; }
   body.acct-fixed-layout .acct-quick-sub { display: none; }
 }
+
+/* Dashboard tiles are buttons that open the matching list. Three tiles, one row. */
+body.acct-fixed-layout .acct-stat-grid { grid-template-columns: repeat(3, 1fr); }
+button.acct-stat-card {
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+button.acct-stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1); }
+button.acct-stat-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 480px) {
+  body.acct-fixed-layout .acct-stat-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  body.acct-fixed-layout .acct-stat-card { padding: 12px 10px; }
+  body.acct-fixed-layout .acct-stat-label { font-size: 0.7rem; }
+}

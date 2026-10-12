@@ -59,7 +59,10 @@
   }
   tabBtns.forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
   document.querySelectorAll("[data-goto]").forEach((el) => {
-    el.addEventListener("click", () => switchTab(el.dataset.goto));
+    el.addEventListener("click", () => {
+      if (el.dataset.filter) setOrderFilter(el.dataset.filter);
+      switchTab(el.dataset.goto);
+    });
   });
 
   function fillProfileForm(p) {
@@ -214,8 +217,7 @@
   refreshBtn.addEventListener("click", () => loadOrders());
 
   function updateDashboardStats() {
-    if (!statTotal) return;
-    statTotal.textContent = String(allOrders.length);
+    if (!statConfirmed) return;
     statPending.textContent = String(allOrders.filter((o) => o.status === "awaiting_payment").length);
     statConfirmed.textContent = String(allOrders.filter((o) => o.status === "confirmed").length);
     statInvoices.textContent = String(allOrders.filter((o) => o.zohoSalesOrderNumber).length);
@@ -253,6 +255,12 @@
       renderOrders();
     });
   });
+
+  function setOrderFilter(filter) {
+    orderFilter = filter;
+    orderFilters?.querySelectorAll(".acct-chip").forEach((c) => c.classList.toggle("is-active", c.dataset.filter === filter));
+    renderOrders();
+  }
 
   function renderOrders() {
     const filtered = allOrders.filter((o) => matchesOrderFilter(o, orderFilter));
