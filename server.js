@@ -1,4 +1,5 @@
 import express from 'express'
+import dns from 'node:dns'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,6 +15,10 @@ import { signSession, readSession, SESSION_COOKIE, SESSION_DAYS } from './lib/se
 import { syncProfileToZoho, fetchProfileFromZoho, clearContactCache } from './lib/zoho-contacts.js'
 
 try { process.loadEnvFile() } catch {}
+
+// MSG91 only accepts calls from the whitelisted IPv4 address. Node prefers IPv6 when the host has
+// one, which MSG91 then rejects ("IP is not whitelisted"), so resolve IPv4 first.
+dns.setDefaultResultOrder('ipv4first')
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC_DIR = path.join(ROOT, 'public')
@@ -253,7 +258,9 @@ app.post('/api/test-auth/send-otp', express.json(), async (req, res) => {
   const blocked = otp.checkSendAllowed(mobile, req.ip)
   if (blocked) return res.status(429).json({ error: blocked })
   try {
-    const r = req.body?.resend ? await otp.resendOtp(mobile) : await otp.sendOtp(mobile)
+    let r = req.body?.resend ? await otp.resendOtp(mobile) : await otp.sendOtp(mobile)
+    // MSG91 can only retry a code it still has on record; otherwise just send a fresh one.
+    if (!r.ok && req.body?.resend) r = await otp.sendOtp(mobile)
     if (!r.ok) {
       console.warn('[otp] send failed:', r.message)
       return res.status(502).json({ error: 'Could not send the OTP right now. Please try again in a moment.' })
