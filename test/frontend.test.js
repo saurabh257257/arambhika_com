@@ -134,6 +134,67 @@ describe('customer flow markup', () => {
     assert.match(js, /checkout"\) === "1"/, 'arriving from My Account with a basket must carry on')
   })
 
+  test('every page header offers only Store and the account icon', () => {
+    const withNav = htmlPages.filter((p) => /<nav class="nav-links">/.test(read(p)))
+    assert.ok(withNav.length >= 12, `expected the site pages, found ${withNav.length}`)
+    for (const page of withNav) {
+      const nav = read(page).match(/<nav class="nav-links">([\s\S]*?)<\/nav>/)[1]
+      const links = [...nav.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1])
+      assert.equal(links.length, 2, `${page} header has ${links.length} links: ${links.join(', ')}`)
+      assert.match(links[0], /#catalog$/)
+      assert.match(links[1], /account\.html$/)
+      assert.doesNotMatch(nav, /nav-dropdown|nav-contact|navHome/, `${page} still has the old header items`)
+    }
+  })
+
+  test('the pages that were in the More menu are linked from every footer', () => {
+    const wanted = ['/blog/', '/catalog.html?autoprint=1', '/capabilities.html', '/about.html', '/terms.html', '/refund-policy.html']
+    const withFooter = htmlPages.filter((p) => /<footer class="site-footer">/.test(read(p)))
+    assert.ok(withFooter.length >= 12)
+    for (const page of withFooter) {
+      const html = read(page)
+      assert.match(html, /class="footer-links"/, `${page} footer has no link row`)
+      for (const href of wanted) assert.ok(html.includes(`href="${href}"`), `${page} footer is missing ${href}`)
+    }
+  })
+
+  test('the store page uses the slide-over cart', () => {
+    const html = read('index.html')
+    assert.match(html, /<script src="cart-drawer\.js"><\/script>/)
+    assert.ok(html.indexOf('script.js') < html.indexOf('cart-drawer.js'), 'drawer needs script.js first')
+    const drawer = read('cart-drawer.js')
+    assert.match(drawer, /cart:added/)
+    assert.match(drawer, /checkout\.html/)
+    assert.match(drawer, /window\.openCartDrawer\s*=/)
+    const store = read('script.js')
+    assert.match(store, /new CustomEvent\("cart:added"/)
+    assert.match(store, /new CustomEvent\("cart:changed"/)
+    assert.match(store, /window\.openCartDrawer/, 'the old quote sheet must hand over to the drawer')
+  })
+
+  test('checkout page: three steps, summary, login, wizard and payment confirmation', () => {
+    const html = read('checkout.html')
+    for (const id of ['ckStepAccount', 'ckStepDelivery', 'ckStepPay', 'ckSummaryBody', 'ckEmpty', 'ckDone']) {
+      assert.match(html, new RegExp(`id="${id}"`), `checkout.html is missing #${id}`)
+    }
+    assert.match(html, /noindex/)
+    const order = ['otp-login.js', 'profile-wizard.js', 'checkout.js'].map((s) => html.indexOf(s))
+    assert.ok(order.every((i) => i > -1) && order[0] < order[2] && order[1] < order[2])
+    const js = read('checkout.js')
+    assert.match(js, /\/api\/test-checkout/)
+    assert.match(js, /confirm-payment/)
+    assert.match(js, /PROFILE_INCOMPLETE/)
+    assert.match(js, /initProfileWizard\(/)
+    assert.match(js, /initOtpLogin\(/)
+  })
+
+  test('My Account has a way back to the store and shows a waiting basket', () => {
+    const html = read('account.html')
+    assert.match(html, /id="acctShopLink"/)
+    assert.match(html, /id="acctCartBanner"[^>]*href="checkout\.html"/)
+    assert.match(read('account.js'), /\/api\/test-cart/)
+  })
+
   test('the old client-side address rule is gone (the server decides)', () => {
     assert.doesNotMatch(read('test-account.js'), /profileAddressIsComplete/)
     assert.doesNotMatch(read('account.js'), /fillProfileForm/)

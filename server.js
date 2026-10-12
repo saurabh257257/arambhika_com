@@ -384,7 +384,13 @@ app.post('/api/test-account', express.json(), testSessionRequired, async (req, r
 
   const firstName = pick('firstName')
   if (!firstName) return res.status(400).json({ error: 'Please enter your first name', field: 'firstName' })
+  // Last name is only demanded once a customer sets up their details (the sign-up wizard sends it
+  // together with the email); older saves and Zoho-driven updates may not carry it yet.
+  if (body.lastName !== undefined && !String(body.lastName).trim()) {
+    return res.status(400).json({ error: 'Please enter your last name', field: 'lastName' })
+  }
 
+  const lastName = pick('lastName')
   const email = pick('email')
   if (email && !isValidEmail(email)) return res.status(400).json({ error: 'Please enter a valid email address', field: 'email' })
 
@@ -433,7 +439,7 @@ app.post('/api/test-account', express.json(), testSessionRequired, async (req, r
     zohoContacts: known,
     zohoSnapshot: prevSnapshot,
     firstName,
-    lastName: pick('lastName'),
+    lastName,
     email,
     phone: req.mobile,
     address: pick('address'),
@@ -502,8 +508,7 @@ app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, 
     // Gets the cart through address + shipping and hands back Zoho's real payment page
     // (Razorpay, configured in Zoho Commerce). Zoho creates the Sales Order itself only once
     // the customer actually pays there — see /api/test-orders/:id/confirm-payment below.
-    // Zoho's checkout rejects a blank last name, and last name is optional for customers here.
-    const result = await placeOrder({ items, customer: { ...profile, lastName: profile.lastName || '-' } })
+    const result = await placeOrder({ items, customer: profile })
     testStore.updateOrder(req.mobile, localOrder.id, { total: result.total })
     res.json({ ok: true, orderId: localOrder.id, paymentUrl: result.paymentUrl, total: result.total })
   } catch (err) {

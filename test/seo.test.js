@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 const PUBLIC = path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'public')
 
 // Pages that are private by design: must be noindex and must not appear in the sitemap.
-const PRIVATE_PAGES = new Set(['account.html', 'admin.html', 'pi.html', 'completed.html', 'catalogdownload.html'])
+const PRIVATE_PAGES = new Set(['account.html', 'checkout.html', 'admin.html', 'pi.html', 'completed.html', 'catalogdownload.html'])
 
 function htmlFiles(dir = PUBLIC, base = '') {
   const out = []

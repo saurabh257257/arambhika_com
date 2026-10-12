@@ -103,7 +103,7 @@
     const detailsFields = () => [
       el("div", { class: "wiz-grid" },
         field("First name", "firstName", { required: true, autocomplete: "given-name" }),
-        field("Last name", "lastName", { autocomplete: "family-name" }),
+        field("Last name", "lastName", { required: true, autocomplete: "family-name" }),
         field("Email", "email", { required: true, type: "email", autocomplete: "email", span: true, hint: "Order updates and invoices are sent here." }),
         field("Mobile number", "phone", { disabled: true, span: true, hint: "Verified by OTP." })),
     ];
@@ -194,6 +194,7 @@
       const need = (key, message) => { if (!String(value(key) ?? "").trim()) { showError(key, message); ok = false; } };
       if (stepIds.includes("details")) {
         need("firstName", "Please enter your first name.");
+        need("lastName", "Please enter your last name.");
         if (!String(value("email")).trim()) { showError("email", "Please enter your email."); ok = false; }
         else if (!EMAIL_RE.test(String(value("email")).trim())) { showError("email", "That email address does not look right."); ok = false; }
       }

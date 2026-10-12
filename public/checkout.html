@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Checkout | Arambhika</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="_theme_overrides.css" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+</head>
+<body class="ck-page">
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand brand-block">
+        <a href="/" aria-label="Arambhika home"><img class="brand-logo" src="assets/logo.png" alt="Arambhika logo" /></a>
+        <p class="brand-tag">EV Battery Component Manufacturer</p>
+      </div>
+      <div class="nav-right">
+        <nav class="nav-links">
+          <a href="index.html#catalog" id="navCatalog">Store</a>
+          <a href="/account.html" class="nav-login-btn" id="testAcctBtn" aria-label="Account" title="Account">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span class="nav-login-name" id="testAcctName"></span>
+          </a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="ck-main">
+    <div class="container">
+      <h1 class="ck-h1">Checkout</h1>
+
+      <div id="ckEmpty" class="ck-empty" hidden>
+        <div class="ck-empty-icon" aria-hidden="true">🛒</div>
+        <h2>Your cart is empty</h2>
+        <p>Add products from the store and come back here to pay.</p>
+        <a class="ck-btn ck-btn-primary" href="index.html#catalog">Browse products</a>
+      </div>
+
+      <div id="ckLayout" class="ck-layout" hidden>
+        <section class="ck-steps" aria-label="Checkout steps">
+          <article class="ck-card" id="ckStepAccount" data-state="current">
+            <header class="ck-card-head"><span class="ck-num">1</span><h2>Your account</h2></header>
+            <div class="ck-card-body" id="ckAccountBody"></div>
+          </article>
+
+          <article class="ck-card" id="ckStepDelivery" data-state="locked">
+            <header class="ck-card-head"><span class="ck-num">2</span><h2>Delivery details</h2></header>
+            <div class="ck-card-body" id="ckDeliveryBody"></div>
+          </article>
+
+          <article class="ck-card" id="ckStepPay" data-state="locked">
+            <header class="ck-card-head"><span class="ck-num">3</span><h2>Payment</h2></header>
+            <div class="ck-card-body" id="ckPayBody"></div>
+          </article>
+        </section>
+
+        <aside class="ck-summary" aria-label="Order summary">
+          <button type="button" class="ck-summary-toggle" id="ckSummaryToggle" aria-expanded="false">
+            <span>Order summary</span><strong id="ckSummaryTotal"></strong>
+          </button>
+          <div class="ck-summary-body" id="ckSummaryBody"></div>
+        </aside>
+      </div>
+
+      <div id="ckDone" class="ck-done" hidden></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-links-wrap">
+      <nav class="footer-links" aria-label="More">
+        <a href="/blog/">Blog</a>
+        <a href="/catalog.html?autoprint=1">Download Catalog</a>
+        <a href="/capabilities.html">Our Capabilities</a>
+        <a href="/about.html">About &amp; Contact</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/refund-policy.html">Refund Policy</a>
+        <a href="https://wa.me/919315545821" target="_blank" rel="noopener">WhatsApp</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="otp-login.js"></script>
+  <script src="profile-wizard.js"></script>
+  <script src="header-session.js"></script>
+  <script src="checkout.js"></script>
+</body>
+</html>

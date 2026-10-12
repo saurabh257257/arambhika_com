@@ -21,23 +21,10 @@
       </div>
       <div class="nav-right">
         <nav class="nav-links">
-          <a href="index.html#home" id="navHome">Home</a>
           <a href="index.html#catalog" id="navCatalog">Store</a>
-          <div class="nav-dropdown">
-            <button type="button" class="nav-dropdown-toggle">
-              More
-              <svg class="nav-dropdown-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-            <div class="nav-dropdown-menu">
-              <a href="/blog/" id="navBlog">Blog</a>
-              <a href="catalog.html?autoprint=1">Download Catalog</a>
-              <a href="capabilities.html" id="navCapabilities">Our Capabilities</a>
-              <a href="about.html" id="navAbout">About & Contact</a>
-            </div>
-          </div>
-          <a href="account.html" class="nav-login-btn is-logged-in" aria-current="page" title="My Account">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            <span class="nav-login-name">My Account</span>
+          <a href="/account.html" class="nav-login-btn" id="testAcctBtn" aria-label="Account" title="Account" aria-current="page">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span class="nav-login-name" id="testAcctName"></span>
           </a>
         </nav>
       </div>
@@ -83,6 +70,7 @@
                 Transaction History
               </button>
             </nav>
+            <a href="index.html#catalog" class="acct-shop-link" id="acctShopLink">&larr; Continue shopping</a>
             <button type="button" class="acct-logout-btn" id="acctLogoutBtn">Log out</button>
           </div>
 
@@ -92,6 +80,10 @@
                   <h1 id="acctDashGreeting">Dashboard</h1>
                   <p class="form-note">Tap a tile to see the details.</p>
                 </div>
+                <a class="acct-cart-banner" id="acctCartBanner" href="checkout.html" hidden>
+                  <span id="acctCartBannerText">You have items in your cart</span>
+                  <span>Checkout &rarr;</span>
+                </a>
                 <div class="acct-complete-banner" id="acctCompleteBanner" hidden>
                   <div class="acct-complete-text">
                     <strong>Finish setting up your account</strong>
@@ -161,6 +153,17 @@
   </main>
 
   <footer class="site-footer">
+    <div class="container footer-links-wrap">
+      <nav class="footer-links" aria-label="More">
+        <a href="/blog/">Blog</a>
+        <a href="/catalog.html?autoprint=1">Download Catalog</a>
+        <a href="/capabilities.html">Our Capabilities</a>
+        <a href="/about.html">About &amp; Contact</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/refund-policy.html">Refund Policy</a>
+        <a href="https://wa.me/919315545821" target="_blank" rel="noopener">WhatsApp</a>
+      </nav>
+    </div>
     <div class="container footer-grid">
       <div>
         <p class="footer-title">Sales Office</p>

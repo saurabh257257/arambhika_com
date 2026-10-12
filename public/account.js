@@ -33,6 +33,8 @@
   const completeSub = document.getElementById("acctCompleteSub");
   const completeBtn = document.getElementById("acctCompleteBtn");
   const profileWizardRoot = document.getElementById("acctProfileWizard");
+  const cartBanner = document.getElementById("acctCartBanner");
+  const cartBannerText = document.getElementById("acctCartBannerText");
   let profileStatus = null;
   let editWizard = null;   // the "form" version in the Profile tab
   let signupWizard = null; // the step-by-step version in the overlay
@@ -102,11 +104,23 @@
       profileStatus = nextStatus;
       updateSidebar();
       updateCompleteBanner();
+      updateCartBanner();
       if (silent && editWizard) editWizard.reload();
     } catch { if (!silent) { profile = null; profileStatus = null; } }
   }
 
   // ---- first sign-up: a guided, step-by-step set-up -------------------------------------------
+  // A basket that is waiting (kept on the server for logged-in customers) is one tap from checkout.
+  async function updateCartBanner() {
+    if (!cartBanner) return;
+    try {
+      const saved = await fetch("/api/test-cart").then((r) => r.json());
+      const count = Object.keys(saved.cart || {}).length;
+      cartBanner.hidden = count === 0;
+      if (count) cartBannerText.textContent = `You have ${count} item${count === 1 ? "" : "s"} in your cart`;
+    } catch { cartBanner.hidden = true; }
+  }
+
   function updateCompleteBanner() {
     if (!completeBanner) return;
     const incomplete = profileStatus && !profileStatus.complete;
@@ -133,7 +147,7 @@
           const saved = await fetch("/api/test-cart").then((r) => r.json());
           hasItems = Object.keys(saved.cart || {}).length > 0;
         } catch {}
-        if (hasItems) { location.href = "index.html?checkout=1"; return; }
+        if (hasItems) { location.href = "checkout.html"; return; }
         switchTab("dashboard");
       },
     });

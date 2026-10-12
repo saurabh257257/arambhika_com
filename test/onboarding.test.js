@@ -16,18 +16,21 @@ describe('profileStatus (progress and what blocks an order)', () => {
     assert.equal(s.percent, 25)
     assert.equal(s.complete, false)
     assert.equal(s.nextStep, 'details')
-    assert.deepEqual(s.missing, ['firstName', 'email', 'address', 'state', 'city', 'postalCode'])
+    assert.deepEqual(s.missing, ['firstName', 'lastName', 'email', 'address', 'state', 'city', 'postalCode'])
   })
 
-  test('last name is optional', () => {
-    const s = profileStatus({ firstName: 'Asha', email: 'asha@example.com' })
-    assert.equal(s.steps.find((x) => x.id === 'details').done, true)
-    assert.equal(s.percent, 50)
+  test('first name, last name and email are all required for the details step', () => {
+    const noLast = profileStatus({ firstName: 'Asha', email: 'asha@example.com' })
+    assert.equal(noLast.steps.find((x) => x.id === 'details').done, false)
+    assert.ok(noLast.missing.includes('lastName'))
+    const all = profileStatus({ firstName: 'Asha', lastName: 'Rao', email: 'asha@example.com' })
+    assert.equal(all.steps.find((x) => x.id === 'details').done, true)
+    assert.equal(all.percent, 50)
   })
 
   test('details and address together allow ordering, at 75% until GST is answered', () => {
     const s = profileStatus({
-      firstName: 'Asha', email: 'asha@example.com',
+      firstName: 'Asha', lastName: 'Rao', email: 'asha@example.com',
       address: '1 Test Road', city: 'Noida', state: 'Uttar Pradesh', postalCode: '201301',
     })
     assert.equal(s.complete, true)
@@ -37,7 +40,7 @@ describe('profileStatus (progress and what blocks an order)', () => {
 
   test('answering "no GST" completes the profile at 100%', () => {
     const s = profileStatus({
-      firstName: 'Asha', email: 'asha@example.com', hasGst: false,
+      firstName: 'Asha', lastName: 'Rao', email: 'asha@example.com', hasGst: false,
       address: '1 Test Road', city: 'Noida', state: 'Uttar Pradesh', postalCode: '201301',
     })
     assert.equal(s.percent, 100)
@@ -46,7 +49,7 @@ describe('profileStatus (progress and what blocks an order)', () => {
 
   test('ticking "I have GST" without a verified number blocks ordering', () => {
     const s = profileStatus({
-      firstName: 'Asha', email: 'asha@example.com', hasGst: true,
+      firstName: 'Asha', lastName: 'Rao', email: 'asha@example.com', hasGst: true,
       address: '1 Test Road', city: 'Noida', state: 'Uttar Pradesh', postalCode: '201301',
     })
     assert.equal(s.complete, false)
@@ -54,7 +57,7 @@ describe('profileStatus (progress and what blocks an order)', () => {
   })
 
   test('a state that is not on the list does not count as an address', () => {
-    const s = profileStatus({ firstName: 'A', email: 'a@b.co', address: 'x', city: 'y', state: 'Narnia', postalCode: '201301' })
+    const s = profileStatus({ firstName: 'A', lastName: 'B', email: 'a@b.co', address: 'x', city: 'y', state: 'Narnia', postalCode: '201301' })
     assert.equal(s.complete, false)
     assert.ok(s.missing.includes('state'))
   })
@@ -151,7 +154,7 @@ describe('sign-up API', () => {
   after(async () => { await app.stop(); await msg91.close() })
 
   const full = {
-    firstName: 'Asha', lastName: '', email: 'asha@example.com',
+    firstName: 'Asha', lastName: 'Rao', email: 'asha@example.com',
     address: '12 Park Street', city: 'Noida', state: 'Uttar Pradesh', postalCode: '201301',
   }
 
@@ -169,7 +172,7 @@ describe('sign-up API', () => {
   })
 
   test('step 2 saves on its own and moves progress to 50%', async () => {
-    const r = await c.post('/api/test-account', { firstName: 'Asha', email: 'asha@example.com' })
+    const r = await c.post('/api/test-account', { firstName: 'Asha', lastName: 'Rao', email: 'asha@example.com' })
     assert.equal(r.status, 200)
     assert.equal(r.json.status.percent, 50)
     assert.equal(r.json.status.nextStep, 'address')
@@ -239,6 +242,12 @@ describe('sign-up API', () => {
     const r = await fresh.post('/api/test-checkout', { items: [{ variantId: '1', qty: 1, label: 'x' }] })
     assert.equal(r.status, 400)
     assert.equal(r.json.code, 'PROFILE_INCOMPLETE')
-    assert.deepEqual(r.json.missing, ['firstName', 'email', 'address', 'state', 'city', 'postalCode'])
+    assert.deepEqual(r.json.missing, ['firstName', 'lastName', 'email', 'address', 'state', 'city', 'postalCode'])
+  })
+
+  test('an empty last name is refused when it is sent', async () => {
+    const r = await c.post('/api/test-account', { firstName: 'Asha', lastName: '   ', email: 'asha@example.com' })
+    assert.equal(r.status, 400)
+    assert.equal(r.json.field, 'lastName')
   })
 })

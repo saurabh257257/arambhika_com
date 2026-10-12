@@ -55,6 +55,7 @@ const setOrder = (order) => {
   // Lets test-account.js sync the cart to a logged-in customer's profile without this file
   // needing to know anything about login state.
   if (typeof window.onCartChanged === "function") window.onCartChanged(order);
+  document.dispatchEvent(new CustomEvent("cart:changed"));
 };
 
 const normalizeCatalogData = (data) => {
@@ -391,6 +392,7 @@ const addToOrder = (product, qty) => {
   order[name] = { id: name, name, qty, unit };
   setOrder(order);
   renderOrderList();
+  document.dispatchEvent(new CustomEvent("cart:added", { detail: { name } }));
   if (mobileFab) {
     mobileFab.classList.remove("is-shake");
     // trigger reflow to restart animation
@@ -411,6 +413,7 @@ const clearOrder = () => {
   sessionStorage.removeItem(ORDER_KEY);
   renderOrderList();
   if (typeof window.onCartChanged === "function") window.onCartChanged({});
+  document.dispatchEvent(new CustomEvent("cart:changed"));
 };
 
 const updateActionCounts = () => {
@@ -896,6 +899,8 @@ const populateCountrySelects = () => {
 // (header phone/WhatsApp icons).
 
 const openMobileSheet = () => {
+  // the slide-over cart (cart-drawer.js) replaces the old quote sheet
+  if (typeof window.openCartDrawer === "function") { window.openCartDrawer(); return; }
   if (!mobileSheet) return;
   mobileSheet.classList.add("is-open");
   mobileSheet.setAttribute("aria-hidden", "false");
