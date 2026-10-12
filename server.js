@@ -288,6 +288,7 @@ app.post('/api/test-auth/verify-otp', express.json(), async (req, res) => {
     try {
       const r = await otp.verifyOtp(mobile, code)
       if (!r.ok) {
+        console.warn('[otp] verify rejected:', r.message)
         otp.recordVerifyFailure(mobile)
         return res.status(401).json({ error: 'That OTP is not correct or has expired.' })
       }
