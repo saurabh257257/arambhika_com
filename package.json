@@ -6,7 +6,10 @@
   "description": "Arambhika Enablers storefront: static site UI served with a live Zoho Commerce product catalog",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test \"test/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage \"--test-coverage-include=lib/**\" \"--test-coverage-include=server.js\" \"test/*.test.js\"",
+    "check": "node scripts/check-syntax.mjs"
   },
   "engines": {
     "node": ">=20.12"
