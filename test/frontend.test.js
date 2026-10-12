@@ -63,9 +63,9 @@ describe('local references resolve', () => {
 })
 
 describe('customer flow markup', () => {
-  test('account.html has the OTP login container, dashboard tabs and profile form', () => {
+  test('account.html has the OTP login container, dashboard tabs and profile section', () => {
     const html = read('account.html')
-    for (const id of ['acctOtpLogin', 'acctDashboard', 'acctProfileForm', 'acctOrdersList', 'acctInvoicesList', 'statConfirmed', 'statPending', 'statInvoices']) {
+    for (const id of ['acctOtpLogin', 'acctDashboard', 'acctProfileWizard', 'acctOrdersList', 'acctInvoicesList', 'statConfirmed', 'statPending', 'statInvoices']) {
       assert.match(html, new RegExp(`id=["']${id}["']`), `account.html is missing #${id}`)
     }
     assert.match(html, /otp-login\.js/, 'account.html must load otp-login.js')
@@ -100,5 +100,42 @@ describe('customer flow markup', () => {
 
   test('account.js refreshes every 30 seconds', () => {
     assert.match(read('account.js'), /setInterval\(refreshAll,\s*30000\)/)
+  })
+
+  test('the sign-up wizard script exposes initProfileWizard and covers every step', () => {
+    const js = read('profile-wizard.js')
+    assert.match(js, /window\.initProfileWizard\s*=/)
+    for (const step of ['mobile', 'details', 'address', 'gst']) assert.match(js, new RegExp(`"${step}"`))
+    for (const f of ['firstName', 'lastName', 'email', 'address', 'state', 'city', 'postalCode', 'hasGst', 'gstin']) {
+      assert.match(js, new RegExp(f), `wizard is missing the ${f} field`)
+    }
+    assert.match(js, /\/api\/meta\/states/, 'state dropdown must come from the server list')
+    assert.match(js, /\/api\/test-gst\/verify/)
+  })
+
+  test('My Account hosts the wizard: overlay, banner, profile form and script order', () => {
+    const html = read('account.html')
+    for (const id of ['acctWizardOverlay', 'acctWizardRoot', 'acctCompleteBanner', 'acctProfileWizard']) {
+      assert.match(html, new RegExp(`id=["']${id}["']`), `account.html is missing #${id}`)
+    }
+    assert.ok(html.indexOf('profile-wizard.js') > -1 && html.indexOf('profile-wizard.js') < html.indexOf('account.js'))
+    assert.doesNotMatch(html, /id=["']acctProfileForm["']/, 'the old free-text profile form must be gone')
+  })
+
+  test('the checkout popup uses the wizard and no longer has the old address form', () => {
+    const html = read('index.html')
+    assert.match(html, /id=["']testStepWizard["']/)
+    assert.match(html, /id=["']testWizardRoot["']/)
+    assert.doesNotMatch(html, /id=["']testProfileForm["']/)
+    assert.ok(html.indexOf('profile-wizard.js') < html.indexOf('test-account.js'))
+    const js = read('test-account.js')
+    assert.match(js, /initProfileWizard\(/)
+    assert.match(js, /PROFILE_INCOMPLETE/, 'server refusal must reopen the wizard')
+    assert.match(js, /checkout"\) === "1"/, 'arriving from My Account with a basket must carry on')
+  })
+
+  test('the old client-side address rule is gone (the server decides)', () => {
+    assert.doesNotMatch(read('test-account.js'), /profileAddressIsComplete/)
+    assert.doesNotMatch(read('account.js'), /fillProfileForm/)
   })
 })

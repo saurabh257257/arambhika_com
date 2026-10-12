@@ -56,10 +56,11 @@ describe('customer profile, cart and isolation', () => {
     assert.equal((await alice.get('/api/test-cart')).json.cart.y, undefined)
   })
 
-  test('checkout is refused until the profile has a full address', async () => {
+  test('checkout is refused until the profile is complete', async () => {
     const r = await bob.post('/api/test-checkout', { items: [{ variantId: '1', qty: 1, label: 'x' }] })
     assert.equal(r.status, 400)
-    assert.equal(r.json.code, 'ADDRESS_REQUIRED')
+    assert.equal(r.json.code, 'PROFILE_INCOMPLETE')
+    assert.ok(r.json.missing.includes('firstName') && r.json.missing.includes('address'))
   })
 
   test('another customer cannot read an order id that is not theirs', async () => {

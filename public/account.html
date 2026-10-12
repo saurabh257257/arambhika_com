@@ -92,6 +92,14 @@
                   <h1 id="acctDashGreeting">Dashboard</h1>
                   <p class="form-note">Tap a tile to see the details.</p>
                 </div>
+                <div class="acct-complete-banner" id="acctCompleteBanner" hidden>
+                  <div class="acct-complete-text">
+                    <strong>Finish setting up your account</strong>
+                    <span id="acctCompleteSub">You need a few details before you can place an order.</span>
+                    <div class="wiz-bar"><div class="wiz-bar-fill" id="acctCompleteFill" style="width:25%"></div></div>
+                  </div>
+                  <button type="button" class="acct-btn-primary" id="acctCompleteBtn">Continue</button>
+                </div>
                 <div class="acct-stat-grid">
                   <button type="button" class="acct-stat-card acct-stat-green" data-goto="orders" data-filter="confirmed">
                     <span class="acct-stat-num" id="statConfirmed">0</span>
@@ -111,24 +119,7 @@
               <section class="acct-panel" id="acctPanelProfile" hidden>
                 <div class="acct-card">
                   <h2>Profile</h2>
-                  <form id="acctProfileForm" class="acct-profile-form">
-                    <div class="acct-form-grid">
-                      <label>First name <input type="text" name="firstName" required /></label>
-                      <label>Last name <input type="text" name="lastName" /></label>
-                      <label>Email <input type="email" name="email" /></label>
-                      <label>Mobile Number <input type="text" id="acctProfilePhone" disabled /></label>
-                    </div>
-                    <p class="form-note">Shipping/billing address is only required when you actually place an order &mdash; safe to leave blank until then.</p>
-                    <div class="acct-form-grid">
-                      <label class="acct-span-2">Address <input type="text" name="address" /></label>
-                      <label>City <input type="text" name="city" /></label>
-                      <label>State <input type="text" name="state" placeholder="e.g. Uttar Pradesh" /></label>
-                      <label>PIN code <input type="text" name="postalCode" maxlength="6" /></label>
-                    </div>
-                    <button class="acct-btn-primary" type="submit">Save Profile</button>
-                    <p class="acct-error" id="acctProfileError"></p>
-                    <p class="acct-ok" id="acctProfileOk"></p>
-                  </form>
+                  <div id="acctProfileWizard"></div>
                 </div>
               </section>
 
@@ -197,8 +188,16 @@
     </div>
   </footer>
 
+  <div class="wiz-overlay" id="acctWizardOverlay" hidden>
+    <div class="wiz-modal" role="dialog" aria-modal="true" aria-label="Set up your account">
+      <button type="button" class="wiz-close" id="acctWizardClose" aria-label="Close">&times;</button>
+      <div id="acctWizardRoot"></div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
   <script src="otp-login.js"></script>
+  <script src="profile-wizard.js"></script>
   <script src="account.js"></script>
 </body>
 </html>

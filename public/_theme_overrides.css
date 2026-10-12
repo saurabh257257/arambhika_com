@@ -1357,3 +1357,121 @@ button.acct-stat-card:focus-visible { outline: 2px solid var(--accent); outline-
 }
 .otp-link:disabled { color: var(--muted); cursor: default; }
 [data-otp-login] label, #acctOtpLogin label, #testOtpLogin label { display: block; text-align: left; }
+
+/* ---- Sign-up / profile wizard (profile-wizard.js) ---- */
+.wiz-root { color: var(--ink, #0f172a); }
+.wiz-head { margin-bottom: 14px; }
+.wiz-head-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.wiz-title { font-family: "Poppins", sans-serif; font-weight: 700; font-size: 1.15rem; color: var(--navy, #0f172a); }
+.wiz-pct { font-size: 0.82rem; font-weight: 700; color: var(--accent, #0b7285); white-space: nowrap; }
+.wiz-bar { height: 8px; background: #e8eef8; border-radius: 999px; overflow: hidden; }
+.wiz-bar-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #1e5eff, #14b8a6);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.wiz-steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0; margin: 14px 0 18px; }
+.wiz-step { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; min-width: 0; }
+.wiz-dot {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 0.8rem; font-weight: 700; background: #eef2f8; color: #64748b; border: 2px solid #eef2f8;
+  transition: background 0.25s, color 0.25s, border-color 0.25s, transform 0.25s;
+}
+.wiz-step.is-done .wiz-dot { background: #14b8a6; border-color: #14b8a6; color: #fff; }
+.wiz-step.is-current .wiz-dot { background: #fff; border-color: #1e5eff; color: #1e5eff; transform: scale(1.12); }
+.wiz-step-label { font-size: 0.7rem; font-weight: 600; color: #64748b; line-height: 1.2; }
+.wiz-step.is-current .wiz-step-label, .wiz-step.is-done .wiz-step-label { color: var(--ink, #0f172a); }
+
+.wiz-banner { display: none; margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; font-size: 0.88rem; font-weight: 600; }
+.wiz-banner.is-error { display: block; background: #fdecea; color: #b42318; }
+.wiz-banner.is-ok { display: block; background: #e8f7ee; color: #15803d; }
+
+.wiz-section + .wiz-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line, #e2e8f0); }
+.wiz-section-title { margin: 0 0 2px; font-size: 1rem; color: var(--navy, #0f172a); }
+.wiz-lead { margin: 0 0 14px; color: #64748b; font-size: 0.88rem; }
+.wiz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.wiz-span { grid-column: 1 / -1; }
+.wiz-field label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px; }
+.wiz-req { color: #d92d20; }
+.wiz-input {
+  width: 100%; padding: 11px 12px; border: 1.5px solid var(--line, #cbd5e1); border-radius: 10px;
+  font: inherit; background: #fff; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.wiz-input:focus { outline: none; border-color: #1e5eff; box-shadow: 0 0 0 3px rgba(30, 94, 255, 0.15); }
+.wiz-input:disabled { background: #f1f5f9; color: #64748b; }
+.wiz-field.has-error .wiz-input { border-color: #d92d20; }
+.wiz-err { min-height: 0; color: #b42318; font-size: 0.78rem; margin-top: 4px; }
+.wiz-err:empty { display: none; }
+.wiz-hint { display: block; color: #64748b; font-size: 0.76rem; margin-top: 4px; }
+
+.wiz-checkrow {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px; cursor: pointer;
+  border: 1.5px solid var(--line, #cbd5e1); border-radius: 12px; background: #f8fafc;
+}
+.wiz-check { width: 20px; height: 20px; margin-top: 2px; accent-color: #1e5eff; flex: 0 0 auto; }
+.wiz-gst-detail { margin-top: 14px; }
+.wiz-gst-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+.wiz-gst-result { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 0.88rem; }
+.wiz-gst-result:empty { display: none; }
+.wiz-gst-result.is-ok { background: #e8f7ee; color: #14532d; }
+.wiz-gst-result.is-bad { background: #fdecea; color: #b42318; }
+
+.wiz-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.wiz-btn {
+  padding: 12px 22px; border-radius: 999px; border: 0; font: inherit; font-weight: 700; cursor: pointer;
+  transition: transform 0.12s, background 0.15s, opacity 0.15s;
+}
+.wiz-btn:active { transform: scale(0.98); }
+.wiz-btn:disabled { opacity: 0.6; cursor: wait; }
+.wiz-btn-primary { background: #ffd814; color: #0f172a; }
+.wiz-btn-primary:hover:not(:disabled) { background: #f7ca00; }
+.wiz-btn-ghost { background: #eef2f8; color: #0f172a; }
+
+.wiz-done { text-align: center; padding: 18px 6px 6px; animation: wiz-pop 0.4s ease both; }
+.wiz-done h3 { margin: 12px 0 6px; font-size: 1.25rem; color: var(--navy, #0f172a); }
+.wiz-done p { color: #64748b; margin: 0 0 18px; }
+.wiz-done-icon {
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto; display: grid; place-items: center;
+  background: #14b8a6; color: #fff; font-size: 2rem; font-weight: 700;
+}
+@keyframes wiz-pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .wiz-bar-fill, .wiz-dot, .wiz-done { transition: none; animation: none; } }
+
+.wiz-overlay {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 16px;
+  background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(3px);
+}
+.wiz-overlay[hidden] { display: none; }
+.wiz-modal {
+  position: relative; width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto;
+  background: #fff; border-radius: 20px; padding: 26px 26px 22px; box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+}
+.wiz-close {
+  position: absolute; top: 10px; right: 12px; width: 34px; height: 34px; border-radius: 50%; border: 0;
+  background: #f1f5f9; font-size: 1.3rem; line-height: 1; cursor: pointer; color: #475569;
+}
+body.wiz-open { overflow: hidden; }
+
+/* the wizard inside the checkout popup is wider than the old login box */
+.acct-step-wizard { width: min(520px, 86vw); }
+
+/* "finish setting up" banner on the dashboard */
+.acct-complete-banner {
+  display: flex; align-items: center; gap: 16px; justify-content: space-between;
+  padding: 16px 18px; margin-bottom: 18px; border-radius: 14px;
+  background: linear-gradient(135deg, #eef4ff, #e9f9f5); border: 1px solid #cfe0ff;
+}
+.acct-complete-banner[hidden] { display: none; }
+.acct-complete-text { flex: 1 1 auto; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.acct-complete-text span { color: #475569; font-size: 0.86rem; }
+
+@media (max-width: 520px) {
+  .wiz-grid { grid-template-columns: 1fr; }
+  .wiz-gst-row { grid-template-columns: 1fr; }
+  .wiz-modal { padding: 22px 18px 18px; border-radius: 16px; }
+  .wiz-step-label { font-size: 0.64rem; }
+  .acct-complete-banner { flex-direction: column; align-items: stretch; }
+}
+
+/* keep the percentage clear of the close button */
+.wiz-modal .wiz-head { padding-right: 40px; }

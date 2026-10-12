@@ -444,22 +444,15 @@
         <div id="testOtpLogin"></div>
       </div>
 
+      <div class="acct-step acct-step-wizard" id="testStepWizard" hidden>
+        <div id="testWizardRoot"></div>
+      </div>
+
       <div class="acct-step" id="testStepAccount" hidden>
         <h3>My Account</h3>
         <p class="form-note">Logged in as <strong id="testAccountMobile"></strong></p>
-        <form id="testProfileForm">
-          <label>First name <input type="text" name="firstName" required /></label>
-          <label>Last name <input type="text" name="lastName" /></label>
-          <label>Email <input type="email" name="email" /></label>
-          <p class="form-note">Address is optional for now — only needed when you actually place an order.</p>
-          <label>Address <input type="text" name="address" /></label>
-          <label>City <input type="text" name="city" /></label>
-          <label>State <input type="text" name="state" placeholder="e.g. Uttar Pradesh" /></label>
-          <label>PIN code <input type="text" name="postalCode" maxlength="6" /></label>
-          <button class="button" type="submit">Save Profile</button>
-        </form>
-        <p class="acct-error" id="testProfileError"></p>
-        <p class="acct-ok" id="testProfileOk"></p>
+        <p class="form-note">Edit your details, address and GST number from the My Account page.</p>
+        <p><a class="button" href="account.html">Open My Account</a></p>
         <button class="button ghost tiny" type="button" id="testMyOrdersBtn">My Orders</button>
         <button class="button ghost tiny" type="button" id="testLogoutBtn">Log out</button>
       </div>
@@ -474,6 +467,7 @@
 
   <script src="script.js"></script>
   <script src="otp-login.js"></script>
+  <script src="profile-wizard.js"></script>
   <script src="test-account.js"></script>
 </body>
 </html>

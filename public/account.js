@@ -25,10 +25,17 @@
   const statInvoices = document.getElementById("statInvoices");
   const downloadOrdersBtn = document.getElementById("acctDownloadOrders");
   const logoutBtn = document.getElementById("acctLogoutBtn");
-  const profileForm = document.getElementById("acctProfileForm");
-  const profileError = document.getElementById("acctProfileError");
-  const profileOk = document.getElementById("acctProfileOk");
-  const profilePhone = document.getElementById("acctProfilePhone");
+  const wizardOverlay = document.getElementById("acctWizardOverlay");
+  const wizardRoot = document.getElementById("acctWizardRoot");
+  const wizardClose = document.getElementById("acctWizardClose");
+  const completeBanner = document.getElementById("acctCompleteBanner");
+  const completeFill = document.getElementById("acctCompleteFill");
+  const completeSub = document.getElementById("acctCompleteSub");
+  const completeBtn = document.getElementById("acctCompleteBtn");
+  const profileWizardRoot = document.getElementById("acctProfileWizard");
+  let profileStatus = null;
+  let editWizard = null;   // the "form" version in the Profile tab
+  let signupWizard = null; // the step-by-step version in the overlay
   const ordersList = document.getElementById("acctOrdersList");
   const refreshBtn = document.getElementById("acctRefreshOrders");
   const invoicesList = document.getElementById("acctInvoicesList");
@@ -63,20 +70,11 @@
     });
   });
 
-  function fillProfileForm(p) {
-    if (!p) return;
-    for (const [key, value] of Object.entries(p)) {
-      const field = profileForm.elements[key];
-      if (field) field.value = value;
-    }
-  }
-
   function updateSidebar() {
     const name = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : session.mobile;
     sidebarName.textContent = name || session.mobile;
     sidebarPhone.textContent = session.mobile;
     avatar.textContent = (profile?.firstName || session.mobile || "?").charAt(0).toUpperCase();
-    profilePhone.value = session.mobile;
     if (dashGreeting) dashGreeting.textContent = profile?.firstName ? `${profile.firstName}'s Dashboard` : "Your Dashboard";
   }
 
@@ -88,68 +86,88 @@
     await loadProfile();
     updateSidebar();
     showDashboard();
+    mountProfileForm();
     const requestedTab = new URLSearchParams(location.search).get("tab");
     switchTab(requestedTab || "dashboard");
+    if (profileStatus && !profileStatus.complete && new URLSearchParams(location.search).get("setup") === "1") openWizard();
   }
 
   async function loadProfile({ silent = false } = {}) {
     try {
       const data = await fetch("/api/test-account").then((r) => r.json());
       const next = data.profile || null;
-      if (silent && JSON.stringify(next) === JSON.stringify(profile)) return;
+      const nextStatus = data.status || null;
+      if (silent && JSON.stringify([next, nextStatus]) === JSON.stringify([profile, profileStatus])) return;
       profile = next;
-      // Don't overwrite fields while the customer is typing in the profile form.
-      if (profile && !(silent && profileForm.contains(document.activeElement))) fillProfileForm(profile);
-      if (silent) updateSidebar();
-    } catch { if (!silent) profile = null; }
+      profileStatus = nextStatus;
+      updateSidebar();
+      updateCompleteBanner();
+      if (silent && editWizard) editWizard.reload();
+    } catch { if (!silent) { profile = null; profileStatus = null; } }
   }
 
-  // Sign up and log in are one flow: a number we have not seen before comes back isNew and is
-  // taken straight to the profile tab to add their name.
+  // ---- first sign-up: a guided, step-by-step set-up -------------------------------------------
+  function updateCompleteBanner() {
+    if (!completeBanner) return;
+    const incomplete = profileStatus && !profileStatus.complete;
+    completeBanner.hidden = !incomplete;
+    if (incomplete) {
+      completeFill.style.width = `${profileStatus.percent}%`;
+      completeSub.textContent = `${profileStatus.percent}% done. You need a few more details before you can place an order.`;
+    }
+  }
+
+  function openWizard() {
+    wizardOverlay.hidden = false;
+    document.body.classList.add("wiz-open");
+    wizardRoot.replaceChildren();
+    signupWizard = initProfileWizard(wizardRoot, {
+      mode: "wizard",
+      onSaved: async (p, st) => { profile = p; profileStatus = st; updateSidebar(); updateCompleteBanner(); if (editWizard) editWizard.reload({ force: true }); },
+      onDone: async () => {
+        closeWizard();
+        await loadProfile();
+        // Someone who added items before signing up goes straight on to their order.
+        let hasItems = false;
+        try {
+          const saved = await fetch("/api/test-cart").then((r) => r.json());
+          hasItems = Object.keys(saved.cart || {}).length > 0;
+        } catch {}
+        if (hasItems) { location.href = "index.html?checkout=1"; return; }
+        switchTab("dashboard");
+      },
+    });
+  }
+  function closeWizard() {
+    wizardOverlay.hidden = true;
+    document.body.classList.remove("wiz-open");
+  }
+  wizardClose?.addEventListener("click", closeWizard);
+  completeBtn?.addEventListener("click", openWizard);
+
+  // Sign up and log in are one flow: a new number, or any profile that is still incomplete, is
+  // walked through the set-up straight after the OTP.
   initOtpLogin(otpLoginBox, {
     buttonClass: "acct-btn-primary",
     onSuccess: async (data) => {
       session = { loggedIn: true, mobile: data.mobile };
       profile = data.profile || null;
-      if (profile) fillProfileForm(profile);
-      updateSidebar();
+      await loadProfile();
       showDashboard();
-      if (data.isNew) {
-        switchTab("profile");
-        profileOk.textContent = "Welcome! Add your name to finish signing up.";
-      } else {
-        const requestedTab = new URLSearchParams(location.search).get("tab");
-        switchTab(requestedTab || "dashboard");
-      }
+      mountProfileForm();
+      const requestedTab = new URLSearchParams(location.search).get("tab");
+      switchTab(requestedTab || "dashboard");
+      if (profileStatus && !profileStatus.complete) openWizard();
     },
   });
 
-  profileForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    profileError.textContent = "";
-    profileOk.textContent = "";
-    const fd = new FormData(profileForm);
-    const body = Object.fromEntries(fd.entries());
-    try {
-      const res = await fetch("/api/test-account", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not save profile");
-      profile = data.profile;
-      const results = data.zoho || [];
-      const failed = results.filter((r) => r.status === "error");
-      profileOk.textContent = results.some((r) => r.status === "updated")
-        ? "Saved and synced with your customer record."
-        : "Saved.";
-      if (failed.length) profileError.textContent = "Saved here, but syncing to our records failed. We'll retry on your next save.";
-      updateSidebar();
-    } catch (err) {
-      profileError.textContent = err.message;
-    }
-  });
+  function mountProfileForm() {
+    if (editWizard || !profileWizardRoot) return;
+    editWizard = initProfileWizard(profileWizardRoot, {
+      mode: "form",
+      onSaved: async (p, st) => { profile = p; profileStatus = st; updateSidebar(); updateCompleteBanner(); },
+    });
+  }
 
   logoutBtn.addEventListener("click", async () => {
     await fetch("/api/test-auth/logout", { method: "POST" }).catch(() => {});
