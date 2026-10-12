@@ -51,13 +51,8 @@
         <div id="acctGuestView" class="acct-guest" hidden>
           <div class="acct-guest-card">
             <h1>My Account</h1>
-            <p class="form-note">Log in with your mobile number to view your profile, orders and invoices.</p>
-            <label>Mobile Number
-              <input type="tel" id="acctLoginMobile" maxlength="10" inputmode="numeric" placeholder="10-digit mobile number" value="8886772827" />
-            </label>
-            <button class="acct-btn-primary" type="button" id="acctLoginBtn">Verify &amp; Log in</button>
-            <p class="acct-error" id="acctLoginError"></p>
-            <p class="form-note">Real OTP login is pending MSG91 approval &mdash; this test build accepts one number only.</p>
+            <p class="form-note">Log in or sign up with your mobile number. We'll send you a one-time password.</p>
+            <div id="acctOtpLogin"></div>
           </div>
         </div>
 
@@ -203,6 +198,7 @@
   </footer>
 
   <script src="script.js"></script>
+  <script src="otp-login.js"></script>
   <script src="account.js"></script>
 </body>
 </html>

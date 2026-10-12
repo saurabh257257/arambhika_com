@@ -1337,3 +1337,23 @@ button.acct-stat-card:focus-visible { outline: 2px solid var(--accent); outline-
   body.acct-fixed-layout .acct-stat-card { padding: 12px 10px; }
   body.acct-fixed-layout .acct-stat-label { font-size: 0.7rem; }
 }
+
+/* OTP login (otp-login.js) */
+.otp-wide { width: 100%; margin-top: 14px; }
+.otp-code-input {
+  letter-spacing: 0.5em;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+}
+.otp-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+.otp-link:disabled { color: var(--muted); cursor: default; }
+[data-otp-login] label, #acctOtpLogin label, #testOtpLogin label { display: block; text-align: left; }

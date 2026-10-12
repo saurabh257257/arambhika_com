@@ -1,6 +1,6 @@
-// TEMPORARY test-mode login + checkout UI. Loads after script.js, reusing its cart helpers
+// Login (MSG91 OTP, see otp-login.js) + checkout UI. Loads after script.js, reusing its cart helpers
 // (getOrder, clearOrder, renderOrderList, cachedCatalog) as plain globals — classic scripts
-// in one page share a global scope. Replace once real MSG91 OTP login is wired up.
+// in one page share a global scope.
 //
 // Order flow: one "Proceed" button (desktop panel + mobile sheet). Clicking it:
 //   - not logged in      -> opens the login step
@@ -18,9 +18,7 @@
     account: document.getElementById("testStepAccount"),
     orders: document.getElementById("testStepOrders"),
   };
-  const mobileInput = document.getElementById("testMobileInput");
-  const loginBtn = document.getElementById("testLoginBtn");
-  const loginError = document.getElementById("testLoginError");
+  const otpLoginBox = document.getElementById("testOtpLogin");
   const accountMobile = document.getElementById("testAccountMobile");
   const profileForm = document.getElementById("testProfileForm");
   const profileError = document.getElementById("testProfileError");
@@ -233,18 +231,9 @@
     window.location.href = "account.html";
   });
 
-  loginBtn.addEventListener("click", async () => {
-    const mobile = mobileInput.value.replace(/\D/g, "").slice(-10);
-    loginError.textContent = "";
-    loginBtn.disabled = true;
-    try {
-      const res = await fetch("/api/test-auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not log in");
+  initOtpLogin(otpLoginBox, {
+    buttonClass: "button",
+    onSuccess: async (data) => {
       session = { loggedIn: true, mobile: data.mobile };
       profile = data.profile || null;
       if (profile) fillProfileForm(profile);
@@ -258,11 +247,7 @@
         accountMobile.textContent = session.mobile;
         showStep("account");
       }
-    } catch (err) {
-      loginError.textContent = err.message;
-    } finally {
-      loginBtn.disabled = false;
-    }
+    },
   });
 
   profileForm?.addEventListener("submit", async (e) => {
@@ -349,7 +334,6 @@
     }
     if (!session.loggedIn) {
       resumeProceedAfterLogin = true;
-      loginError.textContent = "";
       openModal("login");
       return;
     }

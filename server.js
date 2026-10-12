@@ -8,7 +8,9 @@ import { buildCatalog } from './lib/catalog.js'
 import * as zohoAuth from './lib/zoho-oauth.js'
 import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
 import { listSalesOrdersByEmail, getSalesOrderItems, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
-import * as testStore from './lib/test-store.js'
+import * as testStore from './lib/customer-store.js'
+import * as otp from './lib/otp.js'
+import { signSession, readSession, SESSION_COOKIE, SESSION_DAYS } from './lib/session.js'
 import { syncProfileToZoho, fetchProfileFromZoho, clearContactCache } from './lib/zoho-contacts.js'
 
 try { process.loadEnvFile() } catch {}
@@ -166,6 +168,7 @@ function pruneImages(data) {
 }
 
 const app = express()
+app.set('trust proxy', 1) // behind nginx: req.ip must be the visitor's IP, not nginx's, for OTP rate limits
 app.disable('x-powered-by')
 
 // ---- Zoho connection: one-time authorization, then the server refreshes its own token ----
@@ -203,44 +206,104 @@ app.get('/admin/zoho-status', adminRequired, (req, res) => {
   res.json({ configured: zohoAuth.isConfigured(), connected: zohoAuth.isConnected() })
 })
 
-// ---- TEMPORARY test-mode login, account, checkout and orders ----
-// Login is restricted to one hardcoded number and skips real OTP verification entirely,
-// so this can be tested today while MSG91's DLT registration is still pending. Before any
-// real customer can use this, swap this block for the real MSG91 OTP flow.
+// ---- Customer login (MSG91 OTP), account, checkout and orders ----
+// Sign up and log in are the same flow: any Indian mobile number gets an OTP; a number seen for
+// the first time simply starts with an empty profile. Everything below is scoped to the mobile
+// number in the signed session cookie (req.mobile).
+//
+// Until MSG91_AUTHKEY and MSG91_TEMPLATE_ID are set in .env, login falls back to the old
+// single test number with no OTP, exactly as before — it never opens up to every number.
 const ALLOWED_TEST_MOBILE = process.env.ALLOWED_TEST_MOBILE || '8886772827'
-const TEST_SESSION_COOKIE = 'arambhika_test_session'
+
+const cleanMobile = (v) => String(v || '').replace(/\D/g, '').slice(-10)
+const validMobile = (m) => /^[6-9]\d{9}$/.test(m) // Indian mobile numbers start with 6-9
 
 function testSessionRequired(req, res, next) {
-  const cookies = Object.fromEntries((req.headers.cookie || '').split(';').map((p) => p.trim().split('=')))
-  if (cookies[TEST_SESSION_COOKIE] !== ALLOWED_TEST_MOBILE) return res.status(401).json({ error: 'Please log in first' })
+  const mobile = readSession(req.headers.cookie)
+  if (!mobile) return res.status(401).json({ error: 'Please log in first' })
+  req.mobile = mobile
   next()
 }
 
-app.post('/api/test-auth/login', express.json(), (req, res) => {
-  const mobile = String(req.body?.mobile || '').replace(/\D/g, '').slice(-10)
-  if (mobile !== ALLOWED_TEST_MOBILE) {
-    return res.status(401).json({ error: `This test build only accepts ${ALLOWED_TEST_MOBILE}. Real OTP login for any number comes once MSG91 is approved.` })
-  }
-  res.cookie(TEST_SESSION_COOKIE, mobile, {
+function startSession(req, res, mobile) {
+  res.cookie(SESSION_COOKIE, signSession(mobile), {
     httpOnly: true,
     sameSite: 'lax',
-    secure: req.secure,
-    maxAge: 30 * 24 * 60 * 60 * 1000,
+    secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+    maxAge: SESSION_DAYS * 24 * 60 * 60 * 1000,
     path: '/',
   })
-  // Hand back anything saved from a previous session, so the browser can restore it —
-  // the profile's name for the header, and any cart left over from before they logged in.
-  res.json({ ok: true, mobile, profile: testStore.getProfile(), cart: testStore.getCart() })
+}
+
+app.get('/api/test-auth/config', (req, res) => {
+  res.json({ otp: otp.isConfigured(), otpLength: otp.OTP_LENGTH, testMode: !otp.isConfigured() })
+})
+
+app.post('/api/test-auth/send-otp', express.json(), async (req, res) => {
+  const mobile = cleanMobile(req.body?.mobile)
+  if (!validMobile(mobile)) return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' })
+
+  if (!otp.isConfigured()) {
+    if (mobile !== ALLOWED_TEST_MOBILE) {
+      return res.status(401).json({ error: 'Login is not switched on yet for this number.' })
+    }
+    return res.json({ ok: true, testMode: true })
+  }
+
+  const blocked = otp.checkSendAllowed(mobile, req.ip)
+  if (blocked) return res.status(429).json({ error: blocked })
+  try {
+    const r = req.body?.resend ? await otp.resendOtp(mobile) : await otp.sendOtp(mobile)
+    if (!r.ok) {
+      console.warn('[otp] send failed:', r.message)
+      return res.status(502).json({ error: 'Could not send the OTP right now. Please try again in a moment.' })
+    }
+    otp.clearVerifyFailures(mobile)
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[otp] send error:', err.message)
+    res.status(502).json({ error: 'Could not send the OTP right now. Please try again in a moment.' })
+  }
+})
+
+app.post('/api/test-auth/verify-otp', express.json(), async (req, res) => {
+  const mobile = cleanMobile(req.body?.mobile)
+  const code = String(req.body?.otp || '').replace(/\D/g, '')
+  if (!validMobile(mobile)) return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' })
+
+  if (!otp.isConfigured()) {
+    if (mobile !== ALLOWED_TEST_MOBILE) return res.status(401).json({ error: 'Login is not switched on yet for this number.' })
+  } else {
+    if (code.length !== otp.OTP_LENGTH) return res.status(400).json({ error: `Enter the ${otp.OTP_LENGTH}-digit OTP.` })
+    if (otp.verifyLocked(mobile)) {
+      return res.status(429).json({ error: 'Too many wrong attempts. Please request a new OTP.' })
+    }
+    try {
+      const r = await otp.verifyOtp(mobile, code)
+      if (!r.ok) {
+        otp.recordVerifyFailure(mobile)
+        return res.status(401).json({ error: 'That OTP is not correct or has expired.' })
+      }
+    } catch (err) {
+      console.error('[otp] verify error:', err.message)
+      return res.status(502).json({ error: 'Could not verify the OTP right now. Please try again.' })
+    }
+    otp.clearVerifyFailures(mobile)
+  }
+
+  startSession(req, res, mobile)
+  const profile = testStore.getProfile(mobile)
+  // isNew tells the page to walk a first-time customer to their profile.
+  res.json({ ok: true, mobile, profile, cart: testStore.getCart(mobile), isNew: !profile })
 })
 
 app.get('/api/test-auth/me', (req, res) => {
-  const cookies = Object.fromEntries((req.headers.cookie || '').split(';').map((p) => p.trim().split('=')))
-  const mobile = cookies[TEST_SESSION_COOKIE]
-  res.json(mobile === ALLOWED_TEST_MOBILE ? { loggedIn: true, mobile } : { loggedIn: false })
+  const mobile = readSession(req.headers.cookie)
+  res.json(mobile ? { loggedIn: true, mobile } : { loggedIn: false })
 })
 
 app.post('/api/test-auth/logout', (req, res) => {
-  res.clearCookie(TEST_SESSION_COOKIE, { path: '/' })
+  res.clearCookie(SESSION_COOKIE, { path: '/' })
   res.json({ ok: true })
 })
 
@@ -250,9 +313,9 @@ const SYNCED_FIELDS = ['firstName', 'lastName', 'email', 'address', 'city', 'sta
 // what we last pushed/read (zohoSnapshot), a change was made in Zoho and non-empty values are
 // adopted into the profile. The first read only records a baseline so nothing is overwritten.
 app.get('/api/test-account', testSessionRequired, async (req, res) => {
-  let profile = testStore.getProfile()
+  let profile = testStore.getProfile(req.mobile)
   if (profile?.zohoContacts && Object.keys(profile.zohoContacts).length) {
-    const remote = await fetchProfileFromZoho(profile.zohoContacts, ALLOWED_TEST_MOBILE)
+    const remote = await fetchProfileFromZoho(profile.zohoContacts, req.mobile)
     if (remote) {
       const snap = profile.zohoSnapshot
       const next = { ...profile }
@@ -267,7 +330,7 @@ app.get('/api/test-account', testSessionRequired, async (req, res) => {
         nextSnap[f] = remote[f]
       }
       next.zohoSnapshot = nextSnap
-      if (changed) profile = testStore.saveProfile(next)
+      if (changed) profile = testStore.saveProfile(req.mobile, next)
     }
   }
   res.json({ profile })
@@ -278,14 +341,14 @@ app.get('/api/test-account', testSessionRequired, async (req, res) => {
 app.post('/api/test-account', express.json(), testSessionRequired, async (req, res) => {
   const { firstName, lastName, email, address, city, state, postalCode } = req.body || {}
   if (!firstName) return res.status(400).json({ error: 'Please enter your name' })
-  const known = testStore.getProfile()?.zohoContacts || {}
-  const prevSnapshot = testStore.getProfile()?.zohoSnapshot || {}
-  const profile = testStore.saveProfile({
+  const known = testStore.getProfile(req.mobile)?.zohoContacts || {}
+  const prevSnapshot = testStore.getProfile(req.mobile)?.zohoSnapshot || {}
+  const profile = testStore.saveProfile(req.mobile, {
     zohoContacts: known,
     firstName,
     lastName: lastName || '',
     email: email || '',
-    phone: ALLOWED_TEST_MOBILE,
+    phone: req.mobile,
     address: address || '',
     city: city || '',
     state: state || '',
@@ -306,7 +369,7 @@ app.post('/api/test-account', express.json(), testSessionRequired, async (req, r
     }
   }
   clearContactCache()
-  const saved = testStore.saveProfile({ ...profile, zohoContacts, zohoSnapshot })
+  const saved = testStore.saveProfile(req.mobile, { ...profile, zohoContacts, zohoSnapshot })
   res.json({ ok: true, profile: saved, zoho })
 })
 
@@ -321,18 +384,18 @@ function profileAddressIsComplete(profile) {
 }
 
 app.get('/api/test-cart', testSessionRequired, (req, res) => {
-  res.json({ cart: testStore.getCart() })
+  res.json({ cart: testStore.getCart(req.mobile) })
 })
 
 app.post('/api/test-cart', express.json(), testSessionRequired, (req, res) => {
-  const cart = testStore.saveCart(req.body?.cart || {})
+  const cart = testStore.saveCart(req.mobile, req.body?.cart || {})
   res.json({ ok: true, cart })
 })
 
 // Places a real order on Zoho (cart -> address -> shipping -> offline payment), then
 // verifies against the Admin API that Zoho actually created it before reporting success.
 app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, res) => {
-  const profile = testStore.getProfile()
+  const profile = testStore.getProfile(req.mobile)
   if (!profileAddressIsComplete(profile)) {
     return res.status(400).json({ error: 'Please add your shipping address to checkout', code: 'ADDRESS_REQUIRED' })
   }
@@ -343,7 +406,7 @@ app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, 
     if (!it.variantId) return res.status(400).json({ error: `${it.label || 'A product'} can't be ordered online yet (missing Zoho variant id)` })
   }
 
-  const localOrder = testStore.addOrder({
+  const localOrder = testStore.addOrder(req.mobile, {
     id: `local_${Date.now()}`,
     placedAt: new Date().toISOString(),
     items,
@@ -355,11 +418,11 @@ app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, 
     // (Razorpay, configured in Zoho Commerce). Zoho creates the Sales Order itself only once
     // the customer actually pays there — see /api/test-orders/:id/confirm-payment below.
     const result = await placeOrder({ items, customer: profile })
-    testStore.updateOrder(localOrder.id, { total: result.total })
+    testStore.updateOrder(req.mobile, localOrder.id, { total: result.total })
     res.json({ ok: true, orderId: localOrder.id, paymentUrl: result.paymentUrl, total: result.total })
   } catch (err) {
     console.error('[test-checkout] failed:', err.message)
-    testStore.updateOrder(localOrder.id, { status: 'failed', note: err.message })
+    testStore.updateOrder(req.mobile, localOrder.id, { status: 'failed', note: err.message })
     const status = err instanceof CheckoutError ? 400 : 502
     res.status(status).json({ error: err.message })
   }
@@ -370,19 +433,19 @@ app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, 
 //  - to the closest earlier local order still awaiting payment, or
 //  - as a new confirmed order of its own if none is waiting (e.g. paid after the page closed,
 //    or two payments close together), so a paid order can never go missing.
-let lastReconcileAt = 0
-async function reconcileOrders({ force = false } = {}) {
-  const profile = testStore.getProfile()
+const lastReconcileAt = new Map() // mobile -> ms
+async function reconcileOrders(mobile, { force = false } = {}) {
+  const profile = testStore.getProfile(mobile)
   if (!profile?.email) return
-  if (!force && Date.now() - lastReconcileAt < 15000) return
-  lastReconcileAt = Date.now()
+  if (!force && Date.now() - (lastReconcileAt.get(mobile) || 0) < 15000) return
+  lastReconcileAt.set(mobile, Date.now())
   let rows
   try { rows = await listSalesOrdersByEmail(profile.email) } catch (err) {
     console.warn('[orders] could not list Zoho sales orders:', err.message)
     return
   }
   for (const so of rows) {
-    const orders = testStore.getOrders()
+    const orders = testStore.getOrders(mobile)
     if (orders.some((o) => o.zohoSalesOrderId === so.salesorder_id)) continue
     const created = new Date(so.created_time).getTime()
     const waiting = orders
@@ -396,11 +459,11 @@ async function reconcileOrders({ force = false } = {}) {
       total: so.total,
     }
     if (waiting) {
-      testStore.updateOrder(waiting.id, link)
+      testStore.updateOrder(mobile, waiting.id, link)
     } else {
       let items = []
       try { items = await getSalesOrderItems(so.salesorder_id) } catch {}
-      testStore.addOrder({
+      testStore.addOrder(mobile, {
         id: `zoho_${so.salesorder_id}`,
         placedAt: so.created_time || new Date().toISOString(),
         items,
@@ -412,11 +475,11 @@ async function reconcileOrders({ force = false } = {}) {
 
 // Called by the payment screen while it waits for the customer to finish paying.
 app.post('/api/test-orders/:id/confirm-payment', testSessionRequired, async (req, res) => {
-  const order = testStore.getOrders().find((o) => o.id === req.params.id)
+  const order = testStore.getOrders(req.mobile).find((o) => o.id === req.params.id)
   if (!order) return res.status(404).json({ error: 'Order not found' })
   try {
-    await reconcileOrders({ force: true })
-    const now = testStore.getOrders().find((o) => o.id === order.id)
+    await reconcileOrders(req.mobile, { force: true })
+    const now = testStore.getOrders(req.mobile).find((o) => o.id === order.id)
     if (now?.zohoSalesOrderNumber) return res.json({ ok: true, salesOrderNumber: now.zohoSalesOrderNumber })
     res.json({ ok: false, message: 'Waiting for your payment to reach Zoho…' })
   } catch (err) {
@@ -425,8 +488,8 @@ app.post('/api/test-orders/:id/confirm-payment', testSessionRequired, async (req
 })
 
 app.get('/api/test-orders', testSessionRequired, async (req, res) => {
-  await reconcileOrders()
-  const orders = [...testStore.getOrders()].sort((a, b) => new Date(b.placedAt) - new Date(a.placedAt))
+  await reconcileOrders(req.mobile)
+  const orders = [...testStore.getOrders(req.mobile)].sort((a, b) => new Date(b.placedAt) - new Date(a.placedAt))
   const enriched = await Promise.all(orders.map(async (o) => {
     if (!o.zohoSalesOrderId) return o
     try {
@@ -440,7 +503,7 @@ app.get('/api/test-orders', testSessionRequired, async (req, res) => {
 })
 
 app.get('/api/test-orders/:id/invoice', testSessionRequired, async (req, res) => {
-  const order = testStore.getOrders().find((o) => o.id === req.params.id)
+  const order = testStore.getOrders(req.mobile).find((o) => o.id === req.params.id)
   if (!order?.zohoSalesOrderNumber) return res.status(404).json({ error: 'Order not found' })
   try {
     const invoice = await findInvoiceForSalesOrder(order.zohoSalesOrderNumber, process.env.ZOHO_BOOKS_ORG_ID)
@@ -454,7 +517,7 @@ app.get('/api/test-orders/:id/invoice', testSessionRequired, async (req, res) =>
 })
 
 app.get('/admin/zoho-orders', adminRequired, (req, res) => {
-  res.json({ orders: testStore.getOrders() })
+  res.json({ orders: testStore.getAllOrders() })
 })
 
 app.get('/products.json', (req, res) => {

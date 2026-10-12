@@ -439,13 +439,9 @@
       <button class="acct-modal-close" type="button" id="testAcctClose" aria-label="Close">&times;</button>
 
       <div class="acct-step" id="testStepLogin">
-        <h3>Log in (test build)</h3>
-        <p class="form-note">Real OTP login is pending MSG91 approval. For now, only one test number works.</p>
-        <label>Mobile Number
-          <input type="tel" id="testMobileInput" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" value="8886772827" />
-        </label>
-        <button class="button" type="button" id="testLoginBtn">Verify &amp; Log in</button>
-        <p class="acct-error" id="testLoginError"></p>
+        <h3>Log in or sign up</h3>
+        <p class="form-note">Enter your mobile number and we'll send you a one-time password.</p>
+        <div id="testOtpLogin"></div>
       </div>
 
       <div class="acct-step" id="testStepAccount" hidden>
@@ -477,6 +473,7 @@
   </div>
 
   <script src="script.js"></script>
+  <script src="otp-login.js"></script>
   <script src="test-account.js"></script>
 </body>
 </html>

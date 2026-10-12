@@ -7,9 +7,7 @@
   const dashboard = document.getElementById("acctDashboard");
   if (!guestView || !dashboard) return;
 
-  const loginMobile = document.getElementById("acctLoginMobile");
-  const loginBtn = document.getElementById("acctLoginBtn");
-  const loginError = document.getElementById("acctLoginError");
+  const otpLoginBox = document.getElementById("acctOtpLogin");
   const avatar = document.getElementById("acctAvatar");
   const sidebarName = document.getElementById("acctSidebarName");
   const sidebarPhone = document.getElementById("acctSidebarPhone");
@@ -106,33 +104,25 @@
     } catch { if (!silent) profile = null; }
   }
 
-  async function doLogin() {
-    const mobile = loginMobile.value.replace(/\D/g, "").slice(-10);
-    loginError.textContent = "";
-    loginBtn.disabled = true;
-    try {
-      const res = await fetch("/api/test-auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not log in");
+  // Sign up and log in are one flow: a number we have not seen before comes back isNew and is
+  // taken straight to the profile tab to add their name.
+  initOtpLogin(otpLoginBox, {
+    buttonClass: "acct-btn-primary",
+    onSuccess: async (data) => {
       session = { loggedIn: true, mobile: data.mobile };
       profile = data.profile || null;
       if (profile) fillProfileForm(profile);
       updateSidebar();
       showDashboard();
-      const requestedTab = new URLSearchParams(location.search).get("tab");
-      switchTab(requestedTab || "dashboard");
-    } catch (err) {
-      loginError.textContent = err.message;
-    } finally {
-      loginBtn.disabled = false;
-    }
-  }
-  loginBtn.addEventListener("click", doLogin);
-  loginMobile.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+      if (data.isNew) {
+        switchTab("profile");
+        profileOk.textContent = "Welcome! Add your name to finish signing up.";
+      } else {
+        const requestedTab = new URLSearchParams(location.search).get("tab");
+        switchTab(requestedTab || "dashboard");
+      }
+    },
+  });
 
   profileForm.addEventListener("submit", async (e) => {
     e.preventDefault();
