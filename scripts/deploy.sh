@@ -15,6 +15,20 @@ set -euo pipefail
 : "${SSH_KNOWN_HOSTS:?SSH_KNOWN_HOSTS is not set}"
 : "${DEPLOY_PATH:?DEPLOY_PATH is not set}"
 : "${APP_ENV:?APP_ENV is not set}"
+# Refuse to deploy with an incomplete configuration. Without this a missing secret would still
+# pass the health check and leave a server that starts but cannot talk to Zoho or send OTPs.
+REQUIRED=(ZOHO_DC ZOHO_STOREFRONT_DOMAIN ZOHO_CLIENT_ID ZOHO_CLIENT_SECRET ZOHO_BOOKS_ORG_ID
+          ZOHO_INVENTORY_ORG_ID ADMIN_TOKEN SESSION_SECRET MSG91_AUTHKEY MSG91_TEMPLATE_ID
+          MSG91_OTP_LENGTH MSG91_OTP_EXPIRY ZOHO_REDIRECT_URI)
+missing=()
+for k in "${REQUIRED[@]}"; do
+  if [ -z "${!k:-}" ]; then missing+=("$k"); fi
+done
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "::error::Missing required settings for $APP_ENV: ${missing[*]}"
+  exit 1
+fi
+
 PM2_NAME="${PM2_NAME:-arambhika-store}"
 PORT="${PORT:-3000}"
 
