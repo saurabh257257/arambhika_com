@@ -154,3 +154,45 @@ test('KNOWN_GAPS only names pages and rules that exist', () => {
     for (const r of rules) assert.ok(r in RULES, `unknown rule ${r}`)
   }
 })
+
+// The old domain (arambhikaenablers.in) is retired: it only redirects now. Nothing on the site may
+// point search engines or visitors back at it, and every canonical must use the one real host.
+describe('single canonical host: www.arambhika.com', () => {
+  const HOST = 'https://www.arambhika.com'
+  const sources = [...pages.map((p) => p), 'sitemap.xml', 'image-sitemap.xml', 'robots.txt']
+
+  test('no file in public/ mentions the retired domain', () => {
+    const offenders = sources.filter((f) => /arambhikaenablers/i.test(read(f)))
+    assert.deepEqual(offenders, [], 'these files still reference arambhikaenablers.in')
+  })
+
+  test('the blog builder uses the canonical host', () => {
+    const builder = fs.readFileSync(path.join(PUBLIC, '..', 'scripts', 'build-blog.mjs'), 'utf8')
+    assert.match(builder, /const SITE = 'https:\/\/www\.arambhika\.com'/)
+    assert.doesNotMatch(builder, /arambhikaenablers/i)
+  })
+
+  for (const page of indexable) {
+    test(`${page}: canonical and og:url are on ${HOST}`, () => {
+      const html = read(page)
+      const canonical = (html.match(/<link[^>]+rel=["']canonical["'][^>]*href=["']([^"']+)["']/i) || [])[1]
+      if (canonical) assert.ok(canonical.startsWith(`${HOST}/`), `canonical is ${canonical}`)
+      const ogUrl = meta(html, 'og:url')
+      if (ogUrl) assert.ok(ogUrl.startsWith(`${HOST}/`), `og:url is ${ogUrl}`)
+    })
+  }
+
+  test('sitemap and image sitemap list only canonical-host URLs', () => {
+    for (const f of ['sitemap.xml', 'image-sitemap.xml']) {
+      const locs = [...read(f).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])
+      const wrong = locs.filter((l) => /^https?:\/\//.test(l) && !l.startsWith(`${HOST}/`) && !/^https:\/\/(?!.*arambhika)/.test(l))
+      assert.deepEqual(wrong, [], `${f} has URLs off the canonical host`)
+    }
+  })
+
+  test('robots.txt sitemap lines are on the canonical host', () => {
+    const lines = read('robots.txt').split('\n').filter((l) => /^Sitemap:/i.test(l))
+    assert.ok(lines.length >= 1)
+    for (const l of lines) assert.match(l, /^Sitemap:\s*https:\/\/www\.arambhika\.com\//i)
+  })
+})
