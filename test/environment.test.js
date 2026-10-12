@@ -66,3 +66,28 @@ describe('dev (non-production) server', () => {
     assert.equal(r.json.env, 'dev')
   })
 })
+
+describe('retired domain notice page', () => {
+  const fs = await import('node:fs')
+  const path = await import('node:path')
+  const page = fs.readFileSync(path.join(import.meta.dirname, '..', 'deploy', 'old-domain', 'index.html'), 'utf8')
+
+  test('tells visitors to go to www.arambhika.com and links there', () => {
+    assert.match(page, /Please visit <strong>www\.arambhika\.com<\/strong>/)
+    assert.match(page, /<a[^>]+href="https:\/\/www\.arambhika\.com\/"/)
+  })
+
+  test('is a complete, mobile-friendly page that points search engines at the real site', () => {
+    assert.match(page, /<html lang="en">/)
+    assert.match(page, /name="viewport"/)
+    assert.match(page, /<link rel="canonical" href="https:\/\/www\.arambhika\.com\/"/)
+    assert.doesNotMatch(page, /noindex/i, 'must not drop the old domain from search before it is consolidated')
+  })
+
+  test('the production nginx config serves it for both old names', () => {
+    const conf = fs.readFileSync(path.join(import.meta.dirname, '..', 'deploy', 'nginx-arambhika.conf'), 'utf8')
+    assert.match(conf, /server_name arambhikaenablers\.in www\.arambhikaenablers\.in;/)
+    assert.match(conf, /root \/var\/www\/old-domain;/)
+    assert.match(conf, /try_files \/index\.html =404;/)
+  })
+})
