@@ -100,6 +100,14 @@
   // when the customer comes back to this tab) so the confirmation appears on this same screen
   // without having to press anything.
   let payPoll = null;
+  // Zoho sends the customer to a status page on commerce.zoho.in that 404s for API-driven stores
+  // (the real page lives on the store's own domain). The payment still goes through and this page
+  // confirms it, so once it does we close that tab instead of leaving the customer on the 404.
+  let payWindow = null;
+  function closePayWindow() {
+    try { if (payWindow && !payWindow.closed) payWindow.close(); } catch {}
+    payWindow = null;
+  }
   function stopPaymentPolling() { if (payPoll) { clearInterval(payPoll.timer); payPoll = null; } }
   function startPaymentPolling(orderId) {
     stopPaymentPolling();
@@ -112,6 +120,7 @@
         const data = await res.json().catch(() => ({}));
         if (data.ok) {
           stopPaymentPolling();
+          closePayWindow();
           if (typeof clearOrder === "function") clearOrder();
           setProceedNote(`Payment received. Order ${data.salesOrderNumber} is confirmed.`);
           return;
@@ -131,6 +140,7 @@
       const data = await res.json().catch(() => ({}));
       if (data.ok) {
         stopPaymentPolling();
+        closePayWindow();
         if (typeof clearOrder === "function") clearOrder();
         setProceedNote(`Payment received. Order ${data.salesOrderNumber} is confirmed.`);
       } else {
@@ -394,7 +404,7 @@
       if (!res.ok) throw new Error(data.error || "Could not place your order");
       // Opens Zoho's real payment page automatically; the customer also gets a "Pay Now" link
       // in case the popup was blocked.
-      window.open(data.paymentUrl, "_blank", "noopener");
+      payWindow = window.open(data.paymentUrl, "_blank");
       showPaymentStep(data.orderId, data.paymentUrl, data.total, "A payment tab has opened. Complete payment there; this page confirms your order automatically.");
       startPaymentPolling(data.orderId);
     } catch (err) {
