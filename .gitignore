@@ -8,3 +8,5 @@ data/zoho_refresh_token
 
 data/customers/
 data/session_secret
+
+.pipeline-secrets/

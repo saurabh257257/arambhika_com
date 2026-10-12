@@ -1,0 +1,132 @@
+name: pipeline
+
+# dev  branch -> tests -> deploy to the DEV droplet
+# main branch -> tests -> (manual approval) -> deploy to the PROD droplet
+# Pull requests only run the tests. main only accepts changes that came from dev.
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  guard-promotion:
+    name: main only takes changes from dev
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [ "${{ github.head_ref }}" != "dev" ]; then
+            echo "Pull requests into main must come from the dev branch (this one is from '${{ github.head_ref }}')."
+            exit 1
+          fi
+
+  test:
+    name: syntax, functional, SEO and front-end tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Syntax check
+        run: npm run check
+
+      - name: Every change comes with a test
+        if: github.event_name == 'pull_request'
+        run: node scripts/require-tests.mjs origin/${{ github.base_ref }}
+
+      - name: Tests with coverage floor
+        run: >
+          node --test --experimental-test-coverage
+          --test-coverage-include="lib/**" --test-coverage-include="server.js"
+          --test-coverage-lines=70
+          "test/*.test.js"
+
+  deploy-dev:
+    name: deploy to dev droplet
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: bash scripts/deploy.sh
+        env:
+          APP_ENV: ${{ vars.APP_ENV }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          PM2_NAME: ${{ vars.PM2_NAME }}
+          PORT: ${{ vars.PORT }}
+          # --- application credentials / config, rendered into the server's .env ---
+          ZOHO_DC: ${{ vars.ZOHO_DC }}
+          ZOHO_STOREFRONT_DOMAIN: ${{ vars.ZOHO_STOREFRONT_DOMAIN }}
+          ZOHO_REDIRECT_URI: ${{ vars.ZOHO_REDIRECT_URI }}
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_BOOKS_ORG_ID: ${{ secrets.ZOHO_BOOKS_ORG_ID }}
+          ZOHO_INVENTORY_ORG_ID: ${{ secrets.ZOHO_INVENTORY_ORG_ID }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          MSG91_AUTHKEY: ${{ secrets.MSG91_AUTHKEY }}
+          MSG91_TEMPLATE_ID: ${{ secrets.MSG91_TEMPLATE_ID }}
+          MSG91_OTP_LENGTH: ${{ vars.MSG91_OTP_LENGTH }}
+          MSG91_OTP_EXPIRY: ${{ vars.MSG91_OTP_EXPIRY }}
+          ALLOWED_TEST_MOBILE: ${{ vars.ALLOWED_TEST_MOBILE }}
+
+  deploy-prod:
+    name: deploy to production droplet
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Set "Required reviewers" on the production environment so a person approves every release.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: bash scripts/deploy.sh
+        env:
+          APP_ENV: ${{ vars.APP_ENV }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          PM2_NAME: ${{ vars.PM2_NAME }}
+          PORT: ${{ vars.PORT }}
+          ZOHO_DC: ${{ vars.ZOHO_DC }}
+          ZOHO_STOREFRONT_DOMAIN: ${{ vars.ZOHO_STOREFRONT_DOMAIN }}
+          ZOHO_REDIRECT_URI: ${{ vars.ZOHO_REDIRECT_URI }}
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_BOOKS_ORG_ID: ${{ secrets.ZOHO_BOOKS_ORG_ID }}
+          ZOHO_INVENTORY_ORG_ID: ${{ secrets.ZOHO_INVENTORY_ORG_ID }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          MSG91_AUTHKEY: ${{ secrets.MSG91_AUTHKEY }}
+          MSG91_TEMPLATE_ID: ${{ secrets.MSG91_TEMPLATE_ID }}
+          MSG91_OTP_LENGTH: ${{ vars.MSG91_OTP_LENGTH }}
+          MSG91_OTP_EXPIRY: ${{ vars.MSG91_OTP_EXPIRY }}
+          ALLOWED_TEST_MOBILE: ${{ vars.ALLOWED_TEST_MOBILE }}

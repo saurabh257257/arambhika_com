@@ -13,7 +13,7 @@ const posts = [...materialPosts, ...howtoPosts, ...morePosts]
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public')
 const OUT = path.join(ROOT, 'blog')
-const SITE = 'https://www.arambhikaenablers.in' // same canonical host as the rest of the site
+const SITE = 'https://www.arambhika.com' // same canonical host as the rest of the site
 const index = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
 
 const grab = (re) => {

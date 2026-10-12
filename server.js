@@ -22,7 +22,7 @@ dns.setDefaultResultOrder('ipv4first')
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC_DIR = path.join(ROOT, 'public')
-const DATA_DIR = path.join(ROOT, 'data')
+const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data')
 const SNAPSHOT_FILE = path.join(DATA_DIR, 'snapshot.json')
 const IMAGE_DIR = path.join(DATA_DIR, 'images')
 const PORT = Number(process.env.PORT) || 3000
@@ -546,11 +546,27 @@ app.get('/zimg/:docId/:file', async (req, res) => {
   res.send(img.buffer)
 })
 
+// Anything that is not production must never be indexed, so a dev server cannot compete with the
+// real site in search results. APP_ENV is "production" on the live server (and when unset).
+const IS_PRODUCTION = (process.env.APP_ENV || 'production') === 'production'
+if (!IS_PRODUCTION) {
+  app.use((req, res, next) => { res.set('X-Robots-Tag', 'noindex, nofollow'); next() })
+  app.get('/robots.txt', (req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'))
+}
+
+// Used by the deploy pipeline to confirm a release actually came up.
+app.get('/healthz', (req, res) => {
+  res.json({ ok: true, env: process.env.APP_ENV || 'production', catalog: current.source })
+})
+
 app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }))
 
 app.listen(PORT, () => {
   console.log(`Arambhika store running at http://localhost:${PORT} (catalog source: ${current.source})`)
   if (!process.env.ZOHO_STOREFRONT_DOMAIN) console.warn('ZOHO_STOREFRONT_DOMAIN is not set: Zoho product photos will not load')
-  refreshCatalog()
-  setInterval(refreshCatalog, REFRESH_EVERY)
+  // Tests set DISABLE_CATALOG_REFRESH so they never reach out to Zoho.
+  if (!process.env.DISABLE_CATALOG_REFRESH) {
+    refreshCatalog()
+    setInterval(refreshCatalog, REFRESH_EVERY)
+  }
 })
