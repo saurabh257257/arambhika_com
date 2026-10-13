@@ -154,7 +154,7 @@
   function updateHeaderAndProceed() {
     navBtn.classList.toggle("is-logged-in", session.loggedIn);
     navBtn.title = session.loggedIn ? `Account (${session.mobile})` : "Account";
-    if (nameEl) nameEl.textContent = session.loggedIn && profile?.firstName ? profile.firstName : "";
+    if (nameEl) nameEl.textContent = session.loggedIn ? (profile?.firstName || "Profile") : "Sign in";
     const subNav = document.getElementById("acctSubNav");
     if (subNav) subNav.hidden = !session.loggedIn;
     if (!session.loggedIn) {

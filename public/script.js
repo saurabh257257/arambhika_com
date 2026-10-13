@@ -113,46 +113,97 @@ let highlightResetTimer = null;
 const renderFilters = (categories) => {
   if (!categoryFilters) return;
   categoryFilters.innerHTML = "";
-
-  const allBtn = document.createElement("button");
-  allBtn.className = "filter-btn active";
-  allBtn.dataset.filter = "all";
-  allBtn.textContent = "All";
-  categoryFilters.appendChild(allBtn);
-
   categories.forEach((cat) => {
+    // same rule the grid uses: placeholder products with a one-character code are not shown
+    const products = (cat.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1);
+    if (!products.length) return;
+    const withImage = products.find((p) => (Array.isArray(p.Image_Link) ? p.Image_Link[0] : p.Image_Link));
+    const imageSrc = withImage ? (Array.isArray(withImage.Image_Link) ? withImage.Image_Link[0] : withImage.Image_Link) : "";
     const btn = document.createElement("button");
-    btn.className = "filter-btn";
+    btn.type = "button";
+    btn.className = "cat-tile filter-btn";
     btn.dataset.filter = cat.name;
-    btn.textContent = cat.name;
+    btn.innerHTML = `
+      <span class="cat-tile-img">${imageSrc ? `<img src="${imageSrc}" alt="" loading="lazy" />` : ""}</span>
+      <span class="cat-tile-text"><b>${cat.name}</b><small>${products.length} product${products.length === 1 ? "" : "s"}</small></span>`;
     categoryFilters.appendChild(btn);
   });
-
-  const buttons = categoryFilters.querySelectorAll(".filter-btn");
-  buttons.forEach((btn) => {
+  // tapping the active tile again shows everything
+  categoryFilters.querySelectorAll(".filter-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      buttons.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      currentCategoryFilter = btn.dataset.filter;
+      currentCategoryFilter = currentCategoryFilter === btn.dataset.filter ? "all" : btn.dataset.filter;
+      setFilterButtonState(currentCategoryFilter);
+      filterCatalog();
+      const grid = document.querySelector("#catalogGrid");
+      if (grid) grid.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  setFilterButtonState(currentCategoryFilter);
+};
+
+// "Shop by cell type": 18650, 21700, 32650 ... found in the product names themselves
+const renderCellPills = (categories) => {
+  const holder = document.querySelector("#cellPills");
+  if (!holder) return;
+  const counts = new Map();
+  categories.forEach((c) => (c.products || []).forEach((p) => {
+    const m = String(p.ProductCode || "").match(/\((\d{4,5})\)/);
+    if (m) counts.set(m[1], (counts.get(m[1]) || 0) + 1);
+    if (/zig\s*zag/i.test(p.ProductCode || "")) counts.set("ZigZag", (counts.get("ZigZag") || 0) + 1);
+  }));
+  holder.innerHTML = "";
+  if (!counts.size) return;
+  const label = document.createElement("span");
+  label.className = "cell-pills-label";
+  label.textContent = "Shop by cell:";
+  holder.appendChild(label);
+  [...counts.keys()].sort().forEach((key) => {
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "cell-pill";
+    pill.dataset.cell = key;
+    pill.innerHTML = `${key} <small>${counts.get(key)}</small>`;
+    pill.addEventListener("click", () => {
+      const next = currentCellFilter === key ? "" : key;
+      currentCellFilter = next;
+      holder.querySelectorAll(".cell-pill").forEach((b) => b.classList.toggle("active", b.dataset.cell === next));
       filterCatalog();
     });
+    holder.appendChild(pill);
   });
 };
 
+let currentCellFilter = "";
+
 const filterCatalog = () => {
   if (!catalogGrid) return;
-  const cards = catalogGrid.querySelectorAll(".catalog-card");
+  const cards = catalogGrid.querySelectorAll(".prod-card");
   cards.forEach((card) => {
     const matchesCategory =
       currentCategoryFilter === "all" || card.dataset.category === currentCategoryFilter;
     const haystack = `${card.dataset.search || ""}`.toLowerCase();
     const matchesSearch = !currentSearchTerm || haystack.includes(currentSearchTerm);
-    if (matchesCategory && matchesSearch) {
-      card.style.display = "";
-    } else {
-      card.style.display = "none";
-    }
+    const matchesCell = !currentCellFilter || haystack.includes(currentCellFilter.toLowerCase());
+    card.style.display = matchesCategory && matchesSearch && matchesCell ? "" : "none";
   });
+  // a category block with nothing left in it disappears too
+  let shown = 0;
+  catalogGrid.querySelectorAll(".cat-block").forEach((block) => {
+    const any = [...block.querySelectorAll(".prod-card")].some((c) => c.style.display !== "none");
+    block.style.display = any ? "" : "none";
+    if (any) shown += 1;
+  });
+  let empty = catalogGrid.querySelector(".catalog-empty");
+  if (!shown) {
+    if (!empty) {
+      empty = document.createElement("p");
+      empty.className = "catalog-empty form-note";
+      empty.textContent = "No products match. Try a different size or clear the filter.";
+      catalogGrid.appendChild(empty);
+    }
+  } else if (empty) {
+    empty.remove();
+  }
 };
 
 const setFilterButtonState = (filterValue) => {
@@ -168,7 +219,7 @@ const focusProductByCode = (productCode, { smooth = true, updateUrl = true } = {
   if (!normalizedCode) return false;
 
   const card = catalogGrid.querySelector(
-    `.catalog-card[data-product-code-key="${normalizedCode}"]`
+    `.prod-card[data-product-code-key="${normalizedCode}"]`
   );
   if (!card) return false;
 
@@ -363,7 +414,7 @@ const renderOrderList = () => {
   targets.forEach((list) => {
     list.innerHTML = "";
     if (entries.length === 0) {
-      list.innerHTML = "<p class='form-note'>No items added yet. Click “Add to Quote” on any product.</p>";
+      list.innerHTML = "<p class='form-note'>Your cart is empty.</p>";
       return;
     }
     entries.forEach((item) => {
@@ -385,14 +436,14 @@ const renderOrderList = () => {
   updateActionCounts();
 };
 
-const addToOrder = (product, qty) => {
+const addToOrder = (product, qty, { silent = false } = {}) => {
   const order = getOrder();
   const name = product.ProductCode || "";
   const unit = product.Unit || "KG";
   order[name] = { id: name, name, qty, unit };
   setOrder(order);
   renderOrderList();
-  document.dispatchEvent(new CustomEvent("cart:added", { detail: { name } }));
+  if (!silent) document.dispatchEvent(new CustomEvent("cart:added", { detail: { name } }));
   if (mobileFab) {
     mobileFab.classList.remove("is-shake");
     // trigger reflow to restart animation
@@ -655,144 +706,74 @@ const loadSiteConfig = async () => {
 
 const createCard = (product, categoryName) => {
   const card = document.createElement("article");
-  card.className = "catalog-card";
+  card.className = "prod-card";
   card.dataset.category = categoryName;
 
   const name = product.ProductCode || "";
-  const sku  = product.SKU || "";
+  const sku = product.SKU || "";
   const dataId = toDomToken(name) || `product_${Math.random().toString(36).slice(2, 9)}`;
   card.id = `product-${dataId}`;
   card.dataset.productCode = name;
   card.dataset.productCodeKey = normalizeProductCode(name);
-  card.dataset.productLink = buildProductPageLink(name);
+  const href = `/product/${toDomToken(normalizeProductCode(name))}`;
+  card.dataset.productLink = href;
+
   const unit = product.Unit || "KG";
   const minQty = Number(product["Minimum Quantity"]) || 1;
-  const dimensions = product.Product_Dimensions || "";
-  const dimensionHtml = dimensions ? dimensions.replace(/\r?\n/g, "<br>") : "";
-  const detailsList = Array.isArray(product.Additional_Details)
-    ? product.Additional_Details
-    : product.Additional_Details
-      ? [product.Additional_Details]
-      : [];
-  const specs = detailsList.map((spec) => `<li>${spec}</li>`).join("");
-  const availability = product.Availability || "Now";
-  const isRequest = availability.toLowerCase() === "on request";
-  const isNotify = availability.toLowerCase() === "notify";
-  const availabilityClass = isNotify ? "notify" : isRequest ? "request" : "now";
-  const availabilityLabel = isNotify ? "Out of stock" : isRequest ? "On request" : "Available";
-  const priceText = String(product.Price || "");
-  const showUnit = priceText && !/per\s+/i.test(priceText) && !/\//.test(priceText);
-  const priceLine = priceText
-    ? `<span class="price">Price: ${priceText}${showUnit ? `/${unit}` : ""}</span>`
-    : "";
-  const moqLine = `<span class="price">Min Qty: ${minQty} ${unit}</span>`;
-
-  const actionsHtml = isNotify
-    ? `<div class="card-actions">
-            <button class="button order-btn notify-btn" type="button" data-notify>Notify Me</button>
-          </div>`
-    : `<div class="card-actions">
-            <div class="order-controls" data-qty="${minQty}">
-              <button class="qty-btn" type="button" data-action="dec" aria-label="Decrease quantity">-</button>
-              <span class="qty-value">${minQty} ${unit}</span>
-              <button class="qty-btn" type="button" data-action="inc" aria-label="Increase quantity">+</button>
-            </div>
-            <button class="button order-btn" type="button" data-order="${dataId}">Add to Quote</button>
-          </div>`;
+  const availability = String(product.Availability || "Now").toLowerCase();
+  const isNotify = availability === "notify";
+  const isRequest = availability === "on request";
+  const priceNumber = Number(String(product.Price || "").replace(/[^\d.]/g, "")) || 0;
+  const images = Array.isArray(product.Image_Link) ? product.Image_Link : product.Image_Link ? [product.Image_Link] : [];
+  const detailsList = Array.isArray(product.Additional_Details) ? product.Additional_Details : product.Additional_Details ? [product.Additional_Details] : [];
 
   card.innerHTML = `
-    <span class="badge badge-${availabilityClass}">${availabilityLabel}</span>
-    <div class="catalog-body">
-      <div class="details-bottom">
-        <h3>
-          <a class="product-title-link" href="${card.dataset.productLink}" data-product-link="${name}">
-            ${name}${sku ? ` <span style="color:#007185;font-size:0.78em;font-weight:500;">(${sku})</span>` : ""}
-          </a>
-        </h3>
-        <p class="sku">${dimensionHtml}</p>
-        <div class="price-row">
-          ${priceLine}
-          ${moqLine}
-        </div>
-        <div class="details-row">
-          <div class="details-block">
-            <button class="details-toggle" type="button" data-details="${dataId}">
-              <span>+</span>
-              More details
-            </button>
-            <div class="details" data-details-panel="${dataId}">
-              <ul>${specs}</ul>
-            </div>
-          </div>
-          ${actionsHtml}
-        </div>
-      </div>
-    </div>
-  `;
+    <a class="prod-link" href="${href}" aria-label="${name}">
+      <span class="prod-img">${images[0] ? `<img src="${images[0]}" alt="${name}" loading="lazy" decoding="async" />` : ""}</span>
+      ${isNotify ? '<span class="prod-flag">Out of stock</span>' : isRequest ? '<span class="prod-flag">On request</span>' : ""}
+      <span class="prod-name">${name}</span>
+    </a>
+    <div class="prod-price">${priceNumber ? `₹${priceNumber.toLocaleString("en-IN")}` : "Price on request"} <small>/ ${unit} · MOQ ${minQty}</small></div>
+    <div class="prod-action"></div>`;
 
-  const carousel = createCarousel(product.Image_Link || [], name);
-  card.insertBefore(carousel, card.firstChild);
+  card.dataset.search = [name, sku, categoryName, product.Product_Dimensions || "", detailsList.join(" ")].filter(Boolean).join(" ");
 
-  const searchText = [
-    name,
-    categoryName,
-    dimensions,
-    detailsList.join(" ")
-  ]
-    .filter(Boolean)
-    .join(" ");
-  card.dataset.search = searchText;
-
-  const detailsToggle = card.querySelector(`[data-details="${dataId}"]`);
-  const detailsPanel = card.querySelector(`[data-details-panel="${dataId}"]`);
-  if (detailsToggle && detailsPanel) {
-    detailsToggle.addEventListener("click", () => {
-      const isOpen = detailsPanel.classList.toggle("is-open");
-      detailsToggle.querySelector("span").textContent = isOpen ? "-" : "+";
-    });
-  }
-
-  const qtyControl = card.querySelector(".order-controls");
-  const qtyValue = card.querySelector(".qty-value");
-  if (qtyControl) {
-    const updateQty = (delta) => {
-      const current = Number(qtyControl.dataset.qty) || minQty;
-      const next = Math.max(minQty, current + delta);
-      qtyControl.dataset.qty = String(next);
-      qtyValue.textContent = `${next} ${unit}`;
-      addToOrder(product, next);
-    };
-    qtyControl.querySelectorAll(".qty-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const delta = btn.dataset.action === "inc" ? 1 : -1;
-        updateQty(delta);
-      });
-    });
-  }
-
-  const orderBtn = card.querySelector("[data-order]");
-  if (orderBtn) {
-    orderBtn.addEventListener("click", () => {
-      const qty = Number(qtyControl.dataset.qty) || minQty;
-      addToOrder(product, qty);
-    });
-  }
-
-  const notifyBtn = card.querySelector("[data-notify]");
-  if (notifyBtn) {
-    notifyBtn.addEventListener("click", () => {
+  // ADD turns into a stepper; once the item is in the cart every tap changes the cart straight away.
+  const action = card.querySelector(".prod-action");
+  const paint = () => {
+    const line = getOrder()[name];
+    if (isNotify) {
+      action.innerHTML = '<button class="prod-btn prod-btn-ghost" type="button" data-notify>Notify me</button>';
+    } else if (line) {
+      action.innerHTML = `<div class="prod-stepper" role="group" aria-label="Quantity">
+          <button type="button" data-step="-1" aria-label="Decrease quantity">&minus;</button>
+          <span>${line.qty} ${unit}</span>
+          <button type="button" data-step="1" aria-label="Increase quantity">+</button>
+        </div>`;
+    } else {
+      action.innerHTML = '<button class="prod-btn" type="button" data-add>ADD</button>';
+    }
+  };
+  card.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-add],[data-step],[data-notify]");
+    if (!btn) return;
+    event.preventDefault();
+    if (btn.hasAttribute("data-notify")) {
       const message = `Hi, please notify me when ${name}${sku ? ` (${sku})` : ""} is back in stock.`;
-      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank");
-    });
-  }
-
-  const titleLink = card.querySelector("[data-product-link]");
-  if (titleLink) {
-    titleLink.addEventListener("click", (event) => {
-      event.preventDefault();
-      focusProductByCode(name, { smooth: true, updateUrl: true });
-    });
-  }
+      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+      return;
+    }
+    if (btn.hasAttribute("data-add")) {
+      addToOrder(product, minQty);
+      return;
+    }
+    const current = Number((getOrder()[name] || {}).qty) || minQty;
+    const next = current + Number(btn.dataset.step);
+    if (next < minQty) removeFromOrder(name);
+    else addToOrder(product, next, { silent: true });
+  });
+  document.addEventListener("cart:changed", paint);
+  paint();
 
   return card;
 };
@@ -802,43 +783,65 @@ const renderCatalog = (categories) => {
   catalogGrid.innerHTML = "";
   productIndex = [];
   let cardCount = 0;
-  // Available products first, across all categories (stable, so category order is kept within each group).
+  // Within each category, available products come first.
   const availabilityRank = { Now: 0, "On Request": 1, Notify: 2 };
-  const entries = [];
   categories.forEach((category) => {
-    (category.products || []).forEach((product) => entries.push({ product, category }));
-  });
-  entries.sort(
-    (a, b) =>
-      (availabilityRank[a.product.Availability] ?? 0) - (availabilityRank[b.product.Availability] ?? 0)
-  );
-  entries.forEach(({ product, category }) => {
-    const card = createCard(product, category.name);
-    catalogGrid.appendChild(card);
-    if (card.dataset.productCode) {
-      const thumbImg = card.querySelector(".carousel img");
+    const products = [...(category.products || [])].filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1);
+    products.sort((a, b) => (availabilityRank[a.Availability] ?? 0) - (availabilityRank[b.Availability] ?? 0));
+    if (!products.length) return;
+    const block = document.createElement("section");
+    block.className = "cat-block";
+    block.dataset.category = category.name;
+    block.innerHTML = `<div class="cat-block-head"><h2>${category.name}</h2><span>${products.length} products</span></div><div class="cat-grid"></div>`;
+    const grid = block.querySelector(".cat-grid");
+    products.forEach((product) => {
+      const card = createCard(product, category.name);
+      grid.appendChild(card);
+      const thumbImg = card.querySelector(".prod-img img");
       productIndex.push({
         code: card.dataset.productCode,
         id: card.id,
         key: card.dataset.productCodeKey,
-        link: buildProductPageLink(card.dataset.productCode),
+        link: card.dataset.productLink,
         image: thumbImg ? thumbImg.getAttribute("src") : "",
         price: product.Price || "",
         unit: product.Unit || "",
         category: category.name || ""
       });
-    }
-    cardCount += 1;
+      cardCount += 1;
+    });
+    catalogGrid.appendChild(block);
   });
   if (cardCount === 0) {
-    catalogGrid.innerHTML = "<p>No products found. Please update products.json.</p>";
+    catalogGrid.innerHTML = "<p>No products found. Please try again shortly.</p>";
   }
   renderFilters(categories);
+  renderCellPills(categories);
+
+  // a few real product photos in the banner
+  const thumbs = document.querySelector("#heroThumbs");
+  if (thumbs && !thumbs.childElementCount) {
+    const pics = [];
+    categories.forEach((c) => {
+      const p = (c.products || []).find((x) => (Array.isArray(x.Image_Link) ? x.Image_Link[0] : x.Image_Link));
+      if (p) pics.push(Array.isArray(p.Image_Link) ? p.Image_Link[0] : p.Image_Link);
+    });
+    thumbs.innerHTML = pics.slice(0, 3).map((src) => `<img src="${src}" alt="" loading="lazy" />`).join("");
+  }
+
+  // /?category=Nickel%20Strip%20Plated  (used by the product page breadcrumb)
+  const wanted = new URLSearchParams(window.location.search).get("category");
+  if (wanted && categories.some((c) => c.name === wanted)) {
+    currentCategoryFilter = wanted;
+    setFilterButtonState(wanted);
+  }
   filterCatalog();
+  // an old shared link (/?product=Name#catalog) now lands on that product's own page
   if (pendingProductCode) {
-    if (focusProductByCode(pendingProductCode, { smooth: false, updateUrl: true })) {
-      pendingProductCode = "";
-    }
+    const key = normalizeProductCode(pendingProductCode);
+    const hit = productIndex.find((p) => p.key === key);
+    pendingProductCode = "";
+    if (hit) window.location.replace(hit.link);
   }
 };
 
@@ -1225,7 +1228,7 @@ const renderSuggestions = (term) => {
 
     btn.addEventListener("click", () => {
       if (item.code) {
-        focusProductByCode(item.code, { smooth: true, updateUrl: true });
+        window.location.href = item.link || `/product/${toDomToken(normalizeProductCode(item.code))}`;
       } else {
         const target = document.getElementById(item.id);
         if (target) {

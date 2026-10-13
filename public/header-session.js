@@ -11,7 +11,8 @@
     .then((r) => r.json())
     .then((session) => {
       navBtn.classList.toggle("is-logged-in", !!session.loggedIn);
-      if (!session.loggedIn) return;
+      if (!session.loggedIn) { if (nameEl) nameEl.textContent = "Sign in"; return; }
+      if (nameEl) nameEl.textContent = "Profile";
       navBtn.title = `Account (${session.mobile})`;
       return fetch("/api/test-account")
         .then((r) => r.json())

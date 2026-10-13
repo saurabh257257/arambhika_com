@@ -139,6 +139,10 @@
         <div class="search-suggestions" id="searchSuggestions" aria-label="Search suggestions"></div>
       </div>
       <div class="nav-right">
+        <button type="button" class="nav-cart-btn" id="headerCart" aria-label="Open cart">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+          <span class="nav-cart-badge" id="headerCartBadge" hidden>0</span>
+        </button>
         <nav class="nav-links">
           <a href="index.html#catalog" id="navCatalog">Store</a>
           <a href="/account.html" class="nav-login-btn" id="testAcctBtn" aria-label="Account" title="Account">
@@ -171,40 +175,38 @@
   </header>
 
   <main>
-    <section id="home" class="home-anchor"></section>
-
+    <section id="home" class="home-hero" aria-label="Arambhika">
+      <div class="container home-hero-inner">
+        <div class="home-hero-text">
+          <h1>Lithium Battery Component B2B Manufacturer and Supplier</h1>
+          <p>Plated and pure nickel strips for 18650, 21700 and 32650 cells, and tin-coated copper busbars. Made at our own unit in Greater Noida, supplied across India.</p>
+          <div class="home-hero-cta">
+            <a class="hero-btn" href="#catalog">Shop products</a>
+            <a class="hero-btn hero-btn-ghost" href="/18650-21700-32650-nickel-strip-sizing-guide.html">Strip sizing guide</a>
+          </div>
+        </div>
+        <div class="home-hero-thumbs" id="heroThumbs" aria-hidden="true"></div>
+      </div>
+    </section>
 
     <section id="catalog" class="catalog">
-      <div class="container catalog-layout">
-        <aside class="catalog-filters">
-          <h3>Categories</h3>
-          <div class="filters" id="categoryFilters"></div>
-        </aside>
-        <div class="catalog-main">
-        <div class="section-head catalog-head">
-          <p class="eyebrow">Store</p>
-        </div>
-
+      <div class="container catalog-wrap">
+        <div class="cat-tiles" id="categoryFilters" aria-label="Product categories"></div>
+        <div class="cell-pills" id="cellPills" aria-label="Shop by cell type"></div>
         <div class="catalog-grid" id="catalogGrid">
-<p class="form-note">Loading products…</p>
-</div>
+          <p class="form-note">Loading products&hellip;</p>
         </div>
-        <aside class="catalog-side">
-          <div class="side-panel is-active" id="orderPanel" data-panel="order">
-            <div class="panel-header">
-              <h3>View Quote</h3>
-              <button class="button ghost tiny" type="button" data-clear="order">Clear</button>
-            </div>
-            <div id="orderList" class="panel-list"></div>
-            <div class="panel-form">
-              <div class="form-actions">
-                <button class="button tiny" type="button" id="orderProceedBtn">Proceed</button>
-              </div>
-              <p class="form-note" id="orderProceedNote">Log in to proceed with your order.</p>
-            </div>
-          </div>
-        </aside>
       </div>
+      <!-- the old quote panel is kept (hidden) because other scripts still look for it -->
+      <aside class="catalog-side" hidden>
+        <div class="side-panel is-active" id="orderPanel" data-panel="order">
+          <div id="orderList" class="panel-list"></div>
+          <div class="panel-form">
+            <button class="button tiny" type="button" id="orderProceedBtn">Proceed</button>
+            <p class="form-note" id="orderProceedNote"></p>
+          </div>
+        </div>
+      </aside>
     </section>
 
     <section class="home-blog" id="blog">

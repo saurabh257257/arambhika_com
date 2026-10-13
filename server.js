@@ -16,6 +16,7 @@ import { syncProfileToZoho, fetchProfileFromZoho, clearContactCache } from './li
 import { verifyGstin, providerConfigured as gstProviderConfigured } from './lib/gst.js'
 import { selectableStates, findState, isValidPostalCode, isValidEmail } from './lib/india.js'
 import { profileStatus } from './lib/profile-status.js'
+import { renderProductPage, renderProductSitemap } from './lib/product-pages.js'
 
 try { process.loadEnvFile() } catch {}
 
@@ -609,6 +610,22 @@ app.get('/api/test-orders/:id/invoice', testSessionRequired, async (req, res) =>
 
 app.get('/admin/zoho-orders', adminRequired, (req, res) => {
   res.json({ orders: testStore.getAllOrders() })
+})
+
+// One address per product, with its own title, description, canonical link and structured data.
+app.get('/product/:slug', (req, res) => {
+  let template
+  try { template = fs.readFileSync(path.join(PUBLIC_DIR, 'product.html'), 'utf8') } catch { return res.status(500).send('Product page template missing') }
+  const html = renderProductPage(template, current.data, String(req.params.slug || '').toLowerCase())
+  if (!html) {
+    res.status(404).set('X-Robots-Tag', 'noindex')
+    return res.send('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Product not found | Arambhika</title><meta name="robots" content="noindex"><body style="font-family:system-ui;padding:40px;text-align:center"><h1>We could not find that product</h1><p><a href="/">Back to the store</a></p>')
+  }
+  res.set('Cache-Control', 'no-cache').type('html').send(html)
+})
+
+app.get('/product-sitemap.xml', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=900').type('application/xml').send(renderProductSitemap(current.data))
 })
 
 app.get('/products.json', (req, res) => {

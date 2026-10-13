@@ -6,3 +6,4 @@ Disallow: /completed.html
 
 Sitemap: https://www.arambhika.com/sitemap.xml
 Sitemap: https://www.arambhika.com/image-sitemap.xml
+Sitemap: https://www.arambhika.com/product-sitemap.xml

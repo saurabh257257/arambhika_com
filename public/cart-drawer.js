@@ -6,8 +6,33 @@
   const money = (n) => `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  const catalogProducts = () =>
-    (typeof cachedCatalog !== "undefined" ? cachedCatalog : []).flatMap((c) => c.products || []);
+  // Works on the store page (script.js supplies getOrder/setOrder/cachedCatalog) and on pages that
+  // only load this file, such as the product page: it then reads the same basket straight from
+  // sessionStorage and fetches the catalog itself.
+  const CART_KEY = "orderCart";
+  const cartRead = () => {
+    if (typeof getOrder === "function") return getOrder();
+    try { return JSON.parse(sessionStorage.getItem(CART_KEY) || "{}"); } catch { return {}; }
+  };
+  const cartWrite = (order) => {
+    if (typeof setOrder === "function") { setOrder(order); return; }
+    sessionStorage.setItem(CART_KEY, JSON.stringify(order));
+    document.dispatchEvent(new CustomEvent("cart:changed"));
+    fetch("/api/test-cart", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cart: order }) }).catch(() => {});
+  };
+  let fetchedCategories = null;
+  const catalogProducts = () => {
+    const cats = typeof cachedCatalog !== "undefined" && cachedCatalog.length ? cachedCatalog : fetchedCategories || [];
+    return cats.flatMap((c) => c.products || []);
+  };
+  function ensureCatalog() {
+    if ((typeof cachedCatalog !== "undefined" && cachedCatalog.length) || fetchedCategories) return;
+    fetchedCategories = [];
+    fetch("/products.json").then((r) => r.json()).then((d) => {
+      fetchedCategories = d.categories || [];
+      render();
+    }).catch(() => {});
+  }
   const productFor = (name) => catalogProducts().find((p) => p.ProductCode === name);
   const unitPrice = (p) => Number(String(p?.Price ?? "").replace(/[^\d.]/g, "")) || 0;
   const minQty = (p) => Math.max(1, Number(p?.["Minimum Quantity"]) || 1);
@@ -32,7 +57,9 @@
   fab.className = "cd-fab";
   fab.setAttribute("aria-label", "Open cart");
   fab.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="cd-fab-badge" id="cdBadge">0</span>`;
-  document.body.appendChild(fab);
+  const headerBtn = document.getElementById("headerCart");
+  const headerBadge = document.getElementById("headerCartBadge");
+  if (!headerBtn) document.body.appendChild(fab);
 
   const panel = root.querySelector(".cd-panel");
   const body = root.querySelector("#cdBody");
@@ -43,7 +70,7 @@
   let highlight = "";
 
   function lines() {
-    const order = getOrder();
+    const order = cartRead();
     return Object.values(order).map((item) => {
       const p = productFor(item.name);
       const price = unitPrice(p);
@@ -58,6 +85,7 @@
     countEl.textContent = all.length ? `(${all.length} item${all.length === 1 ? "" : "s"})` : "";
     badge.textContent = String(all.length);
     fab.classList.toggle("has-items", all.length > 0);
+    if (headerBadge) { headerBadge.textContent = String(all.length); headerBadge.hidden = all.length === 0; }
 
     if (!all.length) {
       body.innerHTML = `
@@ -127,18 +155,19 @@
     if (!btn) return;
     const line = btn.closest(".cd-line");
     const id = line?.dataset.id;
-    const order = getOrder();
+    const order = cartRead();
     const item = order[id];
     if (!item) return;
     const p = productFor(item.name);
     if (btn.dataset.act === "rm") delete order[id];
     else if (btn.dataset.act === "inc") item.qty = Number(item.qty) + 1;
     else if (btn.dataset.act === "dec") item.qty = Math.max(minQty(p), Number(item.qty) - 1);
-    setOrder(order);
+    cartWrite(order);
     render();
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && root.classList.contains("is-open")) close(); });
   fab.addEventListener("click", open);
+  headerBtn?.addEventListener("click", open);
 
   // kept in step with every change anywhere on the page
   document.addEventListener("cart:changed", () => { render(); });
@@ -146,5 +175,6 @@
 
   window.openCartDrawer = open;
   window.closeCartDrawer = close;
+  ensureCatalog();
   render();
 })();
