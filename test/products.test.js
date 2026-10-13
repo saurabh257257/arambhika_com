@@ -143,6 +143,11 @@ describe('store home markup', () => {
     assert.match(home, /<h1>Lithium Battery Component B2B Manufacturer and Supplier<\/h1>/)
   })
 
+  test('there is no banner: the title is one slim line above the categories', () => {
+    assert.doesNotMatch(home, /home-hero|heroThumbs|hero-btn/)
+    assert.match(home, /<section id="home" class="home-title"/)
+  })
+
   test('there is no Track order anywhere in the header (orders live in the profile)', () => {
     const header = home.match(/<header class="site-header[\s\S]*?<\/header>/)[0]
     assert.doesNotMatch(header, /track\s*order/i)

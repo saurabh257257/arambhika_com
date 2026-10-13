@@ -1835,3 +1835,7 @@ body.cd-lock { overflow: hidden; }
   .pp-sticky-price small { font-weight: 500; color: var(--muted); font-size: 0.74rem; }
   .pp-main { padding-bottom: 84px; }
 }
+
+/* page title: one slim line instead of a banner, so the products start straight away */
+.home-title { background: var(--surface); padding: 14px 0 0; }
+.home-title h1 { font-family: "Poppins", sans-serif; font-size: clamp(1.05rem, 1.8vw, 1.4rem); line-height: 1.3; margin: 0; color: var(--ink); }
