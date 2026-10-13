@@ -63,7 +63,7 @@ remote "mkdir -p '$DEPLOY_PATH' && cd '$DEPLOY_PATH' && mkdir -p ../releases && 
 rsync -az --delete \
   -e "ssh ${SSH_OPTS[*]}" \
   --exclude '.git' --exclude '.github' --exclude 'node_modules' --exclude 'data' --exclude '.env' \
-  --exclude 'test' --exclude 'test-helpers' --exclude 'docs' \
+  --exclude 'test' --exclude 'test-helpers' --exclude 'docs' --exclude 'apps' \
   ./ "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/"
 
 scp "${SSH_OPTS[@]}" "$WORK/app.env" "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/.env"
