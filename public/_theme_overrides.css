@@ -1839,3 +1839,121 @@ body.cd-lock { overflow: hidden; }
 /* page title: one slim line instead of a banner, so the products start straight away */
 .home-title { background: var(--surface); padding: 14px 0 0; }
 .home-title h1 { font-family: "Poppins", sans-serif; font-size: clamp(1.05rem, 1.8vw, 1.4rem); line-height: 1.3; margin: 0; color: var(--ink); }
+
+/* ================= Original blue theme, applied to the new store, product, cart and checkout =========
+   Same palette as the first version of the site (styles.css) and the account dashboard tiles:
+   brand blue #1e5eff / #1847d1, navy #0f172a, soft blue-white backgrounds, and tinted blue, teal and
+   orange accents instead of grey and black. */
+:root {
+  --b-blue: #1e5eff;
+  --b-blue-dark: #1847d1;
+  --b-navy: #0f172a;
+  --b-navy-2: #1a3a6b;
+  --b-bg: #f5f8ff;
+  --b-line: #d6e2ff;
+  --t-blue-bg: #eaf1ff;   --t-blue-fg: #1d4ed8;
+  --t-teal-bg: #e6f7f6;   --t-teal-fg: #0f766e;
+  --t-orange-bg: #fff4e5; --t-orange-fg: #b45309;
+  --t-green-bg: #e8f7ee;  --t-green-fg: #15803d;
+}
+body { background: linear-gradient(180deg, var(--b-bg) 0%, #ffffff 520px); }
+.catalog, .pp-main, .ck-main { background: transparent; }
+
+/* header: deep blue instead of flat slate, brand-blue search button */
+.site-header { background: linear-gradient(120deg, var(--b-navy) 0%, var(--b-navy-2) 100%); }
+.search-go { background: var(--b-blue); color: #fff; }
+.search-go:hover { background: var(--b-blue-dark); }
+.header-search input:focus { outline-color: #8fb0ff; }
+.nav-cart-badge { background: #ffd814; color: var(--b-navy); }
+.brand-tag { color: #cfe0ff; }
+
+/* page title */
+.home-title h1 { color: var(--b-navy); }
+.home-title h1::after { content: ""; display: block; width: 56px; height: 4px; border-radius: 4px; margin-top: 8px; background: linear-gradient(90deg, var(--b-blue), #14b8a6); }
+
+/* category tiles: one tint each, like the dashboard tiles */
+.cat-tile { background: var(--t-blue-bg); border-color: #cfe0ff; }
+.cat-tile:nth-child(2) { background: var(--t-teal-bg); border-color: #bfe9e5; }
+.cat-tile:nth-child(3) { background: var(--t-orange-bg); border-color: #fde0b6; }
+.cat-tile-text b { color: var(--b-navy); }
+.cat-tile-text small { color: var(--t-blue-fg); font-weight: 600; }
+.cat-tile:nth-child(2) .cat-tile-text small { color: var(--t-teal-fg); }
+.cat-tile:nth-child(3) .cat-tile-text small { color: var(--t-orange-fg); }
+.cat-tile:hover { box-shadow: 0 8px 20px rgba(30, 94, 255, 0.16); background: #fff; }
+.cat-tile.active, .cat-tile.active:hover { background: #fff; box-shadow: inset 4px 0 0 var(--b-blue), 0 8px 20px rgba(30, 94, 255, 0.16); }
+.cat-tile:nth-child(2).active { box-shadow: inset 4px 0 0 #14b8a6, 0 8px 20px rgba(20, 184, 166, 0.16); }
+.cat-tile:nth-child(3).active { box-shadow: inset 4px 0 0 #f59e0b, 0 8px 20px rgba(245, 158, 11, 0.16); }
+.cat-tile-img { border-color: #fff; box-shadow: 0 0 0 2px rgba(30, 94, 255, 0.18); }
+
+/* cell-type pills */
+.cell-pills-label { color: var(--b-navy); }
+.cell-pill { background: var(--t-blue-bg); border-color: #cfe0ff; color: var(--t-blue-fg); }
+.cell-pill small { color: var(--b-navy-2); }
+.cell-pill:hover { border-color: var(--b-blue); }
+.cell-pill.active { background: var(--b-blue); border-color: var(--b-blue); color: #fff; }
+.cell-pill.active small { color: #dbe7ff; }
+
+/* category sections get a colour bar */
+.cat-block-head { padding-left: 12px; border-left: 4px solid var(--b-blue); }
+.cat-block:nth-of-type(2) .cat-block-head { border-left-color: #14b8a6; }
+.cat-block:nth-of-type(3) .cat-block-head { border-left-color: #f59e0b; }
+.cat-block-head h2 { color: var(--b-navy); }
+
+/* product cards */
+.prod-card, .pp-rel { border-color: var(--b-line); }
+.prod-card:hover, .pp-rel:hover { box-shadow: 0 8px 22px rgba(30, 94, 255, 0.18); }
+.prod-img, .pp-rel-img { border-color: #e4ecff; background: #fff; }
+.prod-name { color: var(--b-navy); }
+.prod-link:hover .prod-name { color: var(--b-blue-dark); }
+.prod-price { color: var(--b-blue-dark); }
+.prod-price small { color: #64748b; }
+.prod-flag { background: var(--t-orange-fg); }
+.prod-btn { background: var(--b-blue); color: #fff; box-shadow: 0 6px 14px rgba(30, 94, 255, 0.25); }
+.prod-btn:hover { background: var(--b-blue-dark); }
+.prod-btn-ghost { background: #fff; color: var(--b-blue-dark); border: 1px solid var(--b-blue); box-shadow: none; }
+.prod-stepper { border-color: #cfe0ff; }
+.prod-stepper button { background: var(--b-blue); color: #fff; }
+.prod-stepper button:hover { background: var(--b-blue-dark); }
+.prod-stepper span { color: var(--b-navy); }
+
+/* product page */
+.pp-crumbs a, .pp-cat, .pp-sec-head a { color: var(--b-blue-dark); }
+.pp-grid, .pp-sec { border-color: var(--b-line); }
+.pp-title { color: var(--b-navy); }
+.pp-price { color: var(--b-blue-dark); }
+.pp-tags span { background: var(--t-blue-bg); border-color: #cfe0ff; color: var(--t-blue-fg); }
+.pp-thumbs button.is-on { border-color: var(--b-blue); }
+.pp-spec th { background: var(--b-bg); }
+.pp-qty { border-color: #cfe0ff; }
+.pp-qty button { background: var(--t-blue-bg); color: var(--b-blue-dark); }
+.pp-qty button:hover { background: #dbe7ff; }
+.pp-btn-yellow { background: var(--b-blue); color: #fff; box-shadow: 0 8px 18px rgba(30, 94, 255, 0.25); }
+.pp-btn-yellow:hover { background: var(--b-blue-dark); }
+.pp-btn-buy { background: #f59e0b; color: #1f1300; }
+.pp-btn-buy:hover { background: #d97706; }
+.pp-assure div { background: var(--t-blue-bg); border-color: #cfe0ff; }
+.pp-assure div:nth-child(2) { background: var(--t-teal-bg); border-color: #bfe9e5; }
+.pp-assure div:nth-child(3) { background: var(--t-orange-bg); border-color: #fde0b6; }
+.pp-sticky { border-top-color: var(--b-line); }
+
+/* cart drawer and checkout: the same blue call to action */
+.cd-btn-primary, .ck-btn-primary { background: var(--b-blue); color: #fff; box-shadow: 0 8px 18px rgba(30, 94, 255, 0.25); }
+.cd-btn-primary:hover, .ck-btn-primary:hover:not(:disabled) { background: var(--b-blue-dark); }
+.cd-foot { background: var(--b-bg); }
+.cd-head { background: linear-gradient(120deg, var(--b-navy) 0%, var(--b-navy-2) 100%); color: #fff; border-bottom: 0; }
+.cd-count { color: #cfe0ff; }
+.cd-x { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.cd-stepper { border-color: #cfe0ff; }
+.cd-stepper button { background: var(--t-blue-bg); color: var(--b-blue-dark); }
+.cd-line-total { color: var(--b-blue-dark); }
+.cd-fab { background: var(--b-blue); }
+.ck-card[data-state="current"] { border-color: var(--b-blue); box-shadow: 0 10px 30px rgba(30, 94, 255, 0.12); }
+.ck-summary { border-color: var(--b-line); }
+.ck-link, .ck-edit { color: var(--b-blue-dark); }
+
+/* sign-up wizard and account primary buttons */
+.wiz-btn-primary, .acct-btn-primary { background: var(--b-blue); color: #fff; box-shadow: 0 8px 18px rgba(30, 94, 255, 0.25); }
+.wiz-btn-primary:hover:not(:disabled), .acct-btn-primary:hover { background: var(--b-blue-dark); }
+.wiz-pct { color: var(--b-blue-dark); }
+
+.home-title { background: transparent; }
