@@ -173,6 +173,19 @@ describe('store home markup', () => {
     assert.doesNotMatch(script, /\b1P\b.*pill|photos<\/span>/)
   })
 
+  test('phones: categories sit three across and nothing on the home page scrolls sideways', () => {
+    const css = read('public/_theme_overrides.css')
+    const tail = css.slice(css.lastIndexOf('Compact categories, no sideways'))
+    assert.match(tail, /\.cat-tiles\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
+    assert.match(tail, /\.cell-pills\s*\{[^}]*flex-wrap:\s*wrap/)
+    assert.doesNotMatch(tail, /overflow-x:\s*auto/, 'a phone rule is making something scroll sideways')
+  })
+
+  test('phones: the header cart icon is hidden where the tab bar already has the cart', () => {
+    const css = read('public/_theme_overrides.css')
+    assert.match(css, /body:has\(#mobileTabbar\)\s*\.nav-cart-btn\s*\{\s*display:\s*none/)
+  })
+
   test('product images come from Zoho only, never from local product folders', () => {
     for (const file of ['public/script.js', 'public/product.js', 'public/cart-drawer.js', 'public/checkout.js', 'lib/product-pages.js']) {
       assert.doesNotMatch(read(file), /assets\/products/, `${file} references a local product image`)
