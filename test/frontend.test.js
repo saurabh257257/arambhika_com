@@ -34,13 +34,7 @@ describe('JavaScript files', () => {
 
 // Broken local references that existed before this suite. Same rule as the SEO list: it can only
 // shrink, and fixing one makes its entry fail until removed.
-const KNOWN_BROKEN = {
-  'index.html': [
-    'assets/products/nickel-plated/np-20-1.jpg',
-    'assets/products/nickel-pure/n-15-1.jpg',
-    'assets/products/copper-bus-bars/cb-10-1.jpg',
-  ],
-}
+const KNOWN_BROKEN = {}
 
 describe('local references resolve', () => {
   for (const page of htmlPages) {
@@ -193,6 +187,12 @@ describe('customer flow markup', () => {
     assert.match(html, /id="acctShopLink"/)
     assert.match(html, /id="acctCartBanner"[^>]*href="checkout\.html"/)
     assert.match(read('account.js'), /\/api\/test-cart/)
+  })
+
+  test('the home page no longer has the "Our Strengths" carousel', () => {
+    const html = read('index.html')
+    assert.doesNotMatch(html, /id="solutions"|solutionsCarousel|solution-card/)
+    assert.doesNotMatch(html, /Our Strengths|What Sets Us Apart/i)
   })
 
   test('the old client-side address rule is gone (the server decides)', () => {
