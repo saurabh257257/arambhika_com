@@ -209,6 +209,83 @@ app.delete('/api/products/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// ── Live website catalogue ────────────────────────────────────────
+// The tool's product list mirrors what is on the website. Importing downloads each photo into the
+// uploads folder, so the picker and the image generator work from the same local files as before.
+// Removing a product only removes it from this tool; the website and Zoho are never touched.
+try { db.exec("ALTER TABLE products ADD COLUMN source TEXT DEFAULT ''"); } catch (e) {}
+db.exec('CREATE TABLE IF NOT EXISTS website_removed (sku TEXT PRIMARY KEY)');
+const WEBSITE_URL = (process.env.WEBSITE_URL || 'https://www.arambhika.com').replace(/[/]+$/, '');
+
+async function importWebsiteCatalog({ restore = false } = {}) {
+  const res = await fetch(WEBSITE_URL + '/products.json', { signal: AbortSignal.timeout(20000) });
+  if (!res.ok) throw new Error('Website catalogue returned ' + res.status);
+  const body = await res.json();
+  if (restore) db.exec('DELETE FROM website_removed');
+  const removed = new Set(db.prepare('SELECT sku FROM website_removed').all().map((r) => r.sku));
+  const result = { added: 0, updated: 0, skipped: 0, images: 0 };
+  for (const cat of body.categories || []) {
+    for (const item of cat.products || []) {
+      const sku = String(item.SKU || item.ProductCode || '').trim();
+      const name = String(item.ProductCode || '').trim();
+      if (!sku || !name || name === 'T') continue;
+      if (removed.has(sku)) { result.skipped += 1; continue; }
+      const price = item.Price == null ? '' : String(item.Price);
+      const details = Array.isArray(item.Additional_Details) ? item.Additional_Details.filter(Boolean).join('\n') : '';
+      const avail = /out of stock|^no$/i.test(String(item.Availability || '')) ? 'no' : 'yes';
+      const existing = db.prepare("SELECT * FROM products WHERE sku=? AND source='website'").get(sku);
+      let id;
+      let images = [];
+      if (existing) {
+        id = existing.id;
+        images = JSON.parse(existing.images || '[]');
+        db.prepare("UPDATE products SET category=?,name=?,price=?,unit=?,min_quantity=?,availability=?,dimensions=?,details=?,updated_at=datetime('now') WHERE id=?")
+          .run(cat.name, name, price, item.Unit || '', Number(item['Minimum Quantity']) || 1, avail, item.Product_Dimensions || '', details, id);
+        result.updated += 1;
+      } else {
+        const r = db.prepare("INSERT INTO products (sku,category,name,price,unit,min_quantity,availability,dimensions,details,flag_for_website,flag_reference_image,source) VALUES (?,?,?,?,?,?,?,?,?,1,1,'website')")
+          .run(sku, cat.name, name, price, item.Unit || '', Number(item['Minimum Quantity']) || 1, avail, item.Product_Dimensions || '', details);
+        id = r.lastInsertRowid;
+        result.added += 1;
+      }
+      const links = (Array.isArray(item.Image_Link) ? item.Image_Link : [item.Image_Link]).filter((l) => typeof l === 'string' && l.startsWith('/zimg/'));
+      for (let i = 0; i < links.length && images.length < links.length; i += 1) {
+        const ext = (path.extname(links[i].split('?')[0]) || '.jpg').toLowerCase().replace(/[^.a-z0-9]/g, '');
+        const file = `web_${id}_${images.length + 1}${ext || '.jpg'}`;
+        try {
+          const ir = await fetch(WEBSITE_URL + links[i], { signal: AbortSignal.timeout(20000) });
+          if (!ir.ok) continue;
+          fs.writeFileSync(path.join(uploadsDir, file), Buffer.from(await ir.arrayBuffer()));
+          images.push(file); result.images += 1;
+        } catch (e) { console.error('Image import failed:', e.message); }
+      }
+      db.prepare('UPDATE products SET images=? WHERE id=?').run(JSON.stringify(images), id);
+      syncAvailabilityFlags(id);
+    }
+  }
+  return result;
+}
+
+app.post('/api/products/import-website', async (req, res) => {
+  try { res.json({ success: true, ...(await importWebsiteCatalog({ restore: !!(req.body && req.body.restore) })) }); }
+  catch (e) { res.status(502).json({ error: 'Could not load the website catalogue: ' + e.message }); }
+});
+
+// bulk remove (from this tool only); website items are remembered so a re-import does not bring them back
+app.post('/api/products/bulk-delete', (req, res) => {
+  const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(Number).filter(Number.isInteger) : [];
+  let n = 0;
+  for (const id of ids) {
+    const p = db.prepare('SELECT * FROM products WHERE id=?').get(id);
+    if (!p) continue;
+    JSON.parse(p.images || '[]').forEach((f) => { try { fs.unlinkSync(path.join(uploadsDir, path.basename(f))); } catch (e) {} });
+    if (p.source === 'website') db.prepare('INSERT OR IGNORE INTO website_removed (sku) VALUES (?)').run(p.sku);
+    db.prepare('DELETE FROM products WHERE id=?').run(id);
+    n += 1;
+  }
+  res.json({ success: true, removed: n });
+});
+
 // Image upload
 app.post('/api/products/:id/images', upload.array('images', 10), (req, res) => {
   const p = db.prepare('SELECT * FROM products WHERE id=?').get(req.params.id);

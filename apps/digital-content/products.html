@@ -133,6 +133,15 @@
   </div>
 
   <div class="content">
+    <div class="bulkbar" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px">
+      <select id="catFilter" onchange="filterProducts()" style="max-width:220px"><option value="">All categories</option></select>
+      <button class="btn btn-outline btn-sm" onclick="selectVisible(true)">Select all shown</button>
+      <button class="btn btn-outline btn-sm" onclick="selectVisible(false)">Clear</button>
+      <span id="selCount" style="font-size:13px;color:var(--muted)">0 selected</span>
+      <button class="btn btn-primary btn-sm" id="useRefBtn" onclick="useSelectedAsReference()" disabled>Use as reference</button>
+      <button class="btn btn-danger btn-sm" id="removeBtn" onclick="removeSelected()" disabled>Remove selected</button>
+      <button class="btn btn-outline btn-sm" onclick="syncWebsite(false)" style="margin-left:auto">Sync from website</button>
+    </div>
     <div id="productGrid"></div>
   </div>
 </div>
@@ -293,6 +302,7 @@
 <script>
 let allProducts = [];
 const collapsedCats = {};
+const selected = new Set();
 
 const availClass = { yes:'avail-yes', 'order placed':'avail-order', no:'avail-no' };
 const availLabel = { yes:'In Stock', 'order placed':'Order Placed', no:'Out of Stock' };
@@ -314,16 +324,58 @@ async function loadProducts() {
     const res = await fetch('/api/products');
     const data = await res.json();
     allProducts = data.data || [];
+    if (!allProducts.length && !loadProducts.tried) { loadProducts.tried = true; await syncWebsite(false); return; }
+    fillCategoryFilter();
     filterProducts();
   } catch(e) {
     document.getElementById('productGrid').innerHTML = `<p style="color:var(--danger)">${e.message}</p>`;
   }
 }
 
-function filterProducts() {
+function visibleProducts() {
   const q = document.getElementById('searchInput').value.toLowerCase();
-  const list = q ? allProducts.filter(p => `${p.name} ${p.sku} ${p.category} ${p.details}`.toLowerCase().includes(q)) : allProducts;
-  renderGrid(list);
+  const cat = document.getElementById('catFilter').value;
+  return allProducts.filter(p => (!cat || p.category === cat) && (!q || `${p.name} ${p.sku} ${p.category} ${p.details}`.toLowerCase().includes(q)));
+}
+function filterProducts() { renderGrid(visibleProducts()); updateSelUi(); }
+function fillCategoryFilter() {
+  const sel = document.getElementById('catFilter'), cur = sel.value;
+  const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All categories</option>' + cats.map(c => '<option value="' + c.replace(/"/g, '&quot;') + '">' + c + '</option>').join('');
+  sel.value = cats.includes(cur) ? cur : '';
+}
+function updateSelUi() {
+  document.getElementById('selCount').textContent = selected.size + ' selected';
+  document.getElementById('useRefBtn').disabled = !selected.size;
+  document.getElementById('removeBtn').disabled = !selected.size;
+}
+function toggleSel(id, on) { if (on) selected.add(id); else selected.delete(id); updateSelUi(); }
+function selectVisible(on) { visibleProducts().forEach(p => on ? selected.add(p.id) : selected.delete(p.id)); filterProducts(); }
+async function syncWebsite(restore) {
+  try {
+    toast('Loading products from the website…');
+    const res = await fetch('/api/products/import-website', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ restore: !!restore }) });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Sync failed');
+    toast('Website synced: ' + d.added + ' new, ' + d.updated + ' updated, ' + d.images + ' photos');
+    const r = await fetch('/api/products');
+    allProducts = (await r.json()).data || [];
+  } catch (e) { toast(e.message, 'error'); }
+  fillCategoryFilter(); filterProducts();
+}
+async function useSelectedAsReference() {
+  const ids = [...selected].filter(id => { const p = allProducts.find(x => x.id === id); return p && JSON.parse(p.images || '[]').length; });
+  for (const id of ids) await setReferenceFlag(id, true);
+  toast(ids.length + ' product(s) now appear as reference products in the Content Generator');
+  filterProducts();
+}
+async function removeSelected() {
+  const n = selected.size;
+  if (!n || !confirm('Remove ' + n + ' product(s) from this tool? The website is not changed.')) return;
+  const res = await fetch('/api/products/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...selected] }) });
+  if (!res.ok) { toast('Remove failed', 'error'); return; }
+  selected.clear();
+  await loadProducts();
 }
 
 function groupByCategory(products) {
@@ -363,6 +415,7 @@ function productRowHtml(p) {
   const hasImg = imgs.length > 0;
   return `
     <tr>
+      <td onclick="event.stopPropagation()"><input type="checkbox" style="width:auto" ${selected.has(p.id)?'checked':''} onchange="toggleSel(${p.id},this.checked)"></td>
       <td class="thumb" onclick='openEditModal(${JSON.stringify(p).replace(/'/g,"&#39;")})'>${thumb}</td>
       <td onclick='openEditModal(${JSON.stringify(p).replace(/'/g,"&#39;")})'>${p.sku||''}</td>
       <td onclick='openEditModal(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="font-weight:500">${p.name}</td>
@@ -419,7 +472,7 @@ function renderGrid(list) {
     html += `<span class="cat-name">${cat}</span>`;
     html += `<span class="cat-count">${items.length} product${items.length===1?'':'s'}</span>`;
     html += `<span class="cat-chevron">&#9660;</span></div>`;
-    html += `<div class="cat-body"><table><thead><tr><th></th><th>SKU</th><th>Name</th><th>Price</th><th>MOQ</th><th>Availability</th><th>Flags</th><th>Reference</th></tr></thead><tbody>`;
+    html += `<div class="cat-body"><table><thead><tr><th></th><th></th><th>SKU</th><th>Name</th><th>Price</th><th>MOQ</th><th>Availability</th><th>Flags</th><th>Reference</th></tr></thead><tbody>`;
     html += items.map(productRowHtml).join('');
     html += `</tbody></table></div></div>`;
   }

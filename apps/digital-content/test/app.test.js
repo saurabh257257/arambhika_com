@@ -257,3 +257,64 @@ describe('file handling', () => {
     assert.ok(fs.existsSync(victim), 'a file outside uploads was deleted');
   });
 });
+
+describe('website catalogue in the Products page', () => {
+  let app, stub;
+  before(async () => {
+    const http = require('node:http');
+    const catalog = { categories: [
+      { name: 'Nickel Strip', products: [
+        { SKU: 'NS1', ProductCode: 'Nickel Strip 2P', Price: 100, Unit: 'KG', 'Minimum Quantity': 5, Availability: 'In Stock', Image_Link: ['/zimg/1/a.jpg'], Additional_Details: ['d1'] },
+        { SKU: 'T', ProductCode: 'T', Price: 1 },
+      ] },
+      { name: 'Cells', products: [{ SKU: 'C1', ProductCode: 'Cell 21700', Price: 200, Unit: 'PCS', Image_Link: [] }] },
+    ] };
+    stub = http.createServer((req, res) => {
+      if (req.url === '/products.json') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(catalog)); }
+      if (req.url === '/zimg/1/a.jpg') { res.setHeader('content-type', 'image/jpeg'); return res.end(Buffer.from([0xff, 0xd8, 0xff, 0xd9])); }
+      res.statusCode = 404; res.end();
+    });
+    await new Promise((r) => stub.listen(0, '127.0.0.1', r));
+    app = await start({ WEBSITE_URL: `http://127.0.0.1:${stub.address().port}` });
+    await app.login();
+  });
+  after(async () => { await app.stop(); stub.close(); });
+
+  test('importing loads every real product with its photo, as reference products', async () => {
+    const r = await app.request('POST', '/api/products/import-website', {});
+    assert.equal(r.status, 200);
+    assert.equal(r.json.added, 2);
+    assert.equal(r.json.images, 1);
+    const list = (await app.request('GET', '/api/products')).json.data;
+    assert.equal(list.length, 2, 'placeholder product "T" is skipped');
+    const ns = list.find((p) => p.sku === 'NS1');
+    assert.equal(ns.category, 'Nickel Strip');
+    assert.equal(ns.flag_reference_image, 1);
+    const imgs = JSON.parse(ns.images);
+    assert.equal(imgs.length, 1);
+    assert.ok(fs.existsSync(path.join(app.dir, 'uploads', imgs[0])));
+  });
+
+  test('importing again does not duplicate', async () => {
+    const r = await app.request('POST', '/api/products/import-website', {});
+    assert.equal(r.json.added, 0);
+    assert.equal((await app.request('GET', '/api/products')).json.data.length, 2);
+  });
+
+  test('removed products stay removed until restored', async () => {
+    const list = (await app.request('GET', '/api/products')).json.data;
+    const id = list.find((p) => p.sku === 'NS1').id;
+    const del = await app.request('POST', '/api/products/bulk-delete', { ids: [id] });
+    assert.equal(del.json.removed, 1);
+    await app.request('POST', '/api/products/import-website', {});
+    assert.equal((await app.request('GET', '/api/products')).json.data.some((p) => p.sku === 'NS1'), false);
+    await app.request('POST', '/api/products/import-website', { restore: true });
+    assert.equal((await app.request('GET', '/api/products')).json.data.some((p) => p.sku === 'NS1'), true);
+  });
+
+  test('the import and bulk remove need a session', async () => {
+    app.forget();
+    assert.equal((await app.request('POST', '/api/products/import-website', {})).status, 401);
+    assert.equal((await app.request('POST', '/api/products/bulk-delete', { ids: [1] })).status, 401);
+  });
+});

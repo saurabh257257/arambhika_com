@@ -182,13 +182,17 @@ textarea { resize:vertical; min-height:90px; line-height:1.5; }
       <div class="card">
         <h3 class="section-title">2 · Reference Products</h3>
         <div class="ref-section" style="margin-top:0">
-          <div class="hint" style="margin:-2px 0 8px">Optional — pick up to 4.</div>
+          <div class="hint" style="margin:-2px 0 8px">Optional — pick up to 10, from one or several categories.</div>
           <div class="ref-selected-bar" id="refSelectedBar">
             <div class="ref-selected-top">
               <div class="ref-chips" id="refChips"></div>
               <button onclick="clearReference()">Clear all</button>
             </div>
             <div class="ref-context" id="refContext"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <select id="refCategory" onchange="renderRefGrid()" style="flex:1;min-width:150px"><option value="">All categories</option></select>
+            <button type="button" class="btn btn-outline btn-sm" onclick="selectCategoryRefs()">Select all in category</button>
           </div>
           <input type="text" id="refSearch" class="ref-search" placeholder="Search by SKU or name..." oninput="renderRefGrid()">
           <div class="ref-grid" id="refGrid"></div>
@@ -281,7 +285,7 @@ textarea { resize:vertical; min-height:90px; line-height:1.5; }
 let gallery = [];
 let allProducts = [];
 let selectedRefs = []; // array of { ...product row, filename }
-const MAX_REFS = 4;
+const MAX_REFS = 10;
 const DEFAULT_SIZE = '2k'; // 1K/1k isn't a valid size tier for Seedream 5 Lite — 2k is the smallest size all three models accept
 const DEFAULT_REGION = 'ap-southeast-1';
 
@@ -311,9 +315,14 @@ function switchMode(mode) {
 function renderRefGrid() {
   const q = document.getElementById('refSearch').value.trim().toLowerCase();
   const grid = document.getElementById('refGrid');
-  const filtered = allProducts.filter(p =>
+  const catSel = document.getElementById('refCategory');
+  if (catSel && catSel.options.length <= 1) {
+    [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort().forEach(c => catSel.add(new Option(c, c)));
+  }
+  const cat = catSel ? catSel.value : '';
+  const filtered = allProducts.filter(p => (!cat || p.category === cat) && (
     !q || (p.sku || '').toLowerCase().includes(q) || (p.name || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q)
-  );
+  ));
   if (!filtered.length) { grid.innerHTML = '<div class="ref-empty">No products match.</div>'; return; }
   grid.innerHTML = filtered.map(p => {
     const imgs = JSON.parse(p.images || '[]');
@@ -356,6 +365,18 @@ function toggleReference(productId) {
   }
   renderSelectedRefsBar();
   if (wasTemplateText) document.getElementById('fPrompt').value = currentTemplatePrompt();
+  renderRefGrid();
+}
+
+function selectCategoryRefs() {
+  const cat = document.getElementById('refCategory').value;
+  for (const p of allProducts.filter(x => !cat || x.category === cat)) {
+    if (selectedRefs.some(r => r.id === p.id)) continue;
+    if (selectedRefs.length >= MAX_REFS) { toast('Limit is ' + MAX_REFS + ' reference products', 'error'); break; }
+    selectedRefs.push({ ...p, filename: JSON.parse(p.images || '[]')[0] });
+  }
+  renderSelectedRefsBar();
+  if (isUneditedTemplateText(document.getElementById('fPrompt').value)) document.getElementById('fPrompt').value = currentTemplatePrompt();
   renderRefGrid();
 }
 
