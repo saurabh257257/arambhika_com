@@ -93,7 +93,7 @@ describe('login is enforced on the server', () => {
   });
 
   test('pages send a signed-out visitor to the login page', async () => {
-    for (const p of ['/', '/image-generator.html', '/products.html']) {
+    for (const p of ['/', '/image-generator.html']) {
       const r = await app.request('GET', p);
       assert.equal(r.status, 302, p);
       assert.equal(r.headers.get('location'), '/login.html');

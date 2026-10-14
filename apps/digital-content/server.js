@@ -124,7 +124,6 @@ app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '1d'
 const page = (file) => (req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.sendFile(path.join(__dirname, file)); };
 app.get('/login.html', (req, res) => (isAuthed(req) ? res.redirect('/image-generator.html') : page('login.html')(req, res)));
 app.get('/image-generator.html', requireAuth, page('image-generator.html'));
-app.get('/products.html', requireAuth, page('products.html'));
 app.get('/', (req, res) => res.redirect(isAuthed(req) ? '/image-generator.html' : '/login.html'));
 
 // ── Image upload setup ────────────────────────────────────────
