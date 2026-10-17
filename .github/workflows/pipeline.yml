@@ -94,6 +94,8 @@ jobs:
           MSG91_OTP_LENGTH: ${{ vars.MSG91_OTP_LENGTH }}
           MSG91_OTP_EXPIRY: ${{ vars.MSG91_OTP_EXPIRY }}
           ALLOWED_TEST_MOBILE: ${{ vars.ALLOWED_TEST_MOBILE }}
+          GST_PROVIDER: ${{ vars.GST_PROVIDER }}
+          GST_API_KEY: ${{ secrets.GST_API_KEY }}
 
   deploy-prod:
     name: deploy to production droplet
@@ -130,3 +132,5 @@ jobs:
           MSG91_OTP_LENGTH: ${{ vars.MSG91_OTP_LENGTH }}
           MSG91_OTP_EXPIRY: ${{ vars.MSG91_OTP_EXPIRY }}
           ALLOWED_TEST_MOBILE: ${{ vars.ALLOWED_TEST_MOBILE }}
+          GST_PROVIDER: ${{ vars.GST_PROVIDER }}
+          GST_API_KEY: ${{ secrets.GST_API_KEY }}

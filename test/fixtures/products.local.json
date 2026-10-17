@@ -1,0 +1,58 @@
+{
+  "categories": [
+    {
+      "name": "Nickel Strip Plated",
+      "products": [
+        {
+          "SKU": "T-NP1",
+          "ZohoVariantId": "1000001",
+          "ProductCode": "Nickel Strip Plated 1P 8x0.15 mm",
+          "Price": "480",
+          "Unit": "KG",
+          "Minimum Quantity": 4,
+          "Availability": "Now",
+          "Image_Link": ["/zimg/111/one.jpg", "/zimg/222/two.jpg"],
+          "Product_Dimensions": "Thickness 0.15 mm Width 8 mm",
+          "Additional_Details": ["Used for 0.15 mm spot welding.", "Plated: 2 microns"]
+        },
+        {
+          "SKU": "T-NP2",
+          "ZohoVariantId": "1000002",
+          "ProductCode": "Nickel Strip Plated 2P(21700) 31x0.15 mm CD 23",
+          "Price": "750",
+          "Unit": "KG",
+          "Minimum Quantity": 1,
+          "Availability": "Now",
+          "Image_Link": ["/zimg/333/three.jpg"],
+          "Additional_Details": []
+        },
+        {
+          "SKU": "T-NP3",
+          "ProductCode": "Nickel Strip Plated 2P(32650) 46.5x0.15 mm <script>alert(1)</script>",
+          "Price": "750",
+          "Unit": "KG",
+          "Minimum Quantity": 4,
+          "Availability": "Notify",
+          "Image_Link": [],
+          "Additional_Details": ["Quote \"safe\" & <b>bold</b>"]
+        }
+      ]
+    },
+    {
+      "name": "Copper Bus Bar",
+      "products": [
+        {
+          "SKU": "T-CB1",
+          "ZohoVariantId": "1000004",
+          "ProductCode": "COPPER BUS BAR Universal (55x20x2mm) - Tin Coated",
+          "Price": "31",
+          "Unit": "Piece",
+          "Minimum Quantity": 100,
+          "Availability": "Now",
+          "Image_Link": ["/zimg/444/bar.jpg"],
+          "Additional_Details": ["Tin coated copper"]
+        }
+      ]
+    }
+  ]
+}

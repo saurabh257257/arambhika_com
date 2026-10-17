@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Content Generator — Arambhika Enablers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
+.topbar h2 { font-size:18px; font-weight:700; }
+.content { padding:24px 28px; flex:1; max-width:1320px; }
+
+.layout { display:grid; grid-template-columns:360px 1fr; gap:20px; align-items:start; }
+@media (max-width:840px) { .layout { grid-template-columns:1fr; } }
+
+.layout-3col { display:grid; grid-template-columns:300px 300px minmax(320px,1fr); gap:20px; align-items:start; }
+@media (max-width:1180px) { .layout-3col { grid-template-columns:1fr 1fr; } }
+@media (max-width:760px) { .layout-3col { grid-template-columns:1fr; } }
+
+.section-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#6366f1; margin:0 0 16px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.field { margin-bottom:14px; }
+.field label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.3px; }
+.field .hint, .hint { font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.4; }
+input[type=text], textarea, select {
+  width:100%; border:1px solid var(--border); border-radius:8px; padding:9px 11px;
+  font-size:13.5px; font-family:inherit; outline:none; color:var(--text); background:#fff;
+}
+input[type=text]:focus, textarea:focus, select:focus { border-color:#6366f1; }
+textarea { resize:vertical; min-height:90px; line-height:1.5; }
+.row { display:flex; gap:10px; }
+.row .field { flex:1; }
+.checkbox-row { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); margin-bottom:14px; }
+.checkbox-row.highlight { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:9px 12px; }
+.checkbox-row.highlight label { font-weight:700; color:#92400e; text-transform:none; }
+.checkbox-row.highlight input[type=checkbox] { width:16px; height:16px; accent-color:#d97706; }
+
+.btn { padding:10px 18px; border-radius:8px; font-size:13.5px; font-weight:600; font-family:inherit; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text); }
+.btn-primary { background:#6366f1; color:#fff; border:none; width:100%; }
+.btn-primary:hover { background:#4f46e5; }
+.btn-primary:disabled { background:#c7c9f5; cursor:not-allowed; }
+.btn-sm { padding:6px 12px; font-size:12px; }
+
+.result-panel { min-height:140px; display:flex; align-items:center; justify-content:center; }
+.result-empty { color:var(--muted); font-size:13.5px; text-align:center; padding:18px 20px; }
+.spinner { width:32px; height:32px; border:3px solid #e2e8f0; border-top-color:#6366f1; border-radius:50%; animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.error-box { background:#fdeaea; color:#a3221f; border-radius:8px; padding:12px 14px; font-size:13px; }
+
+.result-set { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; width:100%; }
+.result-card { border:1px solid var(--border); border-radius:10px; padding:12px; background:var(--surface); }
+.result-card img { width:100%; border-radius:8px; display:block; margin-bottom:8px; border:1px solid var(--border); }
+.result-card .slide-tag { font-size:10.5px; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:.3px; margin-bottom:6px; }
+.result-meta { font-size:11.5px; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.result-actions { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+.feedback-row { display:flex; gap:6px; border-top:1px solid var(--border); padding-top:10px; }
+.feedback-row input { flex:1; font-size:12.5px; padding:7px 9px; }
+.feedback-row button { white-space:nowrap; }
+
+.template-row { display:flex; gap:8px; margin-bottom:14px; }
+.template-btn { flex:1; padding:9px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface); font-size:12.5px; font-weight:600; cursor:pointer; color:var(--muted); text-align:center; }
+.template-btn.active { border-color:#6366f1; background:#eef2ff; color:#4338ca; }
+
+.publish-card { margin-top:16px; }
+.publish-card h3 { font-size:13px; text-transform:uppercase; letter-spacing:.3px; color:var(--muted); margin:0 0 10px; }
+.publish-card textarea { min-height:60px; margin-bottom:10px; }
+.publish-note { font-size:11.5px; color:var(--muted); margin-top:8px; }
+.btn-publish { background:#16a34a; color:#fff; border:none; }
+.btn-publish:hover { background:#15803d; }
+.btn-publish:disabled { background:#bbf7d0; cursor:not-allowed; }
+
+.gallery { margin-top:24px; }
+.gallery h3 { font-size:13px; text-transform:uppercase; letter-spacing:.3px; color:var(--muted); margin:0 0 12px; }
+.gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
+.gallery-item { border:1px solid var(--border); border-radius:8px; overflow:hidden; cursor:pointer; background:var(--surface); }
+.gallery-item img { width:100%; height:110px; object-fit:cover; display:block; }
+.gallery-item .cap { padding:6px 8px; font-size:10.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.ref-section { margin-top:20px; }
+.ref-search { margin-bottom:10px; }
+.ref-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; max-height:320px; overflow-y:auto; padding:2px; }
+.ref-item { border:2px solid var(--border); border-radius:8px; overflow:hidden; cursor:pointer; background:var(--surface); transition:border-color .15s; }
+.ref-item:hover { border-color:#a5b4fc; }
+.ref-item.selected { border-color:#6366f1; box-shadow:0 0 0 2px rgba(99,102,241,.25); }
+.ref-item img { width:100%; height:80px; object-fit:cover; display:block; background:#f1f5f9; }
+.ref-item .cap { padding:5px 6px; font-size:10.5px; }
+.ref-item .cap .sku { font-weight:700; color:var(--text); display:block; }
+.ref-item .cap .name { color:var(--muted); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ref-selected-bar { display:none; flex-direction:column; gap:8px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:10px 12px; margin-bottom:10px; font-size:12.5px; }
+.ref-selected-top { display:flex; align-items:center; gap:10px; }
+.ref-selected-top img { width:32px; height:32px; object-fit:cover; border-radius:5px; }
+.ref-selected-top button { margin-left:auto; background:none; border:none; color:#6366f1; font-size:12px; font-weight:600; cursor:pointer; }
+.ref-chips { display:flex; flex-wrap:wrap; gap:6px; flex:1; }
+.ref-chip { display:flex; align-items:center; gap:5px; background:#fff; border:1px solid #c7d2fe; border-radius:6px; padding:3px 6px 3px 3px; font-size:11.5px; font-weight:600; color:var(--text); }
+.ref-chip img { width:22px; height:22px; object-fit:cover; border-radius:4px; }
+.ref-chip button { background:none; border:none; color:#6366f1; font-size:14px; line-height:1; cursor:pointer; padding:0 0 0 2px; }
+.ref-context { font-size:11.5px; color:var(--muted); line-height:1.5; border-top:1px solid #c7d2fe; padding-top:8px; }
+.ref-context strong { color:var(--text); }
+.ref-context hr { border:none; border-top:1px solid #c7d2fe; margin:6px 0; }
+.ref-empty { font-size:12.5px; color:var(--muted); padding:12px 4px; }
+
+.toast { position:fixed; bottom:24px; right:24px; background:#1e293b; color:#fff; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:500; z-index:999; opacity:0; transition:opacity .25s; pointer-events:none; }
+.toast.show { opacity:1; }
+
+.mode-tabs { display:flex; gap:8px; margin-bottom:18px; border-bottom:1px solid var(--border); }
+.mode-tab { padding:10px 4px; margin-bottom:-1px; border:none; background:none; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; }
+.mode-tab.active { color:#6366f1; border-bottom-color:#6366f1; }
+
+.caption-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+.caption-row label { margin:0; }
+.li-result textarea { min-height:220px; }
+.li-note { font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.4; }
+.li-status { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.li-status .dot { width:7px; height:7px; border-radius:50%; background:#cbd5e1; display:inline-block; }
+.li-status .dot.on { background:#16a34a; }
+.li-status a.btn-sm { text-decoration:none; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo"><h1>Arambhika</h1><p>Enablers Dashboard</p></div>
+  <nav class="sidebar-nav">
+    <a href="image-generator.html" class="nav-link active"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15l-5-5L5 21"/></svg>Content Generator</a>
+  </nav>
+</aside>
+<div class="sidebar-overlay" id="sbOverlay" onclick="document.querySelector('.sidebar').classList.remove('open');this.classList.remove('show')"></div>
+
+<div class="main">
+  <div class="topbar">
+    <h2>Content Generator</h2>
+    <button class="btn btn-sm" onclick="fetch('/api/auth/logout',{method:'POST'}).finally(function(){location.replace('login.html')});" title="Sign out">&#9211; Logout</button>
+  </div>
+
+  <div class="content">
+    <div class="mode-tabs">
+      <button type="button" class="mode-tab active" id="tabBtnInstagram" onclick="switchMode('instagram')">Image &amp; Caption</button>
+      <button type="button" class="mode-tab" id="tabBtnLinkedin" onclick="switchMode('linkedin')">Text Post</button>
+    </div>
+
+    <div id="modeInstagram" class="layout-3col">
+      <div class="card">
+        <h3 class="section-title">1 · Generation Settings</h3>
+        <div class="field">
+          <label>Model</label>
+          <select id="fModel">
+            <option value="dola-seedream-5-0-pro-260628">Seedream 5 Pro</option>
+            <option value="dola-seedream-5-0-flash-260915" selected>Seedream 5 Flash</option>
+            <option value="seedream-5-0-lite-260128">Seedream 5 Lite</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Template</label>
+          <div class="template-row">
+            <button type="button" class="template-btn active" id="tplPostBtn" onclick="selectTemplate('post')">Single Image</button>
+            <button type="button" class="template-btn" id="tplCarouselBtn" onclick="selectTemplate('carousel')">Carousel</button>
+          </div>
+        </div>
+        <div class="field" id="slideCountField" style="display:none">
+          <label>Slides</label>
+          <select id="fSlideCount">
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Prompt</label>
+          <textarea id="fPrompt" placeholder="Describe the image you want..." rows="8"></textarea>
+        </div>
+        <button class="btn btn-primary" id="genBtn" onclick="generateImage()">Generate</button>
+        <div class="field" style="margin-top:14px;margin-bottom:0">
+          <label>Additional context</label>
+          <textarea id="fExtraContext" placeholder="e.g. 20% off this week, festive sale, limited stock..." rows="2"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title">2 · Reference Products</h3>
+        <div class="ref-section" style="margin-top:0">
+          <div class="hint" style="margin:-2px 0 8px">Optional — pick up to 10, from one or several categories.</div>
+          <div class="ref-selected-bar" id="refSelectedBar">
+            <div class="ref-selected-top">
+              <div class="ref-chips" id="refChips"></div>
+              <button onclick="clearReference()">Clear all</button>
+            </div>
+            <div class="ref-context" id="refContext"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <select id="refCategory" onchange="renderRefGrid()" style="flex:1;min-width:150px"><option value="">All categories</option></select>
+            <button type="button" class="btn btn-outline btn-sm" onclick="selectCategoryRefs()">Select all in category</button>
+          </div>
+          <input type="text" id="refSearch" class="ref-search" placeholder="Search by SKU or name..." oninput="renderRefGrid()">
+          <div class="ref-grid" id="refGrid"></div>
+          <div class="checkbox-row highlight" style="margin-top:12px;margin-bottom:0">
+            <input type="checkbox" id="fIncludePrice">
+            <label for="fIncludePrice">Include price in prompt</label>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3 class="section-title">3 · Generated Image</h3>
+          <div class="result-panel" id="resultPanel">
+            <div class="result-empty">Enter a prompt and click Generate.<br>Images take a few seconds to a minute depending on model and size.</div>
+          </div>
+        </div>
+
+        <div class="card publish-card" id="publishCard" style="display:none">
+          <h3>Caption</h3>
+          <div class="caption-row">
+            <label style="text-transform:none;font-size:12px;color:var(--muted)">Caption</label>
+            <button type="button" class="btn btn-sm" id="genCaptionBtn" onclick="generateCaption()">Generate caption</button>
+          </div>
+          <textarea id="fCaption" placeholder="Caption for the post... or click Generate caption"></textarea>
+          <button class="btn btn-sm" id="copyCaptionBtn" onclick="copyCaption()">Copy caption</button>
+          <div class="publish-note" id="publishNote"></div>
+        </div>
+
+        <div class="gallery" id="galleryWrap" style="display:none">
+          <h3>This session</h3>
+          <div class="gallery-grid" id="galleryGrid"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="modeLinkedin" class="layout-3col" style="display:none">
+      <div class="card">
+        <h3 class="section-title">1 · Post Brief</h3>
+        <div class="field">
+          <label>Topic / brief</label>
+          <textarea id="liTopic" placeholder="e.g. Announcing our new NP5 pure nickel strip for EV battery pack assembly — talk about plating options and typical MOQ" rows="6"></textarea>
+        </div>
+        <button class="btn btn-primary" id="liGenBtn" onclick="generateLinkedInPost()">Generate Post</button>
+        <div class="field" style="margin-top:14px;margin-bottom:0">
+          <label>Additional context</label>
+          <textarea id="liExtraContext" placeholder="e.g. 20% off this week, festive sale, limited stock..." rows="2"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title">2 · Reference Products</h3>
+        <div class="ref-section" style="margin-top:0">
+          <div class="hint" style="margin:-2px 0 8px">Optional — pick up to 4. Folds real price/spec facts into the post.</div>
+          <div class="ref-selected-bar" id="liRefSelectedBar">
+            <div class="ref-selected-top">
+              <div class="ref-chips" id="liRefChips"></div>
+              <button onclick="clearLiReference()">Clear all</button>
+            </div>
+            <div class="ref-context" id="liRefContext"></div>
+          </div>
+          <input type="text" id="liRefSearch" class="ref-search" placeholder="Search by SKU or name..." oninput="renderLiRefGrid()">
+          <div class="ref-grid" id="liRefGrid"></div>
+          <div class="checkbox-row highlight" style="margin-top:12px;margin-bottom:0">
+            <input type="checkbox" id="liIncludePrice">
+            <label for="liIncludePrice">Include price in prompt</label>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card li-result" id="liResultPanel">
+          <h3 class="section-title">3 · Generated Post</h3>
+          <div class="field" style="margin-bottom:10px">
+            <textarea id="liPostText" placeholder="Click Generate Post — the draft will appear here, editable before you copy it." rows="12"></textarea>
+          </div>
+          <div class="result-actions" style="margin-top:10px">
+            <button class="btn btn-sm" id="liCopyBtn" onclick="copyLinkedInPost()">Copy post</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let gallery = [];
+let allProducts = [];
+let selectedRefs = []; // array of { ...product row, filename }
+const MAX_REFS = 10;
+const DEFAULT_SIZE = '2k'; // 1K/1k isn't a valid size tier for Seedream 5 Lite — 2k is the smallest size all three models accept
+const DEFAULT_REGION = 'ap-southeast-1';
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function loadProductsForRef() {
+  try {
+    let res = await fetch('/api/products');
+    let body = await res.json();
+    if (!(body.data || []).length) {
+      await fetch('/api/products/import-website', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      res = await fetch('/api/products'); body = await res.json();
+    }
+    allProducts = (body.data || []).filter(p => {
+      if (!p.flag_reference_image) return false;
+      try { return JSON.parse(p.images || '[]').length > 0; } catch (e) { return false; }
+    });
+  } catch (e) { allProducts = []; }
+  renderRefGrid();
+  renderLiRefGrid();
+}
+
+// ── Tabs ─────────────────────────────────────────────────────
+function switchMode(mode) {
+  document.getElementById('tabBtnInstagram').classList.toggle('active', mode === 'instagram');
+  document.getElementById('tabBtnLinkedin').classList.toggle('active', mode === 'linkedin');
+  document.getElementById('modeInstagram').style.display = mode === 'instagram' ? 'grid' : 'none';
+  document.getElementById('modeLinkedin').style.display = mode === 'linkedin' ? 'grid' : 'none';
+}
+
+function renderRefGrid() {
+  const q = document.getElementById('refSearch').value.trim().toLowerCase();
+  const grid = document.getElementById('refGrid');
+  const catSel = document.getElementById('refCategory');
+  if (catSel && catSel.options.length <= 1) {
+    [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort().forEach(c => catSel.add(new Option(c, c)));
+  }
+  const cat = catSel ? catSel.value : '';
+  const filtered = allProducts.filter(p => (!cat || p.category === cat) && (
+    !q || (p.sku || '').toLowerCase().includes(q) || (p.name || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q)
+  ));
+  if (!filtered.length) { grid.innerHTML = '<div class="ref-empty">No products match.</div>'; return; }
+  grid.innerHTML = filtered.map(p => {
+    const imgs = JSON.parse(p.images || '[]');
+    const thumb = imgs[0];
+    const isSel = selectedRefs.some(r => r.id === p.id);
+    return `
+      <div class="ref-item ${isSel ? 'selected' : ''}" onclick="toggleReference(${p.id})">
+        <img src="/uploads/${esc(thumb)}" alt="${esc(p.name)}">
+        <div class="cap"><span class="sku">${esc(p.sku)}</span><span class="name">${esc(p.name)}</span></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSelectedRefsBar() {
+  const bar = document.getElementById('refSelectedBar');
+  if (!selectedRefs.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  document.getElementById('refChips').innerHTML = selectedRefs.map(p => `
+    <span class="ref-chip">
+      <img src="/uploads/${esc(p.filename)}" alt="">
+      <span>${esc(p.sku)}</span>
+      <button type="button" onclick="toggleReference(${p.id})" title="Remove">&times;</button>
+    </span>
+  `).join('');
+  document.getElementById('refContext').innerHTML = selectedRefs.map(buildContextHtml).join('<hr>');
+}
+
+function toggleReference(productId) {
+  const wasTemplateText = isUneditedTemplateText(document.getElementById('fPrompt').value);
+  const idx = selectedRefs.findIndex(r => r.id === productId);
+  if (idx !== -1) {
+    selectedRefs.splice(idx, 1);
+  } else {
+    if (selectedRefs.length >= MAX_REFS) { toast(`You can reference up to ${MAX_REFS} products`, 'error'); return; }
+    const p = allProducts.find(x => x.id === productId);
+    if (!p) return;
+    const imgs = JSON.parse(p.images || '[]');
+    selectedRefs.push({ ...p, filename: imgs[0] });
+  }
+  renderSelectedRefsBar();
+  if (wasTemplateText) document.getElementById('fPrompt').value = currentTemplatePrompt();
+  renderRefGrid();
+}
+
+function selectCategoryRefs() {
+  const cat = document.getElementById('refCategory').value;
+  for (const p of allProducts.filter(x => !cat || x.category === cat)) {
+    if (selectedRefs.some(r => r.id === p.id)) continue;
+    if (selectedRefs.length >= MAX_REFS) { toast('Limit is ' + MAX_REFS + ' reference products', 'error'); break; }
+    selectedRefs.push({ ...p, filename: JSON.parse(p.images || '[]')[0] });
+  }
+  renderSelectedRefsBar();
+  if (isUneditedTemplateText(document.getElementById('fPrompt').value)) document.getElementById('fPrompt').value = currentTemplatePrompt();
+  renderRefGrid();
+}
+
+function clearReference() {
+  const wasTemplateText = isUneditedTemplateText(document.getElementById('fPrompt').value);
+  selectedRefs = [];
+  renderSelectedRefsBar();
+  if (wasTemplateText) document.getElementById('fPrompt').value = currentTemplatePrompt();
+  renderRefGrid();
+}
+
+// Same facts a human would pull from the products page before drafting a
+// prompt by hand — real price/MOQ/dimensions, not invented ones.
+function buildContextHtml(p) {
+  const priceLine = p.price ? `₹${esc(p.price)}${p.new_price ? ' (offer: ₹'+esc(p.new_price)+')' : ''}/${esc(p.unit||'unit')}, MOQ ${esc(p.min_quantity||1)}${esc(p.unit||'')}` : '';
+  const parts = [
+    `<strong>${esc(p.name)}</strong> (${esc(p.sku)}, ${esc(p.category||'')})`,
+    p.dimensions ? `Dimensions: ${esc(p.dimensions)}` : '',
+    priceLine,
+    p.details ? esc(p.details) : '',
+    p.applications ? `Applications: ${esc(p.applications)}` : '',
+  ].filter(Boolean);
+  return parts.join('<br>');
+}
+
+function buildProductContextText(p, includePrice) {
+  const priceLine = includePrice && p.price ? ` Price: Rs.${p.price}${p.new_price ? ' (offer: Rs.'+p.new_price+')' : ''}/${p.unit||'unit'}, MOQ ${p.min_quantity||1}${p.unit||''}.` : '';
+  return `Real product being referenced: ${p.name} (category ${p.category||''}).${priceLine} Use these real facts for any spec text, price, or dimensions shown in the image — do not invent different numbers.`;
+}
+
+// ── Templates ────────────────────────────────────────────────
+// Two variants per mode: WithRef is used when a product reference photo is
+// selected (Seedream's "reference-based generation" — separate the Reference
+// Target to preserve from the Generated Scene Description, per the Seedream
+// 4.0 user guide), General is used when no reference is selected, so the
+// prompt never asks the model to "reproduce a supplied photo" that doesn't
+// exist.
+function postTemplateWithRef() {
+  return `An Instagram product advertisement, square 1:1 format, for "Arambhika Enablers" — an Indian B2B manufacturer of nickel strips, copper busbars, and battery connectors for EV and ESS battery pack makers. Clean industrial/technical brand treatment, professional B2B tone.
+
+Reference target: the attached product photo. Reproduce it exactly as shot — do not alter, restyle, relight, crop the object, or invent details. Preserve the true material finish (metallic sheen, plating tone, surface texture), exact proportions, edge profile, hole pattern, and thickness. No added reflections, no fictional variants, no extra units. Cut it out cleanly from its original background with a soft, natural contact shadow.
+
+Generated scene: flat white background, with a very subtle technical grid or fine diagonal facet pattern at low opacity in a barely-there light grey, and a faint oversized brand mark watermarked behind the composition. Place the product slightly off-center with generous breathing room on all sides. In the top-left corner, add the "Arambhika" wordmark logo, small and clean, exactly as shown in the logo reference (black lettering with the electric-blue lightning-bolt accent). Add a headline reading "[PRODUCT NAME]" in heavy condensed sans-serif, all caps, black, tight letter spacing, positioned at the top near the logo. Near the product, connected by a thin leader line, add a compact rounded spec-callout badge in the same electric blue as the logo's lightning bolt, with white text reading "[DIMENSIONS]" · "[PLATING/MATERIAL]" · "₹[PRICE]/KG". At the bottom, centered, add an accent bar in that same electric blue with white text reading "WhatsApp +91-9315545821 · www.arambhika.com".
+
+Style: crisp photo-and-vector hybrid, high contrast, white and electric-blue palette matching the logo — black used only for text and the logo wordmark, no other accent colors, no charcoal or grey tones — sharp legible text rendering, generous negative space, no stock-photo people, no emoji, no decorative clutter.`;
+}
+
+function postTemplateGeneral() {
+  return `An Instagram brand-awareness post, square 1:1 format, for "Arambhika Enablers" — an Indian B2B manufacturer of nickel strips, copper busbars, and battery connectors for EV and ESS (energy storage system) battery pack makers, based in Greater Noida, India.
+
+Scene: a clean technical product photograph of nickel strips and tin-coated copper busbars arranged in an organized industrial composition — coiled and cut nickel strip with a soft metallic sheen, alongside copper busbars, on a clean white studio surface with subtle top-down lighting and a soft natural contact shadow so the metal reads clearly against the white. No people, no clutter, no battery cells unless the image is specifically about pack assembly.
+
+Brand treatment: in the top-left corner, add the "Arambhika" wordmark logo, small and clean, exactly as shown in the logo reference (black lettering with the electric-blue lightning-bolt accent). Add a bold condensed sans-serif all-caps headline reading "[HEADLINE]" in black with tight letter spacing. At the bottom, centered, add an accent bar in the same electric blue as the logo's lightning bolt, with white text reading "WhatsApp +91-9315545821 · www.arambhika.com".
+
+Style: crisp industrial product photography, high contrast, white and electric-blue palette matching the logo — black used only for text and the logo wordmark, no other accent colors, no charcoal or grey tones — sharp legible text rendering, generous negative space, no stock-photo people, no emoji, no decorative clutter.`;
+}
+
+function carouselTemplateWithRef() {
+  return `A cohesive Instagram carousel, square 1:1 format, for "Arambhika Enablers" — a B2B manufacturer of nickel strips, copper busbars, and battery connectors for EV and energy storage (ESS) battery pack makers in India.
+
+Reference target: the attached product photo. Keep it accurate and unaltered across every slide — same material finish, proportions, and dimensions, no invented variants.
+
+Generated scene: apply the same clean white-and-electric-blue brand treatment on every slide for a consistent set — flat white background with a very subtle technical grid at low opacity, the logo's electric blue as the single accent color throughout, black for headline text, bold sans-serif typography, engineering/spec-sheet aesthetic. Keep the "Arambhika" wordmark logo — black lettering with its electric-blue lightning bolt, exactly as shown in the logo reference — in the same corner, and the same fonts and color grid, on every slide.`;
+}
+
+function carouselTemplateGeneral() {
+  return `A cohesive Instagram carousel, square 1:1 format, for "Arambhika Enablers" — a B2B manufacturer of nickel strips, copper busbars, and battery connectors for EV and energy storage (ESS) battery pack makers in India, based in Greater Noida.
+
+Scene: clean technical product photography of nickel strips and copper busbars in an organized industrial composition on a white studio surface. No people, no battery cells unless a slide is specifically about pack assembly.
+
+Apply the same clean white-and-electric-blue brand treatment on every slide for a consistent set: flat white background with a very subtle technical grid at low opacity, the logo's electric blue as the single accent color throughout, black for headline text, bold sans-serif typography, engineering/spec-sheet aesthetic. Keep the "Arambhika" wordmark logo — black lettering with its electric-blue lightning bolt, exactly as shown in the logo reference — in the same corner, and the same fonts and color grid, on every slide.`;
+}
+
+const SLIDE_FOCUS_REF = [
+  'Hero shot — product centered with breathing room, bold headline with the product name, and a small spec callout badge (dimensions/price/MOQ) near the product.',
+  'Spec close-up — zoom on a key dimension or plating detail with clean measurement line annotations, same brand treatment, minimal text.',
+  'Application context — the product shown in the context of an EV/ESS battery pack assembly, with the CTA line "WhatsApp +91-9315545821 for Bulk Quote — 2hr response  ·  www.arambhika.com" at the bottom.',
+  'Comparison view — a size or variant comparison relevant to this product line, same visual system, brief callout text.',
+];
+
+const SLIDE_FOCUS_GENERAL = [
+  'Hero shot — nickel strips and copper busbars arranged in a bold hero composition, with a strong brand headline.',
+  'Manufacturing strength — a shot suggesting in-house plating and manufacturing capability (coils, precision tooling, clean production floor), same brand treatment, minimal text.',
+  'Application context — the components shown in the context of an EV/ESS battery pack assembly, with the CTA line "WhatsApp +91-9315545821 for Bulk Quote — 2hr response  ·  www.arambhika.com" at the bottom.',
+  'Range overview — a spread suggesting the breadth of sizes and types available (plated vs pure nickel strip, busbar variants), same visual system, brief callout text.',
+];
+
+let currentMode = 'post';
+
+// Builds the right template for the current tab + whether a reference
+// product is currently selected.
+function currentTemplatePrompt() {
+  if (currentMode === 'post') return selectedRefs.length ? postTemplateWithRef() : postTemplateGeneral();
+  return selectedRefs.length ? carouselTemplateWithRef() : carouselTemplateGeneral();
+}
+
+// Only auto-refresh the prompt box when it still holds one of the
+// generated templates verbatim — never overwrite a hand-edited prompt.
+function isUneditedTemplateText(v) {
+  return [postTemplateWithRef(), postTemplateGeneral(), carouselTemplateWithRef(), carouselTemplateGeneral()].includes(v);
+}
+
+function selectTemplate(mode) {
+  currentMode = mode;
+  document.getElementById('tplPostBtn').classList.toggle('active', mode === 'post');
+  document.getElementById('tplCarouselBtn').classList.toggle('active', mode === 'carousel');
+  document.getElementById('slideCountField').style.display = mode === 'carousel' ? 'block' : 'none';
+  document.getElementById('fPrompt').value = currentTemplatePrompt();
+}
+
+// ── Generation ───────────────────────────────────────────────
+let currentSet = []; // [{ url, prompt, label, size }]
+
+async function callGenerate(opts) {
+  const res = await fetch('/api/byteplus/generate-image', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...opts, response_format: 'url' }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Generation failed');
+  const img = data.data && data.data[0];
+  if (!img || !img.url) throw new Error('No image returned');
+  return img;
+}
+
+async function generateImage() {
+  const model = document.getElementById('fModel').value.trim();
+  const basePrompt = document.getElementById('fPrompt').value.trim();
+  const size = DEFAULT_SIZE;
+  const region = DEFAULT_REGION;
+  const btn = document.getElementById('genBtn');
+  const panel = document.getElementById('resultPanel');
+
+  if (!model || !basePrompt) { toast('Model and prompt are both required', 'error'); return; }
+
+  const includePrice = document.getElementById('fIncludePrice').checked;
+  const extraContext = document.getElementById('fExtraContext').value.trim();
+  const productContext = selectedRefs.length ? selectedRefs.map(p => buildProductContextText(p, includePrice)).join('\n\n') : '';
+  const contextPrefix = [productContext, extraContext ? `Additional context: ${extraContext}` : ''].filter(Boolean).join('\n\n') + (productContext || extraContext ? '\n\n' : '');
+  const referenceImages = selectedRefs.length ? selectedRefs.map(r => r.filename) : undefined;
+
+  btn.disabled = true; btn.textContent = 'Generating…';
+  panel.innerHTML = '<div class="spinner"></div>';
+  currentSet = [];
+
+  try {
+    if (currentMode === 'post') {
+      const slidePrompt = contextPrefix + basePrompt;
+      const result = await callGenerate({ model, prompt: slidePrompt, size, region, referenceImages });
+      currentSet = [{ url: result.url, rawUrl: result.rawUrl, prompt: slidePrompt, label: null, size: result.size }];
+    } else {
+      const n = parseInt(document.getElementById('fSlideCount').value, 10);
+      const slideFocusList = selectedRefs.length ? SLIDE_FOCUS_REF : SLIDE_FOCUS_GENERAL;
+      for (let i = 0; i < n; i++) {
+        panel.innerHTML = `<div class="spinner"></div><div style="margin-top:10px;font-size:12.5px;color:var(--muted)">Generating slide ${i+1} of ${n}…</div>`;
+        const focus = slideFocusList[i % slideFocusList.length];
+        const slidePrompt = contextPrefix + basePrompt + `\n\nSlide ${i+1} of ${n} focus: ${focus}`;
+        const result = await callGenerate({ model, prompt: slidePrompt, size, region, referenceImages });
+        currentSet.push({ url: result.url, rawUrl: result.rawUrl, prompt: slidePrompt, label: `Slide ${i+1} of ${n}`, size: result.size });
+      }
+    }
+    renderResultSet();
+    gallery.unshift(...currentSet.map(s => ({ url: s.url, prompt: s.prompt, model })));
+    renderGallery();
+    toast(currentMode === 'post' ? 'Image generated' : 'Carousel generated');
+  } catch (e) {
+    panel.innerHTML = `<div class="error-box">${esc(e.message)}</div>`;
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generate';
+  }
+}
+
+async function regenerateSlide(i) {
+  const input = document.getElementById(`feedback-${i}`);
+  const feedback = input.value.trim();
+  if (!feedback) { toast('Add a comment describing what to change', 'error'); return; }
+
+  const model = document.getElementById('fModel').value.trim();
+  const size = DEFAULT_SIZE;
+  const region = DEFAULT_REGION;
+  const slide = currentSet[i];
+
+  const cards = document.querySelectorAll('#resultPanel .result-card');
+  if (cards[i]) cards[i].innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const newPrompt = slide.prompt + `\n\nRevision requested: ${feedback}`;
+    // Edit off the slide's own clean (unwatermarked) BytePlus output, not
+    // the locally watermarked copy — each round of feedback builds on the
+    // last result without the model having to work around our logo stamp.
+    const result = await callGenerate({ model, prompt: newPrompt, size, region, imageUrl: slide.rawUrl || slide.url });
+    currentSet[i] = { ...slide, url: result.url, rawUrl: result.rawUrl, prompt: newPrompt, size: result.size };
+    renderResultSet();
+    gallery.unshift({ url: result.url, prompt: newPrompt, model });
+    renderGallery();
+    toast('Regenerated');
+  } catch (e) {
+    toast(e.message, 'error');
+    renderResultSet();
+  }
+}
+
+// ── Rendering ────────────────────────────────────────────────
+function renderResultSet() {
+  const panel = document.getElementById('resultPanel');
+  panel.innerHTML = `<div class="result-set">${currentSet.map((s, i) => resultCardHtml(s, i)).join('')}</div>`;
+  updatePublishCard();
+}
+
+function resultCardHtml(s, i) {
+  return `
+    <div class="result-card">
+      ${s.label ? `<div class="slide-tag">${esc(s.label)}</div>` : ''}
+      <img src="${esc(s.url)}" alt="">
+      <div class="result-meta">${esc(s.size || '')}</div>
+      <div class="result-actions">
+        <a class="btn btn-sm btn-primary" href="${esc(s.url)}" download="arambhika-${Date.now()}-${i + 1}.${/\.png(\?|$)/i.test(s.url) ? 'png' : 'jpg'}" rel="noopener">Download image</a>
+        <button class="btn btn-sm" onclick="copyUrl('${esc(s.url)}')">Copy URL</button>
+      </div>
+      <div class="feedback-row">
+        <input type="text" id="feedback-${i}" placeholder="e.g. make the headline bigger, brighter background...">
+        <button class="btn btn-sm" onclick="regenerateSlide(${i})">Regenerate</button>
+      </div>
+    </div>
+  `;
+}
+
+function updatePublishCard() {
+  const card = document.getElementById('publishCard');
+  card.style.display = currentSet.length ? 'block' : 'none';
+}
+
+async function copyCaption() {
+  const caption = document.getElementById('fCaption').value.trim();
+  if (!caption) { toast('Generate or write a caption first', 'error'); return; }
+  try { await navigator.clipboard.writeText(caption); toast('Caption copied'); }
+  catch (e) { toast('Could not copy automatically, copy it by hand', 'error'); }
+}
+
+async function generateCaption() {
+  if (!currentSet.length) { toast('Generate an image first', 'error'); return; }
+  const btn = document.getElementById('genCaptionBtn');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  try {
+    const includePrice = document.getElementById('fIncludePrice').checked;
+    const extraContext = document.getElementById('fExtraContext').value.trim();
+    const productContext = [
+      selectedRefs.length ? selectedRefs.map(p => buildProductContextText(p, includePrice)).join('\n\n') : '',
+      extraContext ? `Additional context: ${extraContext}` : '',
+    ].filter(Boolean).join('\n\n') || undefined;
+    const res = await fetch('/api/anthropic/generate-caption', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: currentSet[0].prompt,
+        productContext,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Caption generation failed');
+    document.getElementById('fCaption').value = data.caption;
+    toast('Caption generated');
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generate caption';
+  }
+}
+
+// ── LinkedIn tab ─────────────────────────────────────────────
+let liSelectedRefs = [];
+
+function renderLiRefGrid() {
+  const searchEl = document.getElementById('liRefSearch');
+  const grid = document.getElementById('liRefGrid');
+  if (!searchEl || !grid) return;
+  const q = searchEl.value.trim().toLowerCase();
+  const filtered = allProducts.filter(p =>
+    !q || (p.sku || '').toLowerCase().includes(q) || (p.name || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q)
+  );
+  if (!filtered.length) { grid.innerHTML = '<div class="ref-empty">No products found.</div>'; return; }
+  grid.innerHTML = filtered.map(p => {
+    const imgs = JSON.parse(p.images || '[]');
+    const thumb = imgs[0];
+    const isSel = liSelectedRefs.some(r => r.id === p.id);
+    return `
+      <div class="ref-item ${isSel ? 'selected' : ''}" onclick="toggleLiReference(${p.id})">
+        <img src="/uploads/${esc(thumb)}" alt="${esc(p.name)}">
+        <div class="cap"><span class="sku">${esc(p.sku)}</span><span class="name">${esc(p.name)}</span></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderLiSelectedRefsBar() {
+  const bar = document.getElementById('liRefSelectedBar');
+  if (!liSelectedRefs.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  document.getElementById('liRefChips').innerHTML = liSelectedRefs.map(p => `
+    <span class="ref-chip">
+      <img src="/uploads/${esc(p.filename)}" alt="">
+      <span>${esc(p.sku)}</span>
+      <button type="button" onclick="toggleLiReference(${p.id})" title="Remove">&times;</button>
+    </span>
+  `).join('');
+  document.getElementById('liRefContext').innerHTML = liSelectedRefs.map(buildContextHtml).join('<hr>');
+}
+
+function toggleLiReference(productId) {
+  const idx = liSelectedRefs.findIndex(r => r.id === productId);
+  if (idx !== -1) {
+    liSelectedRefs.splice(idx, 1);
+  } else {
+    if (liSelectedRefs.length >= MAX_REFS) { toast(`You can reference up to ${MAX_REFS} products`, 'error'); return; }
+    const p = allProducts.find(x => x.id === productId);
+    if (!p) return;
+    const imgs = JSON.parse(p.images || '[]');
+    liSelectedRefs.push({ ...p, filename: imgs[0] });
+  }
+  renderLiSelectedRefsBar();
+  renderLiRefGrid();
+}
+
+function clearLiReference() {
+  liSelectedRefs = [];
+  renderLiSelectedRefsBar();
+  renderLiRefGrid();
+}
+
+async function generateLinkedInPost() {
+  const topic = document.getElementById('liTopic').value.trim();
+  if (!topic) { toast('Enter a topic or brief first', 'error'); return; }
+  const btn = document.getElementById('liGenBtn');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  try {
+    const liIncludePrice = document.getElementById('liIncludePrice').checked;
+    const liExtraContext = document.getElementById('liExtraContext').value.trim();
+    const productContext = [
+      liSelectedRefs.length ? liSelectedRefs.map(p => buildProductContextText(p, liIncludePrice)).join('\n\n') : '',
+      liExtraContext ? `Additional context: ${liExtraContext}` : '',
+    ].filter(Boolean).join('\n\n') || undefined;
+    const res = await fetch('/api/anthropic/generate-linkedin-post', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic,
+        productContext,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Post generation failed');
+    document.getElementById('liPostText').value = data.post;
+    toast('Post generated');
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generate Post';
+  }
+}
+
+function copyLinkedInPost() {
+  const text = document.getElementById('liPostText').value;
+  if (!text.trim()) { toast('Nothing to copy yet', 'error'); return; }
+  navigator.clipboard.writeText(text).then(() => toast('Post copied'));
+}
+
+function loadFromGallery(url, prompt) {
+  currentSet = [{ url, prompt, label: null, size: null }];
+  renderResultSet();
+}
+
+function renderGallery() {
+  const wrap = document.getElementById('galleryWrap');
+  const grid = document.getElementById('galleryGrid');
+  if (!gallery.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  grid.innerHTML = gallery.map(g => `
+    <div class="gallery-item" onclick='loadFromGallery(${JSON.stringify(g.url)}, ${JSON.stringify(g.prompt)})'>
+      <img src="${esc(g.url)}" alt="${esc(g.prompt)}">
+      <div class="cap">${esc(g.prompt)}</div>
+    </div>
+  `).join('');
+}
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(() => toast('URL copied'));
+}
+
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = type ? `show ${type}` : 'show';
+  setTimeout(() => el.className = '', 2500);
+}
+
+selectTemplate('post');
+loadProductsForRef();
+</script>
+<script src="js/nav.js"></script>
+</body>
+</html>

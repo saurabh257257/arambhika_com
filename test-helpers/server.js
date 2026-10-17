@@ -57,6 +57,8 @@ export async function startFakeMsg91({ authkey = 'TEST_KEY', code = '1234' } = {
 export async function startApp({ env = {}, msg91 = null } = {}) {
   const port = await freePort()
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'arambhika-test-'))
+  // a small, known catalog so product pages and the sitemap can be tested without Zoho
+  fs.copyFileSync(path.join(ROOT, 'test', 'fixtures', 'products.local.json'), path.join(dataDir, 'products.local.json'))
   const fullEnv = {
     ...process.env,
     PORT: String(port),

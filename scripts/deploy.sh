@@ -45,7 +45,8 @@ remote() { ssh "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" "$@"; }
 # --- 1. .env from the environment (empty values are left out) ---
 KEYS=(APP_ENV PORT ZOHO_DC ZOHO_STOREFRONT_DOMAIN ZOHO_REDIRECT_URI ZOHO_CLIENT_ID ZOHO_CLIENT_SECRET
       ZOHO_REFRESH_TOKEN ZOHO_BOOKS_ORG_ID ZOHO_INVENTORY_ORG_ID ADMIN_TOKEN SESSION_SECRET
-      MSG91_AUTHKEY MSG91_TEMPLATE_ID MSG91_OTP_LENGTH MSG91_OTP_EXPIRY ALLOWED_TEST_MOBILE)
+      MSG91_AUTHKEY MSG91_TEMPLATE_ID MSG91_OTP_LENGTH MSG91_OTP_EXPIRY ALLOWED_TEST_MOBILE
+      GST_PROVIDER GST_API_KEY)
 : > "$WORK/app.env"
 for k in "${KEYS[@]}"; do
   v="${!k:-}"
@@ -62,7 +63,7 @@ remote "mkdir -p '$DEPLOY_PATH' && cd '$DEPLOY_PATH' && mkdir -p ../releases && 
 rsync -az --delete \
   -e "ssh ${SSH_OPTS[*]}" \
   --exclude '.git' --exclude '.github' --exclude 'node_modules' --exclude 'data' --exclude '.env' \
-  --exclude 'test' --exclude 'test-helpers' --exclude 'docs' \
+  --exclude 'test' --exclude 'test-helpers' --exclude 'docs' --exclude 'apps' \
   ./ "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/"
 
 scp "${SSH_OPTS[@]}" "$WORK/app.env" "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/.env"

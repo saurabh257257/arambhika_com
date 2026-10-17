@@ -28,7 +28,14 @@ const absolutize = (html) => html
   .replace(/href="#home"/g, 'href="/"')
   .replace(/href="#catalog"/g, 'href="/#catalog"')
 
-const header = absolutize(grab(/<header class="site-header">[\s\S]*?<\/header>/))
+// The home page header carries a product search and the logged-in sub-nav; blog pages have
+// neither (their scripts are not loaded), so take just the logo and the Store / account links.
+const header = absolutize(
+  grab(/<header class="site-header[^"]*">[\s\S]*?<\/header>/)
+    .replace(/<header class="site-header[^"]*">/, '<header class="site-header">')
+    .replace(/<div class="header-search">[\s\S]*?<div class="search-suggestions"[^>]*><\/div>\s*<\/div>/, '')
+    .replace(/<div class="acct-subnav"[\s\S]*?<\/div>\s*<\/div>/, '')
+)
 const footer = absolutize(grab(/<footer class="site-footer">[\s\S]*?<\/footer>/))
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
