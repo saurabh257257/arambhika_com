@@ -208,3 +208,20 @@ describe('product page script', () => {
     assert.doesNotMatch(js, /\bphotos?<\/|\d+ photos/)
   })
 })
+
+describe('Zoho paging never repeats products', () => {
+  test('a page that ignores the page number does not multiply the catalog', async () => {
+    const { fetchAllPages } = await import('../lib/zoho.js')
+    const same = { products: [{ product_id: 'a' }, { product_id: 'b' }], pagination: { has_more_page: true } }
+    const items = await fetchAllPages('/products', 'products', async () => same)
+    assert.equal(items.length, 2)
+  })
+  test('asks for page_number and follows real pages', async () => {
+    const { fetchAllPages } = await import('../lib/zoho.js')
+    const urls = []
+    const pages = { 1: { products: [{ product_id: 'a' }], pagination: { has_more_page: true } }, 2: { products: [{ product_id: 'b' }], pagination: { has_more_page: false } } }
+    const items = await fetchAllPages('/products', 'products', async (u) => { urls.push(u); return pages[u.split('=')[1]] })
+    assert.deepEqual(items.map((i) => i.product_id), ['a', 'b'])
+    assert.match(urls[0], /page_number=1/)
+  })
+})
