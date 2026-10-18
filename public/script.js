@@ -1335,3 +1335,12 @@ document.addEventListener("keydown", (event) => {
     });
   }
 });
+
+// Categories stay pinned under the header while the page scrolls: tell the CSS how tall the header is.
+(() => {
+  const header = document.querySelector(".site-header");
+  if (!header || !window.ResizeObserver) return;
+  const set = () => document.documentElement.style.setProperty("--hdr-h", header.getBoundingClientRect().height + "px");
+  new ResizeObserver(set).observe(header);
+  set();
+})();

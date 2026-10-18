@@ -2368,3 +2368,17 @@ html { font-size: 13px; }
   .cat-tile, .cat-tile:nth-child(n) { width: 78px !important; }
   .cat-tile .cat-tile-img, .cat-tile-img { width: 54px; height: 54px; flex-basis: 54px; }
 }
+
+/* ===== categories stay visible while scrolling down the products ===== */
+.catalog-wrap { display: block !important; }
+.catalog-wrap > .catalog-grid { margin-top: 6px; }
+.cat-bar {
+  position: sticky; top: var(--hdr-h, 90px); z-index: 15; display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  align-items: center; column-gap: 24px; margin: 0 -12px 8px; padding: 2px 12px;
+  background: rgba(228, 241, 238, 0.94); backdrop-filter: blur(6px); box-shadow: 0 6px 12px -8px rgba(18, 38, 63, 0.35);
+}
+@media (max-width: 1180px) {
+  .cat-bar { display: contents; }
+  .cat-tiles { position: sticky; top: var(--hdr-h, 90px); z-index: 15; background: rgba(228, 241, 238, 0.94); backdrop-filter: blur(6px); box-shadow: 0 6px 12px -8px rgba(18, 38, 63, 0.35); margin: 0 -12px; padding-left: 12px; padding-right: 12px; }
+  .cell-pills { margin: 6px 0; }
+}
