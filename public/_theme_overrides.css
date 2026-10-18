@@ -2125,3 +2125,23 @@ body { background: var(--p-page); color: var(--p-ink); }
   .cat-tile-img { display: none; }
   .cat-tile { padding: 12px 6px; }
 }
+
+/* category strip: a round-cornered picture with its name underneath, one tidy row */
+.cat-tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 6px; overflow: visible; }
+.cat-tile, .cat-tile:nth-child(n) {
+  flex: 0 0 120px; min-width: 0; width: 120px; padding: 8px 4px 6px; border: 0; background: transparent;
+  box-shadow: none; transform: none; outline: 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  color: var(--b-navy); border-radius: 10px;
+}
+.cat-tile:hover, .cat-tile:nth-child(n):hover { background: #eef4ff; box-shadow: none; transform: none; }
+.cat-tile.active, .cat-tile.active:hover, .cat-tile:nth-child(n).active { background: #e3edff; box-shadow: inset 0 -3px 0 var(--b-blue); outline: 0; }
+.cat-tile .cat-tile-img, .cat-tile-img { display: block; width: 92px; height: 78px; flex: 0 0 78px; border: 0; border-radius: 10px; background: transparent; box-shadow: none; }
+.cat-tile-img img { width: 100%; height: 100%; object-fit: contain; }
+.cat-tile .cat-tile-text { text-align: center; }
+.cat-tile .cat-tile-text b { color: #1f2a44; font-size: 0.78rem; font-weight: 500; line-height: 1.25; }
+.cat-tile .cat-tile-text small { display: none; }
+@media (max-width: 640px) {
+  .cat-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; overflow: visible; }
+  .cat-tile, .cat-tile:nth-child(n) { flex: none; width: auto; min-width: 0; padding: 6px 2px; }
+  .cat-tile .cat-tile-img, .cat-tile-img { display: block; width: 64px; height: 56px; flex-basis: 56px; }
+}

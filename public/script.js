@@ -67,6 +67,7 @@ const normalizeCatalogData = (data) => {
       "Category";
     return {
       name: cat.name || fallbackName,
+      Image: cat.Image || "",
       products: (cat.products || []).map((product) => {
         const availabilityRaw = String(product.Availability || "Now").trim().toLowerCase();
         const availability =
@@ -118,14 +119,15 @@ const renderFilters = (categories) => {
     const products = (cat.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1);
     if (!products.length) return;
     const withImage = products.find((p) => (Array.isArray(p.Image_Link) ? p.Image_Link[0] : p.Image_Link));
-    const imageSrc = withImage ? (Array.isArray(withImage.Image_Link) ? withImage.Image_Link[0] : withImage.Image_Link) : "";
+    const productSrc = withImage ? (Array.isArray(withImage.Image_Link) ? withImage.Image_Link[0] : withImage.Image_Link) : "";
+    const imageSrc = cat.Image || productSrc; // the category's own picture first, then a product photo
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "cat-tile filter-btn";
     btn.dataset.filter = cat.name;
     btn.innerHTML = `
       <span class="cat-tile-img">${imageSrc ? `<img src="${imageSrc}" alt="" loading="lazy" />` : ""}</span>
-      <span class="cat-tile-text"><b>${cat.name}</b><small>${products.length} product${products.length === 1 ? "" : "s"}</small></span>`;
+      <span class="cat-tile-text"><b>${cat.name}</b></span>`;
     categoryFilters.appendChild(btn);
   });
   // tapping the active tile again shows everything

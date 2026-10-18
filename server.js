@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
-import { fetchStorefrontCatalog, fetchImage } from './lib/zoho.js'
+import { fetchStorefrontCatalog, fetchImage, fetchCategoryImage } from './lib/zoho.js'
 import { buildCatalog } from './lib/catalog.js'
 import * as zohoAuth from './lib/zoho-oauth.js'
 import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
@@ -635,6 +635,20 @@ app.get('/products.json', (req, res) => {
     'X-Catalog-Age-Seconds': current.at ? String(Math.round((Date.now() - current.at) / 1000)) : 'unknown',
   })
   res.json(current.data)
+})
+
+const categoryImageCache = new Map()
+app.get('/zcat/:id/:file', async (req, res) => {
+  const { id, file } = req.params
+  if (!/^\d+$/.test(id) || !/^[A-Za-z0-9_.+%-]+$/.test(file)) return res.status(400).end()
+  let img = categoryImageCache.get(`${id}/${file}`)
+  if (!img) {
+    try { img = await fetchCategoryImage(id, file) } catch (err) { console.error('[category image]', err.message) }
+    if (img) categoryImageCache.set(`${id}/${file}`, img)
+  }
+  if (!img) return res.status(404).end()
+  res.set({ 'Content-Type': img.type, 'Cache-Control': 'public, max-age=86400' })
+  res.send(img.buffer)
 })
 
 app.get('/zimg/:docId/:file', async (req, res) => {
