@@ -2456,3 +2456,17 @@ html { font-size: 13px; }
 .site-footer .footer-line { display: block; position: relative; }
 .site-footer .footer-line:has(.fi) { padding-left: 24px; }
 .site-footer .footer-line .fi { position: absolute; left: 0; top: 2px; }
+
+/* ===== category circles: smaller, thinner rings ===== */
+.cat-tile, .cat-tile:nth-child(n) { width: 70px !important; }
+.cat-tile .cat-tile-img, .cat-tile-img { width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid #fff; }
+.cat-tile:nth-child(1) .cat-tile-img { box-shadow: 0 0 0 2px #0e8f7e; }
+.cat-tile:nth-child(2) .cat-tile-img { box-shadow: 0 0 0 2px #2f6fd1; }
+.cat-tile:nth-child(3) .cat-tile-img { box-shadow: 0 0 0 2px #e8861a; }
+.cat-tile:nth-child(4) .cat-tile-img { box-shadow: 0 0 0 2px #7c4fd0; }
+.cat-tile:nth-child(5) .cat-tile-img { box-shadow: 0 0 0 2px #d6456b; }
+.cat-tile:nth-child(n+6) .cat-tile-img { box-shadow: 0 0 0 2px #1b8a5a; }
+.cat-tile.active .cat-tile-img { transform: scale(1.1); }
+.cat-tile-img i { font-size: 0.9rem; }
+.cat-tile .cat-tile-text b { font-size: 0.62rem; max-width: 68px; }
+@media (max-width: 640px) { .cat-tile, .cat-tile:nth-child(n) { width: 62px !important; } .cat-tile .cat-tile-img, .cat-tile-img { width: 32px; height: 32px; flex-basis: 32px; } }
