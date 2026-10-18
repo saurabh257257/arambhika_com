@@ -1344,3 +1344,25 @@ document.addEventListener("keydown", (event) => {
   new ResizeObserver(set).observe(header);
   set();
 })();
+
+// Home blog section: three rows of guides, then a "Show more" button.
+(() => {
+  const grid = document.querySelector(".home-blog .blog-tiles");
+  const btn = document.getElementById("blogShowMore");
+  if (!grid || !btn) return;
+  let open = false;
+  const apply = () => {
+    const tiles = [...grid.children].filter((el) => el.classList.contains("blog-tile"));
+    tiles.forEach((t) => t.classList.remove("blog-extra"));
+    const cols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(" ").length);
+    const limit = cols * 3;
+    if (tiles.length <= limit) { btn.hidden = true; return; }
+    btn.hidden = false;
+    if (!open) tiles.slice(limit).forEach((t) => t.classList.add("blog-extra"));
+    btn.innerHTML = open ? "Show fewer ▴" : "Show more guides (" + (tiles.length - limit) + ") ▾";
+  };
+  btn.addEventListener("click", () => { open = !open; apply(); });
+  let timer;
+  window.addEventListener("resize", () => { clearTimeout(timer); timer = setTimeout(apply, 150); });
+  apply();
+})();

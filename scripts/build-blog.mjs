@@ -87,6 +87,7 @@ const SHORT = {
   'common-mistakes-buying-nickel-strip-bulk-india': ['Bulk Nickel Strip: Mistakes to Avoid', 'Buying lessons from real pack builders'],
 }
 
+const usedHeroes = new Set()
 for (const post of posts) {
   const names = [...String(post.body).matchAll(/\/\?product=([^#"]+)#catalog/g)].map((m) => decodeURIComponent(m[1]))
   const listed = []
@@ -101,9 +102,15 @@ for (const post of posts) {
   const withPhoto = listed.filter((x) => x.image)
   if (!withPhoto.length) throw new Error('No product photo available for post ' + post.slug)
   post.listed = listed
-  post.heroImage = withPhoto[0].image
-  post.heroProduct = withPhoto[0]
-  post.imageAlt = withPhoto[0].name
+  // prefer a listed product whose photo no other post has used yet, so the tiles do not all look the same
+  const cats = String(post.category).split(',').map((c) => c.trim())
+  const pool = [...withPhoto, ...cats.flatMap((c) => (byCategory.get(c) || []).filter((x) => x.image))]
+  const hero = pool.find((x) => !usedHeroes.has(x.image)) || withPhoto[0]
+  usedHeroes.add(hero.image)
+  post.heroImage = hero.image
+  post.heroProduct = hero
+  post.imageAlt = hero.name
+  if (!post.listed.includes(hero)) post.listed.unshift(hero)
   // links in the text go to the product page itself
   post.body = String(post.body).replace(/href="\/\?product=([^#"]+)#catalog"/g, (m, enc) => {
     const hit = byName.get(norm(decodeURIComponent(enc)))
@@ -326,10 +333,15 @@ const homeTile = (p) => `
             <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
             <div class="blog-tile-body"><span class="blog-tag">${BOOK_ICON}Blog &middot; ${esc(p.tag)}</span><h3>${esc(p.headline)}</h3><p>${esc(p.subline)}</p><span class="blog-more">Read blog &rarr;</span></div>
           </a>`
+const homeGuideTile = (g) => `
+          <a class="blog-tile" href="${g.href}">
+            <div class="blog-tile-img"><img src="${g.heroImage}" alt="${esc(g.imageAlt)}" loading="lazy" /></div>
+            <div class="blog-tile-body"><span class="blog-tag">${BOOK_ICON}${esc(g.tag)}</span><h3>${esc(g.title)}</h3><p>${esc(g.text)}</p><span class="blog-more">Read guide &rarr;</span></div>
+          </a>`
 const homeHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
 fs.writeFileSync(path.join(ROOT, 'index.html'), homeHtml.replace(
   /<!-- blog-tiles:start -->[\s\S]*?<!-- blog-tiles:end -->/,
-  () => `<!-- blog-tiles:start -->${posts.filter((p) => p.featured).map(homeTile).join('')}\n        <!-- blog-tiles:end -->`,
+  () => `<!-- blog-tiles:start -->${posts.map(homeTile).join('')}${guides.map(homeGuideTile).join('')}\n        <!-- blog-tiles:end -->`,
 ))
 
 fs.mkdirSync(OUT, { recursive: true })
