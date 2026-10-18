@@ -2230,3 +2230,8 @@ body { background: #f4f7f8; }
   .cat-tile .cat-tile-img, .cat-tile-img { width: 54px; height: 54px; flex-basis: 54px; }
   .brand-tag { display: none; }
 }
+/* tagline hugs the logo */
+.brand-block { gap: 0 !important; align-items: flex-start; }
+.brand-block .brand-logo { display: block; margin: 0; }
+.brand-tag { margin: 2px 0 0 !important; font-size: 0.64rem; line-height: 1.2; font-weight: 500; max-width: 215px; }
+.site-header .nav { padding-top: 8px; padding-bottom: 8px; }
