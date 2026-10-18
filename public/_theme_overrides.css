@@ -2306,3 +2306,37 @@ body { background: linear-gradient(180deg, #dff1ee 0%, #e9f1f8 38%, #eef0fa 100%
 
 /* smaller type overall, in the spirit of Amazon / Google */
 html { font-size: 14px; }
+
+/* ===== calmer ribbons and smaller type ===== */
+html { font-size: 13px; }
+.cat-block-head {
+  padding: 6px 12px !important; margin-bottom: 8px; border-radius: 6px;
+  background: #e3f1ee !important; border: 0 !important; border-left: 4px solid #0e8f7e !important; box-shadow: none !important;
+}
+.cat-block-head h2 { font-family: inherit !important; font-size: 0.95rem !important; font-weight: 600 !important; letter-spacing: 0 !important; color: #12263f !important; }
+.cat-block:nth-of-type(2) .cat-block-head { background: #e4edfa !important; border-left-color: #2f6fd1 !important; }
+.cat-block:nth-of-type(3) .cat-block-head { background: #fdf0dc !important; border-left-color: #e8861a !important; }
+.cat-block:nth-of-type(4) .cat-block-head { background: #efe8fa !important; border-left-color: #7c4fd0 !important; }
+.cat-block:nth-of-type(5) .cat-block-head { background: #fbe6ec !important; border-left-color: #d6456b !important; }
+.cat-block:nth-of-type(n+6) .cat-block-head { background: #e2f3ea !important; border-left-color: #1b8a5a !important; }
+.cat-block-head > .cat-more { background: #0e8f7e; color: #fff !important; padding: 3px 11px; font-size: 0.74rem; font-weight: 600; }
+.cat-block:nth-of-type(2) .cat-block-head > .cat-more { background: #2f6fd1; }
+.cat-block:nth-of-type(3) .cat-block-head > .cat-more { background: #d9780f; }
+.cat-block:nth-of-type(4) .cat-block-head > .cat-more { background: #7c4fd0; }
+.cat-block:nth-of-type(5) .cat-block-head > .cat-more { background: #d6456b; }
+.cat-block:nth-of-type(n+6) .cat-block-head > .cat-more { background: #1b8a5a; }
+.cat-block-head > .cat-more:hover { filter: brightness(1.1); color: #fff !important; }
+.cat-block-head > span { color: #475569 !important; font-size: 0.78rem; font-weight: 500 !important; }
+.prod-name { font-size: 0.86rem; font-weight: 500; }
+.prod-price { font-size: 0.95rem; }
+
+/* categories on the left, "Shop by cell" beside them on the right (stacks on narrow screens) */
+.catalog-wrap { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); align-items: center; column-gap: 24px; }
+.catalog-wrap > .catalog-grid { grid-column: 1 / -1; }
+.cell-pills { align-self: center; padding: 8px 10px; background: rgba(255, 255, 255, 0.7); border: 1px solid #dbe8e5; border-radius: 10px; }
+.cell-pills-label { flex: 0 0 100%; font-size: 0.78rem; margin: 0 0 2px; }
+@media (max-width: 1180px) {
+  .catalog-wrap { grid-template-columns: minmax(0, 1fr); }
+  .cell-pills { background: transparent; border: 0; padding: 0; }
+  .cell-pills-label { flex: 0 0 auto; margin: 0; }
+}
