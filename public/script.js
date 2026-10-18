@@ -126,7 +126,7 @@ const renderFilters = (categories) => {
     btn.className = "cat-tile filter-btn";
     btn.dataset.filter = cat.name;
     btn.innerHTML = `
-      <span class="cat-tile-img">${imageSrc ? `<img src="${imageSrc}" alt="" loading="lazy" />` : ""}</span>
+      <span class="cat-tile-img">${imageSrc ? `<img src="${imageSrc}" alt="" loading="lazy" />` : `<i>${cat.name.trim().charAt(0).toUpperCase()}</i>`}</span>
       <span class="cat-tile-text"><b>${cat.name}</b></span>`;
     categoryFilters.appendChild(btn);
   });
