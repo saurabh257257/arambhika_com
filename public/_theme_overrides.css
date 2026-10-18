@@ -2475,3 +2475,13 @@ html { font-size: 13px; }
 .cat-tile, .cat-tile:nth-child(n) { width: 80px !important; }
 .cat-tile .cat-tile-text b { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; max-width: 78px !important; font-size: 0.64rem; line-height: 1.15; text-align: center; }
 .cat-tile-img img { transform: scale(1.12) !important; padding: 0 !important; object-fit: cover; }
+
+/* ===== category circles: a little bigger, with a light border ===== */
+.cat-tile, .cat-tile:nth-child(n) { width: 84px !important; }
+.cat-tile .cat-tile-img, .cat-tile-img { width: 48px; height: 48px; flex: 0 0 48px; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(18, 38, 63, 0.14), 0 2px 6px rgba(18, 38, 63, 0.1) !important; }
+.cat-tile:nth-child(n) .cat-tile-img { box-shadow: 0 0 0 1px rgba(18, 38, 63, 0.14), 0 2px 6px rgba(18, 38, 63, 0.1) !important; }
+.cat-tile:hover .cat-tile-img { box-shadow: 0 0 0 1px rgba(14, 143, 126, 0.55), 0 3px 8px rgba(18, 38, 63, 0.15) !important; }
+.cat-tile.active .cat-tile-img, .cat-tile.active:nth-child(n) .cat-tile-img { box-shadow: 0 0 0 2px rgba(14, 143, 126, 0.7), 0 3px 8px rgba(18, 38, 63, 0.15) !important; transform: none; }
+.cat-tile-img i { font-size: 1.1rem; }
+.cat-tile .cat-tile-text b { max-width: 82px !important; }
+@media (max-width: 640px) { .cat-tile, .cat-tile:nth-child(n) { width: 72px !important; } .cat-tile .cat-tile-img, .cat-tile-img { width: 42px; height: 42px; flex-basis: 42px; } }
