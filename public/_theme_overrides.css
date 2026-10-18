@@ -2213,3 +2213,20 @@ body { background: #f4f7f8; }
 .cat-tile-img i { background: linear-gradient(135deg, var(--f-teal), var(--f-navy)); }
 .site-header .nav-login-btn, .site-header .nav-login-btn.is-logged-in, .site-header .nav-cart-btn, .site-header #navCatalog { color: var(--f-navy) !important; }
 .site-header .nav-login-btn:hover, .site-header .nav-cart-btn:hover, .site-header #navCatalog:hover { color: var(--f-teal-dark) !important; }
+
+/* ===== tighter top of the store ===== */
+.brand-tag { display: block; font-size: 0.68rem; line-height: 1.25; color: #5b6b7a; max-width: 230px; margin: 3px 0 0; white-space: normal; }
+.home-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); padding: 0 !important; margin: 0 !important; border: 0 !important; }
+.catalog { padding-top: 8px; }
+.cat-tiles { gap: 2px 4px; justify-content: flex-start; }
+.cat-tile, .cat-tile:nth-child(n) { flex: 0 0 92px; width: 92px; padding: 4px 2px; gap: 4px; }
+.cat-tile .cat-tile-img, .cat-tile-img { width: 58px; height: 58px; flex: 0 0 58px; border-width: 2px; }
+.cat-tile-img i { font-size: 1.3rem; }
+.cat-tile .cat-tile-text b { font-size: 0.7rem; }
+.cell-pills { margin-top: 4px; }
+@media (max-width: 640px) {
+  .cat-tiles { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .cat-tile, .cat-tile:nth-child(n) { flex: none; width: auto; }
+  .cat-tile .cat-tile-img, .cat-tile-img { width: 54px; height: 54px; flex-basis: 54px; }
+  .brand-tag { display: none; }
+}
