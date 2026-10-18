@@ -17,11 +17,11 @@
     var img = p.Image_Link && p.Image_Link[0];
     var notify = String(p.Availability).toLowerCase() === 'notify';
     var price = p.Price ? '₹' + Number(p.Price).toLocaleString('en-IN') + '/' + (p.Unit || 'KG') : 'Price on request';
-    return '<a class="blog-product" href="/?product=' + encodeURIComponent(p.ProductCode) + '#catalog">' +
+    return '<a class="blog-product" href="/product/' + String(p.ProductCode).toLowerCase().trim().replace(/\s+/g, ' ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '">' +
       '<div class="blog-product-img">' + (img ? '<img src="' + esc(img) + '" alt="' + esc(p.ProductCode) + '" loading="lazy" />' : '') + '</div>' +
       '<div class="blog-product-body"><h3>' + esc(p.ProductCode) + '</h3>' +
       '<p class="blog-product-price">' + esc(price) + '</p>' +
-      '<span class="blog-stock ' + (notify ? 'is-out' : 'is-in') + '">' + (notify ? 'Out of stock · Notify me' : 'In stock') + '</span></div></a>';
+      '<span class="blog-stock ' + (notify ? 'is-out' : 'is-in') + '">' + (notify ? 'Available on request' : 'In stock') + '</span></div></a>';
   }
 
   fetch('/products.json')

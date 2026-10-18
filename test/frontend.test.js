@@ -45,6 +45,7 @@ describe('local references resolve', () => {
       const missing = []
       for (const ref of refs) {
         if (/^(https?:|mailto:|tel:|data:|javascript:|\/\/)/i.test(ref)) continue
+        if (/^\/(zimg|zcat|product)\//.test(ref)) continue // served by server.js, not files in public/
         const target = ref.startsWith('/') ? ref.slice(1) : path.posix.join(dir, ref)
         if (!target) continue
         const candidates = [target, `${target}.html`, path.posix.join(target, 'index.html')]

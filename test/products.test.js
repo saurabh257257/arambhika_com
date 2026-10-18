@@ -173,12 +173,11 @@ describe('store home markup', () => {
     assert.doesNotMatch(script, /\b1P\b.*pill|photos<\/span>/)
   })
 
-  test('phones: categories sit three across and nothing on the home page scrolls sideways', () => {
+  test('categories stay on one line and scroll sideways, on every screen size', () => {
     const css = read('public/_theme_overrides.css')
-    const tail = css.slice(css.lastIndexOf('Compact categories, no sideways'))
-    assert.match(tail, /\.cat-tiles\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
-    assert.match(tail, /\.cell-pills\s*\{[^}]*flex-wrap:\s*wrap/)
-    assert.doesNotMatch(tail, /overflow-x:\s*auto/, 'a phone rule is making something scroll sideways')
+    const tail = css.slice(css.lastIndexOf('categories: always one line'))
+    assert.match(tail, /\.cat-tiles[^{]*\{[^}]*flex-wrap:\s*nowrap\s*!important[^}]*overflow-x:\s*auto/)
+    assert.match(tail, /\.cat-tile[^{]*\{[^}]*flex:\s*0 0 auto\s*!important/)
   })
 
   test('phones: the header cart icon is hidden where the tab bar already has the cart', () => {
@@ -223,5 +222,23 @@ describe('Zoho paging never repeats products', () => {
     const items = await fetchAllPages('/products', 'products', async (u) => { urls.push(u); return pages[u.split('=')[1]] })
     assert.deepEqual(items.map((i) => i.product_id), ['a', 'b'])
     assert.match(urls[0], /page_number=1/)
+  })
+})
+
+describe('blog images come from the products they list', () => {
+  const blogDir = path.join(ROOT, 'public', 'blog')
+  const pages = fs.readdirSync(blogDir).filter((f) => f.endsWith('.html'))
+
+  test('no blog page, tile or the home page uses an old local product image', () => {
+    for (const f of pages) assert.doesNotMatch(fs.readFileSync(path.join(blogDir, f), 'utf8'), /assets\/products/, f)
+    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8'), /assets\/products/)
+  })
+
+  test('every post has a product photo as its hero, linked to that product page', () => {
+    for (const f of pages.filter((n) => n !== 'index.html')) {
+      const html = fs.readFileSync(path.join(blogDir, f), 'utf8')
+      assert.match(html, /<figure class="blog-hero"><a href="\/product\/[a-z0-9-]+"><img src="\/zimg\//, f)
+      assert.match(html, /class="blog-listed-card" href="\/product\/[a-z0-9-]+"/, `${f} lists no products`)
+    }
   })
 })

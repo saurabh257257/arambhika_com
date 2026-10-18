@@ -41,6 +41,86 @@ const footer = absolutize(grab(/<footer class="site-footer">[\s\S]*?<\/footer>/)
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 const productLink = (name) => `/?product=${encodeURIComponent(name)}#catalog`
 
+// ---- Product data: every blog image is a photo of a product the post links to ----
+async function loadCatalog() {
+  const base = (process.env.CATALOG_URL || 'https://www.arambhika.com').replace(/\/+$/, '')
+  try {
+    const r = await fetch(base + '/products.json', { signal: AbortSignal.timeout(20000) })
+    if (r.ok) return await r.json()
+  } catch { /* fall back to the saved snapshot below */ }
+  const snap = path.join(ROOT, '..', 'data', 'snapshot.json')
+  if (fs.existsSync(snap)) return JSON.parse(fs.readFileSync(snap, 'utf8')).data
+  throw new Error('Cannot load the product catalogue (live site and data/snapshot.json both unavailable)')
+}
+const catalog = await loadCatalog()
+const norm = (v) => String(v || '').toLowerCase().replace(/\u00d7/g, 'x').replace(/[^a-z0-9.]+/g, ' ').trim()
+const slugOf = (v) => String(v || '').toLowerCase().trim().replace(/\s+/g, ' ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+const byName = new Map()
+const byCategory = new Map()
+for (const c of catalog.categories || []) {
+  for (const pr of c.products || []) {
+    if (!pr.ProductCode || pr.ProductCode.trim().length < 2) continue
+    const item = { name: pr.ProductCode, url: '/product/' + slugOf(pr.ProductCode), image: (pr.Image_Link || []).find(Boolean) || '', price: pr.Price, unit: pr.Unit, category: c.name }
+    byName.set(norm(pr.ProductCode), item)
+    if (!byCategory.has(c.name)) byCategory.set(c.name, [])
+    byCategory.get(c.name).push(item)
+  }
+}
+const firstWithPhoto = (cat) => (byCategory.get(cat) || []).find((x) => x.image)
+
+// Punchy headlines for the cards and the page; the long titles stay in <title> for search.
+const SHORT = {
+  'nickel-plated-strip-ev-battery-packs-india': ['Nickel-Plated Strip, Explained', 'Sizes, uses and what to buy for EV packs'],
+  'pure-nickel-strip-lithium-battery-packs-india': ['Pure Nickel Strip for High-Current Packs', 'When plain nickel beats plated'],
+  'copper-busbar-battery-ess-india': ['Tin-Coated Copper Busbars', 'Bolted links for EV and energy-storage packs'],
+  'spot-weld-nickel-strip-18650-21700-battery-pack-guide': ['Spot-Welding Nickel Strip, Step by Step', 'Settings and tips for 18650 and 21700 cells'],
+  'build-48v-lithium-battery-pack-electric-scooter-india': ['Build a 48V Scooter Battery Pack', 'Strip choice and layout, start to finish'],
+  'lfp-battery-pack-solar-inverter-nickel-strip-busbar-india': ['LFP Packs for Solar and Inverters', 'Which strip and busbar to use'],
+  'how-to-calculate-nickel-strip-size-battery-pack-current': ['Size Your Nickel Strip Right', 'Worked examples from pack current'],
+  'battery-pack-heating-nickel-strip-weak-welds-troubleshooting': ['Why Your Battery Pack Runs Hot', 'Weak welds, thin strip and busbar fixes'],
+  'nickel-strip-price-per-kg-india-plated-vs-pure': ['Nickel Strip Price per kg', 'What decides the rate: plated vs pure'],
+  'e-rickshaw-e-auto-battery-pack-nickel-strip-busbar-india': ['Packs for E-Rickshaws and E-Autos', 'Strip and busbar that survive daily cycling'],
+  'power-tool-cordless-battery-pack-nickel-strip-india': ['Power-Tool Battery Packs', 'Strip choices for cordless tools'],
+  'ups-telecom-backup-battery-pack-copper-busbar-nickel-strip': ['UPS and Telecom Backup Packs', 'Copper busbar and nickel strip for standby power'],
+  'solar-street-light-off-grid-lighting-battery-pack-nickel-strip': ['Solar Street-Light Packs', 'Reliable links for off-grid lighting'],
+  'how-to-choose-nickel-strip-copper-busbar-manufacturer-india': ['Choosing a Strip and Busbar Supplier', 'What to check before you order'],
+  'common-mistakes-buying-nickel-strip-bulk-india': ['Bulk Nickel Strip: Mistakes to Avoid', 'Buying lessons from real pack builders'],
+}
+
+for (const post of posts) {
+  const names = [...String(post.body).matchAll(/\/\?product=([^#"]+)#catalog/g)].map((m) => decodeURIComponent(m[1]))
+  const listed = []
+  for (const n of names) {
+    const hit = byName.get(norm(n))
+    if (hit && !listed.includes(hit)) listed.push(hit)
+  }
+  if (!listed.length) {
+    const cat = String(post.category).split(',')[0].trim()
+    for (const it of (byCategory.get(cat) || []).slice(0, 3)) listed.push(it)
+  }
+  const withPhoto = listed.filter((x) => x.image)
+  if (!withPhoto.length) throw new Error('No product photo available for post ' + post.slug)
+  post.listed = listed
+  post.heroImage = withPhoto[0].image
+  post.heroProduct = withPhoto[0]
+  post.imageAlt = withPhoto[0].name
+  // links in the text go to the product page itself
+  post.body = String(post.body).replace(/href="\/\?product=([^#"]+)#catalog"/g, (m, enc) => {
+    const hit = byName.get(norm(decodeURIComponent(enc)))
+    return hit ? 'href="' + hit.url + '"' : m
+  })
+  const [headline, sub] = SHORT[post.slug] || [post.title, post.teaser]
+  post.headline = headline
+  post.subline = sub
+}
+for (const g of guides) {
+  const cat = /copper/i.test(g.href) ? 'Copper Bus Bar' : /plated-vs-pure/i.test(g.href) ? 'Nickel Strip Pure' : 'Nickel Strip Plated'
+  const hit = firstWithPhoto(cat)
+  if (!hit) throw new Error('No product photo for guide ' + g.href)
+  g.heroImage = hit.image
+  g.imageAlt = hit.name
+}
+
 const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-HREHJPZYC1"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -125,7 +205,7 @@ function renderPost(post, all) {
   const related = [1, 2, 3].map((n) => all[(at + n) % all.length]).map((p) => `
         <a class="blog-tile" href="/blog/${p.slug}.html" data-tile-cat="${esc(p.category)}">
           <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
-          <div class="blog-tile-body"><span class="blog-tag">${esc(p.tag)}</span><h3>${esc(p.title)}</h3><span class="blog-more">Read blog &rarr;</span></div>
+          <div class="blog-tile-body"><span class="blog-tag">${esc(p.tag)}</span><h3>${esc(p.headline)}</h3><span class="blog-more">Read blog &rarr;</span></div>
         </a>`).join('')
 
   const faq = post.faq.map(([q, a]) => `
@@ -138,11 +218,23 @@ function renderPost(post, all) {
     <article class="blog-article">
       <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <a href="/blog/">Blog</a> &rsaquo; <span>${esc(post.tag)}</span></nav>
       <p class="blog-tag">${esc(post.tag)}</p>
-      <h1>${esc(post.title)}</h1>
+      <h1>${esc(post.headline)}</h1>
+      <p class="blog-subline">${esc(post.subline)}</p>
       <p class="blog-meta">By Arambhika &middot; <time datetime="${post.date}">${post.dateLabel}</time> &middot; ${post.readTime} min read</p>
-      <figure class="blog-hero"><img src="${post.heroImage}" alt="${esc(post.imageAlt)}" width="720" height="480" /></figure>
+      <figure class="blog-hero"><a href="${post.heroProduct.url}"><img src="${post.heroImage}" alt="${esc(post.imageAlt)}" width="720" height="480" /></a><figcaption>Featured product: <a href="${post.heroProduct.url}">${esc(post.heroProduct.name)}</a></figcaption></figure>
       <p class="blog-intro">${post.intro}</p>
       ${post.body}
+
+      <section class="blog-listed" aria-label="Products in this guide">
+        <h2>Products in this guide</h2>
+        <div class="blog-listed-grid">${post.listed.slice(0, 6).map((x) => `
+          <a class="blog-listed-card" href="${x.url}">
+            <span class="blog-listed-img">${x.image ? `<img src="${x.image}" alt="${esc(x.name)}" loading="lazy" />` : ''}</span>
+            <span class="blog-listed-name">${esc(x.name)}</span>
+            <span class="blog-listed-price">${x.price ? '\u20B9' + Number(x.price).toLocaleString('en-IN') + ' / ' + esc(x.unit || 'KG') : 'Price on request'}</span>
+          </a>`).join('')}
+        </div>
+      </section>
 
       <section class="blog-products" data-category="${esc(post.category)}" data-limit="8" aria-label="${esc(post.category)} products">
         <h2>${esc(post.productsHeading)}</h2>
@@ -198,7 +290,7 @@ function renderIndex(all) {
   const tiles = all.map((p) => `
         <a class="blog-tile" href="/blog/${p.slug}.html" data-tile-cat="${esc(p.category)}">
           <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
-          <div class="blog-tile-body"><span class="blog-tag">${esc(p.tag)}</span><h3>${esc(p.title)}</h3><p>${esc(p.teaser)}</p><span class="blog-more">Read blog &rarr;</span></div>
+          <div class="blog-tile-body"><span class="blog-tag">${esc(p.tag)}</span><h3>${esc(p.headline)}</h3><p>${esc(p.subline)}</p><span class="blog-more">Read blog &rarr;</span></div>
         </a>`).join('')
   // Older guides live at their original URLs (kept for SEO) but are listed as ordinary blog tiles.
   const guideTiles = guides.map((g) => `
@@ -214,7 +306,7 @@ function renderIndex(all) {
     <section class="blog-article blog-landing">
       <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <span>Blog</span></nav>
       <p class="blog-tag">Arambhika Blog</p>
-      <h1>Battery pack materials, explained for Indian makers</h1>
+      <h1>Guides for battery pack makers</h1>
       <p class="blog-intro">One guide for each material we sell, written for e-bike, e-rickshaw, inverter and solar storage builders across India. Each guide links straight to the products with live stock and price.</p>
       <div class="blog-tiles blog-tiles-lg">${tiles}${guideTiles}
       </div>
@@ -232,7 +324,7 @@ const BOOK_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" s
 const homeTile = (p) => `
           <a class="blog-tile" href="/blog/${p.slug}.html">
             <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
-            <div class="blog-tile-body"><span class="blog-tag">${BOOK_ICON}Blog &middot; ${esc(p.tag)}</span><h3>${esc(p.title)}</h3><p>${esc(p.teaser)}</p><span class="blog-more">Read blog &rarr;</span></div>
+            <div class="blog-tile-body"><span class="blog-tag">${BOOK_ICON}Blog &middot; ${esc(p.tag)}</span><h3>${esc(p.headline)}</h3><p>${esc(p.subline)}</p><span class="blog-more">Read blog &rarr;</span></div>
           </a>`
 const homeHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
 fs.writeFileSync(path.join(ROOT, 'index.html'), homeHtml.replace(

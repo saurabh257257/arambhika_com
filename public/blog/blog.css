@@ -95,3 +95,16 @@ body.blog-page { padding-top: 0; background: var(--surface); }
   .blog-article { margin-top: 14px; padding: 20px 16px 26px; border-radius: 0; border-left: 0; border-right: 0; width: 100%; }
   .blog-product-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }
+
+/* post headline, subline, featured product and the "products in this guide" strip */
+.blog-subline { margin: -4px 0 8px; color: var(--muted); font-size: 1.02rem; }
+.blog-hero figcaption { margin-top: 6px; font-size: .82rem; color: var(--muted); text-align: center; }
+.blog-hero img { object-fit: cover; }
+.blog-listed { margin: 28px 0; }
+.blog-listed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 10px; }
+.blog-listed-card { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: #fff; border: 1px solid #dbe8e5; border-radius: 10px; text-decoration: none !important; color: inherit; transition: box-shadow .18s ease, transform .18s ease; }
+.blog-listed-card:hover { box-shadow: 0 8px 20px rgba(14, 143, 126, .18); transform: translateY(-2px); }
+.blog-listed-img { aspect-ratio: 1 / 1; overflow: hidden; border-radius: 8px; background: #f4f7f8; display: block; }
+.blog-listed-img img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.12); display: block; }
+.blog-listed-name { font-size: .8rem; font-weight: 600; line-height: 1.3; color: #12263f; }
+.blog-listed-price { font-size: .8rem; color: #0b6f62; font-weight: 700; }

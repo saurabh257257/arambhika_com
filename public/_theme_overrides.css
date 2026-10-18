@@ -2345,3 +2345,26 @@ html { font-size: 13px; }
 .prod-img { aspect-ratio: 1 / 1; }
 .prod-img img { object-fit: cover; transform: scale(1.12); transition: transform 0.25s ease; }
 .prod-card:hover .prod-img img { transform: scale(1.18); }
+
+/* ===== ribbons: back to the deeper look, kept slim ===== */
+.cat-block-head, .cat-block:nth-of-type(n) .cat-block-head { border: 0 !important; border-left: 0 !important; padding: 7px 14px !important; border-radius: 8px; box-shadow: 0 4px 12px rgba(18, 38, 63, 0.18) !important; }
+.cat-block .cat-block-head { background: linear-gradient(90deg, #0b5e54, #0e7f72 60%, #14707f) !important; }
+.cat-block:nth-of-type(2) .cat-block-head { background: linear-gradient(90deg, #1f4f9c, #2b66c2 60%, #3a5cc0) !important; }
+.cat-block:nth-of-type(3) .cat-block-head { background: linear-gradient(90deg, #b8660d, #d9780f 60%, #c9600f) !important; }
+.cat-block:nth-of-type(4) .cat-block-head { background: linear-gradient(90deg, #5a35a8, #7040c2 60%, #8a4fc0) !important; }
+.cat-block:nth-of-type(5) .cat-block-head { background: linear-gradient(90deg, #a82f52, #c23d63 60%, #cc5a4a) !important; }
+.cat-block:nth-of-type(n+6) .cat-block-head { background: linear-gradient(90deg, #137048, #1b8a5a 60%, #249466) !important; }
+.cat-block-head h2 { color: #fff !important; font-weight: 600 !important; font-size: 0.95rem !important; }
+.cat-block-head > span { color: rgba(255, 255, 255, 0.85) !important; }
+.cat-block-head > .cat-more, .cat-block:nth-of-type(n) .cat-block-head > .cat-more { background: rgba(255, 255, 255, 0.95); color: #12263f !important; padding: 3px 11px; }
+.cat-block-head > .cat-more:hover { background: #fff; filter: none; color: #0b5e54 !important; }
+
+/* ===== categories: always one line, swipe / scroll sideways ===== */
+.cat-tiles, .cat-tiles:not(#x) { display: flex !important; flex-wrap: nowrap !important; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; gap: 6px; padding: 4px 2px 8px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+.cat-tile, .cat-tile:nth-child(n) { flex: 0 0 auto !important; width: 92px !important; scroll-snap-align: start; }
+@media (max-width: 640px) {
+  .cat-tiles { gap: 2px; scrollbar-width: none; }
+  .cat-tiles::-webkit-scrollbar { display: none; }
+  .cat-tile, .cat-tile:nth-child(n) { width: 78px !important; }
+  .cat-tile .cat-tile-img, .cat-tile-img { width: 54px; height: 54px; flex-basis: 54px; }
+}
