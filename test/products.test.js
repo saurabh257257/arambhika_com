@@ -140,7 +140,7 @@ describe('store home markup', () => {
 
   test('the page title is the h1, and there is exactly one', () => {
     assert.equal((home.match(/<h1[\s>]/g) || []).length, 1)
-    assert.match(home, /<h1>Lithium Battery Component B2B Manufacturer and Supplier<\/h1>/)
+    assert.match(home, /<h1>Lithium Ion Battery B2B Component Manufacturer and Supplier<\/h1>/)
   })
 
   test('there is no banner: the title is one slim line above the categories', () => {

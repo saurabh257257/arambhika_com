@@ -513,7 +513,7 @@ const applySiteConfig = (config) => {
   const navCapabilities = document.getElementById("navCapabilities");
   const navAbout = document.getElementById("navAbout");
   if (navHome && navConfig.home) navHome.textContent = navConfig.home;
-  if (navCatalog && navConfig.catalog) navCatalog.textContent = navConfig.catalog;
+  if (navCatalog && navConfig.catalog) (navCatalog.querySelector(".nav-label") || navCatalog).textContent = navConfig.catalog;
   if (navCapabilities && navConfig.capabilities) navCapabilities.textContent = navConfig.capabilities;
   if (navAbout && navConfig.about) navAbout.textContent = navConfig.about;
 
