@@ -2470,3 +2470,8 @@ html { font-size: 13px; }
 .cat-tile-img i { font-size: 0.9rem; }
 .cat-tile .cat-tile-text b { font-size: 0.62rem; max-width: 68px; }
 @media (max-width: 640px) { .cat-tile, .cat-tile:nth-child(n) { width: 62px !important; } .cat-tile .cat-tile-img, .cat-tile-img { width: 32px; height: 32px; flex-basis: 32px; } }
+
+/* full category names (two lines, no "..."), and photos that are not over-zoomed in the small circles */
+.cat-tile, .cat-tile:nth-child(n) { width: 80px !important; }
+.cat-tile .cat-tile-text b { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; max-width: 78px !important; font-size: 0.64rem; line-height: 1.15; text-align: center; }
+.cat-tile-img img { transform: scale(1.12) !important; padding: 0 !important; object-fit: cover; }
