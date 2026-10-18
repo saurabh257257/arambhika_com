@@ -128,6 +128,10 @@ for (const g of guides) {
   g.imageAlt = hit.name
 }
 
+// ---- FAQs: a question, one line of the answer, "Show more", and one page that holds them all ----
+const homeFaqs = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'faq-home.json'), 'utf8'))
+const faqItem = (q, a) => `<div class="faq-item"><h3 class="faq-q">${q}</h3><p class="faq-a">${a}</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div>`
+
 const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-HREHJPZYC1"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -215,8 +219,8 @@ function renderPost(post, all) {
           <div class="blog-tile-body"><span class="blog-tag">${esc(p.tag)}</span><h3>${esc(p.headline)}</h3><span class="blog-more">Read blog &rarr;</span></div>
         </a>`).join('')
 
-  const faq = post.faq.map(([q, a]) => `
-      <details><summary>${esc(q)}</summary><p>${a}</p></details>`).join('')
+  const faq = `<div class="faq-list">${post.faq.map(([q, a]) => faqItem(esc(q), a)).join('')}</div>
+        <p class="faq-all"><a class="blog-btn blog-btn-ghost" href="/faq.html">See all FAQs &rarr;</a></p>`
 
   return `${baseHead({ title: post.metaTitle, description: post.description, keywords: post.keywords, url, image, type: 'article', jsonld })}
 <body class="blog-page">
@@ -260,7 +264,8 @@ function renderPost(post, all) {
       </aside>
 
       <section class="blog-faq">
-        <h2>Frequently asked questions</h2>${faq}
+        <h2>Frequently asked questions</h2>
+        ${faq}
       </section>
 
       <section class="blog-related">
@@ -345,6 +350,55 @@ fs.writeFileSync(path.join(ROOT, 'index.html'), homeHtml.replace(
 ))
 
 fs.mkdirSync(OUT, { recursive: true })
+
+const homeNow = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
+fs.writeFileSync(path.join(ROOT, 'index.html'), homeNow.replace(
+  /<!-- faq:start -->[\s\S]*?<!-- faq:end -->/,
+  () => `<!-- faq:start -->${homeFaqs.map(([q, a]) => faqItem(q, a)).join('')}<!-- faq:end -->`,
+))
+
+function renderFaqPage() {
+  const url = `${SITE}/faq.html`
+  const groups = [
+    { title: 'Ordering, sizes and delivery', faqs: homeFaqs },
+    ...posts.map((p) => ({ title: p.headline, faqs: p.faq.map(([q, a]) => [esc(q), a]) })),
+  ]
+  const flat = groups.flatMap((g) => g.faqs)
+  const plain = (h) => String(h).replace(/<[^>]+>/g, '')
+  const jsonld = {
+    '@context': 'https://schema.org',
+    '@graph': [{
+      '@type': 'FAQPage',
+      mainEntity: flat.map(([q, a]) => ({ '@type': 'Question', name: plain(q), acceptedAnswer: { '@type': 'Answer', text: plain(a) } })),
+    }],
+  }
+  const title = 'FAQ | Nickel Strip, Copper Busbar & Battery Pack Questions Answered | Arambhika'
+  const description = 'Every question we get about nickel strip, copper busbar, welding, sizing, pricing and ordering, answered in one place.'
+  return `${baseHead({ title, description, keywords: 'nickel strip FAQ, copper busbar FAQ, battery pack questions India', url, image: `${SITE}/assets/logo.png`, type: 'website', jsonld })}
+<body class="blog-page">
+  ${header}
+  <main>
+    <section class="blog-article faq-page">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <span>FAQ</span></nav>
+      <p class="blog-tag">Help centre</p>
+      <h1>Frequently asked questions</h1>
+      <p class="blog-subline">${flat.length} answers on strips, busbars, welding, sizing and ordering.</p>
+      <input type="search" id="faqSearch" class="faq-search" placeholder="Search the FAQs..." aria-label="Search the FAQs" />
+      ${groups.map((g) => `
+      <section class="faq-group">
+        <h2>${esc(g.title)}</h2>
+        <div class="faq-list">${g.faqs.map(([q, a]) => faqItem(q, a)).join('')}</div>
+      </section>`).join('')}
+      <p class="faq-empty" id="faqEmpty" hidden>No question matches. <a href="https://wa.me/919315545821" target="_blank" rel="noopener">Ask us on WhatsApp</a>.</p>
+    </section>
+  </main>
+  ${footer}
+  <script src="/blog/blog.js" defer></script>
+</body>
+</html>
+`
+}
+fs.writeFileSync(path.join(ROOT, 'faq.html'), renderFaqPage())
 for (const post of posts) {
   fs.writeFileSync(path.join(OUT, `${post.slug}.html`), renderPost(post, posts))
 }
@@ -353,8 +407,8 @@ fs.writeFileSync(path.join(OUT, 'index.html'), renderIndex(posts))
 // Sitemap: keep it in step with the blog pages.
 const sitemapPath = path.join(ROOT, 'sitemap.xml')
 let sitemap = fs.readFileSync(sitemapPath, 'utf8')
-sitemap = sitemap.replace(/\s*<url>\s*<loc>[^<]*\/blog\/[^<]*<\/loc>[\s\S]*?<\/url>/g, '')
-const entries = [`${SITE}/blog/`, ...posts.map((p) => `${SITE}/blog/${p.slug}.html`)].map((loc, i) => `  <url>
+sitemap = sitemap.replace(/\s*<url>\s*<loc>[^<]*\/(?:blog\/|faq\.html)[^<]*<\/loc>[\s\S]*?<\/url>/g, '')
+const entries = [`${SITE}/blog/`, `${SITE}/faq.html`, ...posts.map((p) => `${SITE}/blog/${p.slug}.html`)].map((loc, i) => `  <url>
     <loc>${loc}</loc>
     <changefreq>${i ? 'monthly' : 'weekly'}</changefreq>
     <priority>${i ? '0.7' : '0.8'}</priority>

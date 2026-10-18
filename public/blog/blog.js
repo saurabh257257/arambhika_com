@@ -1,3 +1,43 @@
+// FAQ rows: question, one line of the answer, "Show more"; also the search box on /faq.html.
+(function () {
+  function fit() {
+    document.querySelectorAll('.faq-item').forEach(function (item) {
+      var a = item.querySelector('.faq-a'), btn = item.querySelector('.faq-more');
+      if (!a || !btn || item.classList.contains('open')) return;
+      btn.hidden = a.scrollWidth <= a.clientWidth + 1;
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('.faq-more');
+    var q = e.target.closest && e.target.closest('.faq-q');
+    var item = (btn || q) && (btn || q).closest('.faq-item');
+    if (!item) return;
+    var open = item.classList.toggle('open');
+    var b2 = item.querySelector('.faq-more');
+    if (b2) { b2.hidden = false; b2.textContent = open ? 'Show less' : 'Show more'; b2.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+  });
+  var search = document.getElementById('faqSearch');
+  if (search) {
+    search.addEventListener('input', function () {
+      var term = search.value.trim().toLowerCase(), shown = 0;
+      document.querySelectorAll('.faq-item').forEach(function (item) {
+        var hit = !term || item.textContent.toLowerCase().indexOf(term) !== -1;
+        item.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      });
+      document.querySelectorAll('.faq-group').forEach(function (g) {
+        var any = Array.prototype.some.call(g.querySelectorAll('.faq-item'), function (i) { return i.style.display !== 'none'; });
+        g.style.display = any ? '' : 'none';
+      });
+      var empty = document.getElementById('faqEmpty');
+      if (empty) empty.hidden = shown > 0;
+    });
+  }
+  fit();
+  window.addEventListener('load', fit);
+  window.addEventListener('resize', fit);
+})();
+
 // Renders the live product tiles on each blog page from the store's /products.json.
 (function () {
   var section = document.querySelector('.blog-products');
