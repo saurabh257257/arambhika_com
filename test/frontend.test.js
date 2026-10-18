@@ -148,7 +148,8 @@ describe('customer flow markup', () => {
     assert.ok(withFooter.length >= 12)
     for (const page of withFooter) {
       const html = read(page)
-      assert.match(html, /class="footer-links"/, `${page} footer has no link row`)
+      assert.match(html, /class="footer-col" aria-label="Company"/, `${page} footer has no Company column`)
+      assert.match(html, /class="footer-bottom"/, `${page} footer has no bottom bar`)
       for (const href of wanted) assert.ok(html.includes(`href="${href}"`), `${page} footer is missing ${href}`)
     }
   })
