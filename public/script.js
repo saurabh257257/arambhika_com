@@ -1365,4 +1365,5 @@ document.addEventListener("keydown", (event) => {
   let timer;
   window.addEventListener("resize", () => { clearTimeout(timer); timer = setTimeout(apply, 150); });
   apply();
+  window.addEventListener("load", apply);
 })();

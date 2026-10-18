@@ -2419,3 +2419,16 @@ html { font-size: 13px; }
 .blog-tile-body p, .blog-tiles-lg .blog-tile-body p { order: 3; font-size: 0.72rem; line-height: 1.35; margin: 0; color: #5b6b7a;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .blog-tile-body .blog-more, .blog-tiles-lg .blog-more { order: 4; font-size: 0.74rem; font-weight: 700; color: #0b6f62; margin-top: auto; }
+
+/* ===== product cards: a denser, shorter version ===== */
+.cat-grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 8px; }
+.prod-card { padding: 6px !important; border-top-width: 2px; border-radius: 8px; }
+.prod-img { aspect-ratio: 4 / 3 !important; margin-bottom: 4px; border-radius: 6px; }
+.prod-img img { transform: scale(1.18); }
+.prod-name { font-size: 0.74rem !important; line-height: 1.25; margin-bottom: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 0; }
+.prod-price { font-size: 0.82rem !important; margin: 2px 0 4px; }
+.prod-price small { font-size: 0.64rem; }
+.prod-btn { padding: 5px 8px !important; font-size: 0.76rem !important; min-height: 0 !important; height: 28px; border-radius: 14px; box-shadow: none !important; }
+.prod-stepper { height: 28px; }
+.prod-stepper button { width: 26px; } .prod-stepper span { font-size: 0.72rem; }
+.prod-flag { font-size: 0.6rem !important; padding: 1px 6px !important; top: 4px; left: 4px; }
