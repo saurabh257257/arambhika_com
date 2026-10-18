@@ -117,3 +117,11 @@ body.blog-page { padding-top: 0; background: var(--surface); }
 .blog-show-more { display: block; margin: 16px auto 0; padding: 8px 24px; border-radius: 999px; border: 0; background: #0b5e54; color: #fff; font: inherit; font-weight: 600; font-size: .9rem; cursor: pointer; }
 .blog-show-more:hover { background: #0e7f72; }
 .home-blog-sub { margin: 4px 0 0; color: var(--muted); font-size: .95rem; }
+/* small tiles: let the text pieces be ordered around the picture (title, picture, 2 lines, Read more) */
+.blog-tile .blog-tile-body { display: contents !important; }
+.blog-tile { display: flex; flex-direction: column; }
+.blog-tile h3 { order: 1 !important; }
+.blog-tile .blog-tile-img { order: 2 !important; }
+.blog-tile p { order: 3 !important; }
+.blog-tile .blog-more { order: 4 !important; }
+.blog-tile .blog-tag { display: none !important; }
