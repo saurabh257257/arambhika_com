@@ -202,7 +202,7 @@ function applyRowLimit() {
         if (expandedCats.has(k)) expandedCats.delete(k); else expandedCats.add(k);
         applyRowLimit();
       });
-      grid.after(more);
+      block.querySelector(".cat-block-head").appendChild(more);
     }
     more.textContent = open ? "Show less ▴" : `Show all ${cards.length} products ▾`;
   });

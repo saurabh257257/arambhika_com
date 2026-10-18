@@ -2289,3 +2289,20 @@ body { background: linear-gradient(180deg, #dff1ee 0%, #e9f1f8 38%, #eef0fa 100%
 .cat-block:nth-of-type(2) .cat-more { color: #2f6fd1; } .cat-block:nth-of-type(2) .cat-more:hover { background: #2f6fd1; color: #fff; border-color: #2f6fd1; }
 .cat-block:nth-of-type(3) .cat-more { color: #b45f0b; } .cat-block:nth-of-type(3) .cat-more:hover { background: #e8861a; color: #fff; border-color: #e8861a; }
 .cat-block { margin-top: 16px; }
+
+/* the Show all toggle lives in the ribbon, on the right */
+.cat-block-head { gap: 12px; }
+.cat-block-head > span { display: none; }
+.cat-block-head > .cat-more {
+  display: inline-block; margin: 0 0 0 auto; padding: 5px 14px; border: 0; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95); color: #0b6f62; font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+}
+.cat-block:nth-of-type(2) .cat-block-head > .cat-more { color: #2f6fd1; }
+.cat-block:nth-of-type(3) .cat-block-head > .cat-more { color: #b45f0b; }
+.cat-block:nth-of-type(4) .cat-block-head > .cat-more { color: #7c4fd0; }
+.cat-block:nth-of-type(5) .cat-block-head > .cat-more { color: #d6456b; }
+.cat-block-head > .cat-more:hover { background: #fff; color: #12263f; border: 0; }
+.cat-block-head:not(:has(.cat-more)) > span { display: inline; }
+
+/* smaller type overall, in the spirit of Amazon / Google */
+html { font-size: 14px; }
