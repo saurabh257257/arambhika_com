@@ -177,6 +177,39 @@ const renderCellPills = (categories) => {
 
 let currentCellFilter = "";
 
+// Each category shows a single row of products; "Show all" opens the rest. A search or a chosen
+// category/size always shows everything that matches.
+const expandedCats = new Set();
+function applyRowLimit() {
+  if (!catalogGrid) return;
+  const narrowing = currentCategoryFilter !== "all" || !!currentSearchTerm || !!currentCellFilter;
+  catalogGrid.querySelectorAll(".cat-block").forEach((block) => {
+    const grid = block.querySelector(".cat-grid");
+    const cards = [...block.querySelectorAll(".prod-card")].filter((c) => c.style.display !== "none");
+    cards.forEach((c) => c.classList.remove("row-extra"));
+    let more = block.querySelector(".cat-more");
+    const cols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(" ").length);
+    const open = narrowing || expandedCats.has(block.dataset.category);
+    const extra = cards.length - cols;
+    if (extra <= 0 || narrowing) { if (more) more.remove(); return; }
+    if (!open) cards.slice(cols).forEach((c) => c.classList.add("row-extra"));
+    if (!more) {
+      more = document.createElement("button");
+      more.type = "button";
+      more.className = "cat-more";
+      more.addEventListener("click", () => {
+        const k = block.dataset.category;
+        if (expandedCats.has(k)) expandedCats.delete(k); else expandedCats.add(k);
+        applyRowLimit();
+      });
+      grid.after(more);
+    }
+    more.textContent = open ? "Show less ▴" : `Show all ${cards.length} products ▾`;
+  });
+}
+let rowLimitTimer;
+window.addEventListener("resize", () => { clearTimeout(rowLimitTimer); rowLimitTimer = setTimeout(applyRowLimit, 150); });
+
 const filterCatalog = () => {
   if (!catalogGrid) return;
   const cards = catalogGrid.querySelectorAll(".prod-card");
@@ -195,6 +228,7 @@ const filterCatalog = () => {
     block.style.display = any ? "" : "none";
     if (any) shown += 1;
   });
+  applyRowLimit();
   let empty = catalogGrid.querySelector(".catalog-empty");
   if (!shown) {
     if (!empty) {
@@ -732,7 +766,7 @@ const createCard = (product, categoryName) => {
   card.innerHTML = `
     <a class="prod-link" href="${href}" aria-label="${name}">
       <span class="prod-img">${images[0] ? `<img src="${images[0]}" alt="${name}" loading="lazy" decoding="async" />` : ""}</span>
-      ${isNotify ? '<span class="prod-flag">Out of stock</span>' : isRequest ? '<span class="prod-flag">On request</span>' : ""}
+      ${isNotify ? '<span class="prod-flag prod-flag-req">Available on request</span>' : isRequest ? '<span class="prod-flag prod-flag-req">Available on request</span>' : ""}
       <span class="prod-name">${name}</span>
     </a>
     <div class="prod-price">${priceNumber ? `₹${priceNumber.toLocaleString("en-IN")}` : "Price on request"} <small>/ ${unit} · MOQ ${minQty}</small></div>
@@ -745,7 +779,7 @@ const createCard = (product, categoryName) => {
   const paint = () => {
     const line = getOrder()[name];
     if (isNotify) {
-      action.innerHTML = '<button class="prod-btn prod-btn-ghost" type="button" data-notify>Notify me</button>';
+      action.innerHTML = '<button class="prod-btn prod-btn-ghost" type="button" data-notify>Request now</button>';
     } else if (line) {
       action.innerHTML = `<div class="prod-stepper" role="group" aria-label="Quantity">
           <button type="button" data-step="-1" aria-label="Decrease quantity">&minus;</button>
@@ -761,7 +795,7 @@ const createCard = (product, categoryName) => {
     if (!btn) return;
     event.preventDefault();
     if (btn.hasAttribute("data-notify")) {
-      const message = `Hi, please notify me when ${name}${sku ? ` (${sku})` : ""} is back in stock.`;
+      const message = `Hi, ${name}${sku ? ` (${sku})` : ""} is available on request. Please share the price and lead time.`;
       window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
       return;
     }

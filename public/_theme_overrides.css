@@ -2272,3 +2272,20 @@ body { background: linear-gradient(180deg, #dff1ee 0%, #e9f1f8 38%, #eef0fa 100%
 .cat-block:nth-of-type(3) .product-card { border-top-color: #e8861a; }
 .cat-block:nth-of-type(4) .product-card { border-top-color: #7c4fd0; }
 .cat-block:nth-of-type(5) .product-card { border-top-color: #d6456b; }
+
+/* logo on a soft tinted plate */
+.site-header .brand-logo { background: linear-gradient(135deg, #dff3ef, #e3ecfb); border: 1px solid #c9ded9; border-radius: 10px; padding: 5px 10px; box-sizing: content-box; }
+/* "available on request" in blue */
+.prod-flag.prod-flag-req { background: #2f6fd1; color: #fff; }
+.prod-btn-ghost { border-color: #2f6fd1; color: #2f6fd1; }
+.pp-btn-yellow[href*="wa.me"] { background: #2f6fd1; color: #fff; }
+/* one row per category, with a Show all toggle */
+.prod-card.row-extra { display: none !important; }
+.cat-more {
+  display: block; margin: 10px auto 0; padding: 8px 22px; border-radius: 999px; border: 1.5px solid currentColor;
+  background: #fff; color: #0b6f62; font: inherit; font-weight: 700; font-size: 0.88rem; cursor: pointer;
+}
+.cat-more:hover { background: #0b6f62; color: #fff; border-color: #0b6f62; }
+.cat-block:nth-of-type(2) .cat-more { color: #2f6fd1; } .cat-block:nth-of-type(2) .cat-more:hover { background: #2f6fd1; color: #fff; border-color: #2f6fd1; }
+.cat-block:nth-of-type(3) .cat-more { color: #b45f0b; } .cat-block:nth-of-type(3) .cat-more:hover { background: #e8861a; color: #fff; border-color: #e8861a; }
+.cat-block { margin-top: 16px; }

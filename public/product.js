@@ -129,9 +129,9 @@
         <button type="button" data-q="1" aria-label="Increase quantity">+</button>
       </div>`;
     if (notify) {
-      const link = `<a class="pp-btn pp-btn-yellow" href="https://wa.me/919315545821?text=${encodeURIComponent(`Hi, please notify me when ${P.name} is back in stock.`)}" target="_blank" rel="noopener">Notify me on WhatsApp</a>`;
+      const link = `<a class="pp-btn pp-btn-yellow" href="https://wa.me/919315545821?text=${encodeURIComponent(`Hi, ${P.name} is available on request. Please share the price and lead time.`)}" target="_blank" rel="noopener">Request on WhatsApp</a>`;
       buy.innerHTML = link;
-      sticky.innerHTML = `<div class="pp-sticky-price">Out of stock<small>We can tell you when it is back</small></div>${link}`; // phones show only the sticky bar
+      sticky.innerHTML = `<div class="pp-sticky-price">Available on request<small>Ask us for price and lead time</small></div>${link}`; // phones show only the sticky bar
       return;
     }
     buy.innerHTML = `${stepper}
