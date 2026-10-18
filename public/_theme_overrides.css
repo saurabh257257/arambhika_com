@@ -2162,3 +2162,5 @@ body { background: var(--p-page); color: var(--p-ink); }
   .cat-tile-img img { padding: 5px; }
   .cat-tile-img i { font-size: 1.4rem; }
 }
+/* the photos carry their own white margin: fill the circle and zoom in on the subject */
+.cat-tile-img img { padding: 0; object-fit: contain; transform: scale(1.4); }
