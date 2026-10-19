@@ -1386,3 +1386,22 @@ document.addEventListener("keydown", (event) => {
   apply();
   window.addEventListener("load", apply);
 })();
+
+// The pinned category row hides what is directly under it, so tell the CSS how tall it is. Scrolling to a
+// category (or a search) then stops below it, with the first row of products fully visible.
+(() => {
+  if (!window.ResizeObserver) return;
+  const pinned = () => {
+    const bar = document.querySelector(".cat-bar");
+    if (bar && getComputedStyle(bar).display !== "contents") return bar;
+    return document.querySelector("#categoryFilters");
+  };
+  const set = () => {
+    const el = pinned();
+    if (el) document.documentElement.style.setProperty("--bar-h", el.getBoundingClientRect().height + "px");
+  };
+  const watch = () => { const el = pinned(); if (el) new ResizeObserver(set).observe(el); set(); };
+  document.addEventListener("DOMContentLoaded", watch);
+  window.addEventListener("load", watch);
+  window.addEventListener("resize", set);
+})();
