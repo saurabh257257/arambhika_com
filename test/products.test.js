@@ -333,3 +333,13 @@ describe('the cart shows the tax breakup before checkout', () => {
     assert.doesNotMatch(js, /Shipping and taxes are shown on the payment page/)
   })
 })
+
+describe('photo zoom on the product page', () => {
+  test('each photo has a zoom button that opens a full-screen pop-up with zoom, navigation and close', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/product.js'), 'utf8')
+    assert.match(js, /id="ppZoom"/)
+    for (const id of ['zmIn', 'zmOut', 'zmReset', 'zmClose', 'zmPrev', 'zmNext']) assert.match(js, new RegExp(`id="${id}"`), id)
+    assert.match(js, /e\.key === "Escape"/)
+    assert.match(js, /role", "dialog"/)
+  })
+})
