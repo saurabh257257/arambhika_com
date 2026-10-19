@@ -17,6 +17,7 @@
     profile: document.getElementById("acctPanelProfile"),
     orders: document.getElementById("acctPanelOrders"),
     invoices: document.getElementById("acctPanelInvoices"),
+    saved: document.getElementById("acctPanelSaved"),
   };
   const dashGreeting = document.getElementById("acctDashGreeting");
   const statTotal = document.getElementById("statTotal");
@@ -63,6 +64,7 @@
     history.replaceState(null, "", url);
     if ((name === "orders" || name === "dashboard") && !ordersLoadedOnce) loadOrders();
     if (name === "invoices" && !invoicesLoadedOnce) loadInvoices();
+    if (name === "saved" && window.Wishlist) window.Wishlist.renderList(document.getElementById("acctSavedList"));
   }
   tabBtns.forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
   document.querySelectorAll("[data-goto]").forEach((el) => {

@@ -2535,3 +2535,56 @@ body.rq-open { overflow: hidden; }
 .seo-browse-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .seo-browse-group a { font-size: 0.76rem; color: #3a5a6b; text-decoration: none; }
 .seo-browse-group a:hover { color: #0b6f62; text-decoration: underline; }
+
+/* ===== favourites: the heart, the header button, the slide-over and the dashboard list ===== */
+.wish-btn { position: absolute; top: 8px; right: 8px; z-index: 3; width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 1px solid rgba(18, 38, 63, 0.14); background: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 4px rgba(18, 38, 63, 0.18); transition: transform .15s ease, background .15s ease, border-color .15s ease; }
+.wish-btn svg { width: 17px; height: 17px; fill: #fff; stroke: #8a98a6; stroke-width: 2; stroke-linejoin: round; transition: fill .15s ease, stroke .15s ease; }
+.wish-btn:hover { transform: scale(1.08); }
+.wish-btn:hover svg { stroke: #e11d48; }
+.wish-btn.is-saved { background: #fff1f2; border-color: #fecdd3; }
+.wish-btn.is-saved svg { fill: #e11d48; stroke: #e11d48; }
+.wish-btn:focus-visible { outline: 2px solid #e11d48; outline-offset: 2px; }
+.wish-lg { width: 40px; height: 40px; top: 0; right: 0; }
+.wish-lg svg { width: 22px; height: 22px; }
+.pp-info { position: relative; }
+.pp-info .pp-title { padding-right: 48px; }
+
+.nav-wish-btn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 54px; padding: 3px 8px; border: 0; border-radius: 8px; background: transparent; color: #12263f; font: inherit; cursor: pointer; order: 2; }
+.nav-wish-btn svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.nav-wish-btn.has-items svg { fill: #e11d48; stroke: #e11d48; }
+.nav-wish-btn:hover { background: #e8f4f1; }
+.nav-wish-badge { position: absolute; top: 0; right: 10px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #e11d48; color: #fff; font-size: 0.62rem; font-weight: 700; line-height: 16px; text-align: center; }
+.nav-cart-btn { order: 3; } .nav-login-btn { order: 4; }
+
+.wl-overlay { position: fixed; inset: 0; z-index: 180; background: rgba(12, 31, 53, 0.45); display: flex; justify-content: flex-end; }
+.wl-panel { width: min(400px, 100%); height: 100%; background: #fff; display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(12, 31, 53, 0.25); }
+.wl-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #e3ebee; }
+.wl-head h3 { margin: 0; font-size: 1.05rem; color: #12263f; }
+.wl-count { font-weight: 500; color: #5b6b7a; font-size: 0.9rem; }
+.wl-x { border: 0; background: none; font-size: 1.6rem; line-height: 1; color: #5b6b7a; cursor: pointer; }
+.wl-body { flex: 1; overflow-y: auto; padding: 10px 14px; }
+.wl-foot { padding: 12px 16px; border-top: 1px solid #e3ebee; }
+.wl-foot .wl-btn { width: 100%; text-align: center; box-sizing: border-box; }
+body.wl-open { overflow: hidden; }
+.wl-row { position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr) 34px; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #eef2f4; }
+.wl-row.is-gone { grid-template-columns: minmax(0, 1fr) 34px; opacity: 0.7; }
+.wl-thumb { width: 64px; height: 64px; border-radius: 8px; overflow: hidden; background: #f4f7f8; display: block; }
+.wl-thumb img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.1); display: block; }
+.wl-name { display: block; font-size: 0.86rem; font-weight: 600; line-height: 1.3; color: #12263f; text-decoration: none; }
+.wl-name:hover { color: #0b6f62; text-decoration: underline; }
+.wl-meta { font-size: 0.78rem; color: #5b6b7a; margin: 2px 0 6px; }
+.wl-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.wl-btn { display: inline-block; padding: 5px 12px; border-radius: 999px; border: 1.5px solid transparent; font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: none; }
+.wl-btn-primary { background: #0e8f7e; color: #fff; }
+.wl-btn-primary:hover { background: #0b6f62; }
+.wl-btn-ghost { background: #fff; border-color: #2f6fd1; color: #2f6fd1; }
+.wl-remove { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: #fff1f2; cursor: pointer; display: grid; place-items: center; }
+.wl-remove svg { width: 18px; height: 18px; fill: #e11d48; stroke: #e11d48; stroke-width: 2; }
+.wl-remove:hover { background: #ffe4e6; }
+.wl-empty { text-align: center; padding: 36px 12px; color: #5b6b7a; display: grid; gap: 8px; justify-items: center; }
+.wl-empty b { color: #12263f; }
+.wl-list .wl-row { grid-template-columns: 76px minmax(0, 1fr) 34px; }
+.wl-list .wl-thumb { width: 76px; height: 76px; }
+.wl-toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: #12263f; color: #fff; padding: 8px 16px; border-radius: 999px; font-size: 0.82rem; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 220; }
+.wl-toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (max-width: 640px) { .nav-wish-btn { min-width: 48px; padding: 3px 4px; } .nav-wish-badge { right: 6px; } }

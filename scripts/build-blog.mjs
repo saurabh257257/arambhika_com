@@ -279,6 +279,8 @@ function renderPost(post, all) {
     </article>
   </main>
   ${footer}
+  <script src="/request-modal.js" defer></script>
+  <script src="/wishlist.js" defer></script>
   <script src="/blog/blog.js" defer></script>
 </body>
 </html>
@@ -328,6 +330,8 @@ function renderIndex(all) {
     </section>
   </main>
   ${footer}
+  <script src="/request-modal.js" defer></script>
+  <script src="/wishlist.js" defer></script>
   <script src="/blog/blog.js" defer></script>
 </body>
 </html>
@@ -396,6 +400,8 @@ function renderFaqPage() {
     </section>
   </main>
   ${footer}
+  <script src="/request-modal.js" defer></script>
+  <script src="/wishlist.js" defer></script>
   <script src="/blog/blog.js" defer></script>
 </body>
 </html>

@@ -478,6 +478,23 @@ app.post('/api/test-account', express.json(), testSessionRequired, async (req, r
   res.json({ ok: true, profile: saved, status: profileStatus(saved), zoho })
 })
 
+// Favourites: saved against the logged-in mobile number, so every device shows the same hearts.
+app.get('/api/wishlist', testSessionRequired, (req, res) => {
+  res.json({ items: testStore.getWishlist(req.mobile) })
+})
+
+app.post('/api/wishlist', express.json(), testSessionRequired, (req, res) => {
+  const name = String(req.body?.name ?? '').replace(/\s+/g, ' ').trim()
+  const variantId = String(req.body?.variantId ?? '').trim()
+  if (!name || name.length > 200) return res.status(400).json({ error: 'Which product?' })
+  if (variantId && !/^\d{1,30}$/.test(variantId)) return res.status(400).json({ error: 'Invalid product' })
+  try {
+    res.json({ items: testStore.setWishlistItem(req.mobile, { name, variantId }, req.body?.saved !== false) })
+  } catch (err) {
+    res.status(400).json({ error: err.message })
+  }
+})
+
 app.get('/api/test-cart', testSessionRequired, (req, res) => {
   res.json({ cart: testStore.getCart(req.mobile) })
 })

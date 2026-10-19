@@ -86,6 +86,16 @@
     });
   }
 
+  // Any page can ask for a sign-in: openSignIn({ title, hint, onSuccess })
+  window.openSignIn = async ({ title = "Log in to continue", hint = "", onSuccess } = {}) => {
+    const body = shell(title, `${hint ? `<p class="rq-hint">${esc(hint)}</p>` : ""}<div id="rqLogin"></div>`);
+    try { await loadOtpScript(); } catch { body.innerHTML = `<p class="rq-error">Could not load sign-in. Please refresh and try again.</p>`; return; }
+    window.initOtpLogin(body.querySelector("#rqLogin"), {
+      buttonClass: "rq-btn",
+      onSuccess: async () => { close(); if (typeof onSuccess === "function") await onSuccess(); },
+    });
+  };
+
   window.openProductRequest = async (product) => {
     let me = {};
     try { me = await fetch("/api/test-auth/me").then((r) => r.json()); } catch { /* treated as signed out */ }

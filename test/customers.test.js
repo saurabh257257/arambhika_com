@@ -68,3 +68,46 @@ describe('customer profile, cart and isolation', () => {
     assert.equal(r.status, 404)
   })
 })
+
+describe('favourites (wish list)', () => {
+  let app, msg91, alice, bob
+  before(async () => {
+    msg91 = await startFakeMsg91()
+    app = await startApp({ msg91 })
+    alice = await login(app, msg91, '9876533333')
+    bob = await login(app, msg91, '9876544444')
+  })
+  after(async () => { await app.stop(); await msg91.close() })
+
+  test('a visitor who is not logged in cannot read or change a list', async () => {
+    const anon = app.newClient()
+    assert.equal((await anon.get('/api/wishlist')).status, 401)
+    assert.equal((await anon.post('/api/wishlist', { name: 'Nickel Strip', saved: true })).status, 401)
+  })
+
+  test('a new customer starts with an empty list', async () => {
+    assert.deepEqual((await alice.get('/api/wishlist')).json.items, [])
+  })
+
+  test('saving adds the product once, newest first, and removing takes it off', async () => {
+    await alice.post('/api/wishlist', { name: 'Strip A', variantId: '111', saved: true })
+    await alice.post('/api/wishlist', { name: 'Strip A', variantId: '111', saved: true }) // tapping twice does not duplicate
+    const two = await alice.post('/api/wishlist', { name: 'Strip B', variantId: '222', saved: true })
+    assert.deepEqual(two.json.items.map((i) => i.name), ['Strip B', 'Strip A'])
+    const after = await alice.post('/api/wishlist', { name: 'Strip A', saved: false })
+    assert.deepEqual(after.json.items.map((i) => i.name), ['Strip B'])
+    assert.deepEqual((await alice.get('/api/wishlist')).json.items.map((i) => i.name), ['Strip B'], 'it is still there on the next visit')
+  })
+
+  test('each customer sees only their own list', async () => {
+    assert.deepEqual((await bob.get('/api/wishlist')).json.items, [])
+    await bob.post('/api/wishlist', { name: 'Bob only', saved: true })
+    assert.ok(!(await alice.get('/api/wishlist')).json.items.some((i) => i.name === 'Bob only'))
+  })
+
+  test('bad input is refused', async () => {
+    assert.equal((await alice.post('/api/wishlist', { saved: true })).status, 400)
+    assert.equal((await alice.post('/api/wishlist', { name: 'x'.repeat(300), saved: true })).status, 400)
+    assert.equal((await alice.post('/api/wishlist', { name: 'Ok', variantId: 'not-a-number', saved: true })).status, 400)
+  })
+})

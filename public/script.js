@@ -785,6 +785,7 @@ const createCard = (product, categoryName) => {
     <div class="prod-price">${priceNumber ? `₹${priceNumber.toLocaleString("en-IN")}` : "Price on request"} <small>/ ${unit} · MOQ ${minQty}</small></div>
     <div class="prod-action"></div>`;
 
+  card.insertAdjacentHTML("afterbegin", `<button type="button" class="wish-btn" data-name="${name.replace(/"/g, "&quot;")}" data-variant="${product.ZohoVariantId || ""}" aria-label="Save ${name.replace(/"/g, "&quot;")} to favourites" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>`);
   card.dataset.search = [name, sku, categoryName, product.Product_Dimensions || "", detailsList.join(" ")].filter(Boolean).join(" ");
 
   // ADD turns into a stepper; once the item is in the cart every tap changes the cart straight away.
