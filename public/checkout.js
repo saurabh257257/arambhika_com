@@ -91,11 +91,13 @@
       ${e.discount ? `<div><span>Discount</span><span>-${money2(e.discount)}</span></div>` : ""}
       <div class="ck-muted"><span>Taxable value</span><span>${money2(e.subtotal - (e.discount || 0))}</span></div>
       ${taxLines.map((t) => `<div><span>${esc(t.name)}</span><span>${money2(t.amount)}</span></div>`).join("")}
-      <div><span>Shipping</span><span>${e.shipping ? money2(e.shipping) : "Free"}</span></div>
-      <div class="ck-total-final"><span>Total${e.preview ? " (estimate)" : ""}</span><strong>${money2(e.total)}</strong></div>
+      <div class="ck-total-final"><span>Total${e.preview ? " (estimate)" : ""}</span><strong>${money2(totalBeforeShipping(e))}</strong></div>
+      <p class="ck-fine">Shipping is added in the final invoice. We deliver it ourselves.</p>
       ${e.preview ? `<p class="ck-fine">GST is split into CGST + SGST or IGST once your delivery address is saved. The rate stays the same.</p>` : ""}`;
   }
-  const payableTotal = () => (state.estimate?.total ? state.estimate.total : subtotal());
+  // Zoho adds a token shipping charge only to get past its own shipping step; customers are shown the amount without it.
+  const totalBeforeShipping = (e) => Math.max(0, Number(e.total || 0) - Number(e.shipping || 0));
+  const payableTotal = () => (state.estimate?.total ? totalBeforeShipping(state.estimate) : subtotal());
 
   // ---- summary (right column) --------------------------------------------------------------
   function renderSummary() {
@@ -213,9 +215,9 @@
     if (state.paying) return;
     const total = payableTotal();
     body.innerHTML = `
-      <p class="ck-lead">You will pay on Zoho's secure payment page: UPI, cards or net banking. The total above already includes GST and shipping.</p>
+      <p class="ck-lead">You will pay on Zoho's secure payment page: UPI, cards or net banking. The total above includes GST. Shipping is added in the final invoice.</p>
       <div class="ck-banner" id="ckPayError" role="alert" hidden></div>
-      <button type="button" class="ck-btn ck-btn-primary ck-pay" id="ckPayBtn">Pay${total ? ` ${money(total)}` : ""} securely</button>
+      <button type="button" class="ck-btn ck-btn-primary ck-pay" id="ckPayBtn">Pay securely</button>
       <p class="ck-fine">By paying you accept our <a href="terms.html">Terms</a> and <a href="refund-policy.html">Refund Policy</a>.</p>`;
     $("ckPayBtn").addEventListener("click", pay);
   }

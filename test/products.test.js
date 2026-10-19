@@ -316,3 +316,12 @@ describe('GST is shown at checkout from Zoho', () => {
     assert.doesNotMatch(lib, /\* 0\.18|\/ 100 \* 18|GST_RATE/, 'no hard-coded GST rate')
   })
 })
+
+describe('shipping at checkout', () => {
+  test('the token shipping charge is never shown; customers are told shipping comes on the final invoice', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/checkout.js'), 'utf8')
+    assert.match(js, /Shipping is added in the final invoice/)
+    assert.match(js, /totalBeforeShipping/)
+    assert.doesNotMatch(js, /<span>Shipping<\/span><span>/, 'no shipping amount row')
+  })
+})
