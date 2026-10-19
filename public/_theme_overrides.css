@@ -2591,3 +2591,5 @@ body.wl-open { overflow: hidden; }
 
 /* scrolling to the products stops below the pinned header and category row */
 #catalogGrid, #catalog, .cat-block { scroll-margin-top: calc(var(--hdr-h, 90px) + var(--bar-h, 90px) + 10px); }
+.cd-sum-sub { font-size: 0.86rem; color: #475569; margin-top: 2px; }
+.cd-sum-total { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line, #d9e1e5); }

@@ -324,3 +324,12 @@ describe('shipping at checkout', () => {
     assert.doesNotMatch(js, /<span>Shipping<\/span><span>/, 'no shipping amount row')
   })
 })
+
+describe('the cart shows the tax breakup before checkout', () => {
+  test('the cart drawer asks for GST and the total, and no longer says taxes come later', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/cart-drawer.js'), 'utf8')
+    assert.match(js, /estimate-preview/)
+    assert.match(js, /Total \(estimate\)/)
+    assert.doesNotMatch(js, /Shipping and taxes are shown on the payment page/)
+  })
+})

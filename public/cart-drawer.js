@@ -78,8 +78,32 @@
     });
   }
 
+  // GST and total from Zoho's own checkout (the same figures the checkout page shows), fetched once per basket.
+  const breakups = new Map();
+  let breakupTimer;
+  const keyFor = (all) => JSON.stringify(all.map((l) => [l.p?.ZohoVariantId || l.item.name, Number(l.item.qty) || 0]));
+  const breakupFor = (all) => breakups.get(keyFor(all)) || null;
+  async function loadBreakup(all) {
+    const key = keyFor(all);
+    if (breakups.has(key) || breakups.get(key + "pending")) return;
+    if (all.some((l) => !l.p?.ZohoVariantId)) return;
+    breakups.set(key + "pending", true);
+    try {
+      const res = await fetch("/api/checkout/estimate-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: all.map((l) => ({ variantId: l.p.ZohoVariantId, qty: Number(l.item.qty) || 1, label: l.item.name })) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.total) breakups.set(key, data);
+    } catch { /* the drawer still shows the subtotal */ }
+    breakups.delete(key + "pending");
+    if (keyFor(lines()) === key && root.classList.contains("is-open")) render();
+  }
+
   function render() {
     const all = lines();
+    if (all.length && !breakupFor(all)) { clearTimeout(breakupTimer); breakupTimer = setTimeout(() => loadBreakup(lines()), 400); }
     const qty = all.reduce((s, l) => s + (Number(l.item.qty) || 0), 0);
     const subtotal = all.reduce((s, l) => s + l.total, 0);
     countEl.textContent = all.length ? `(${all.length} item${all.length === 1 ? "" : "s"})` : "";
@@ -117,10 +141,17 @@
         <button type="button" class="cd-remove" data-act="rm" aria-label="Remove ${esc(item.name)}">&times;</button>
       </article>`).join("");
 
+    const est = breakupFor(all);
+    const taxRate = est && est.subtotal ? Math.round((est.tax / est.subtotal) * 10000) / 100 : 0;
+    const money2 = (n) => `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     foot.innerHTML = `
       <div class="cd-sum"><span>Subtotal</span><strong>${subtotal ? money(subtotal) : "—"}</strong></div>
-      <p class="cd-note">Shipping and taxes are shown on the payment page, before you pay.</p>
-      <button type="button" class="cd-btn cd-btn-primary cd-checkout" id="cdCheckout">Checkout${subtotal ? ` · ${money(subtotal)}` : ""}</button>
+      ${est
+        ? `<div class="cd-sum cd-sum-sub"><span>GST @ ${taxRate}%</span><span>${money2(est.tax)}</span></div>
+           <div class="cd-sum cd-sum-total"><span>Total (estimate)</span><strong>${money2(est.total - est.shipping)}</strong></div>`
+        : `<div class="cd-sum cd-sum-sub"><span>GST</span><span>Calculating…</span></div>`}
+      <p class="cd-note">Shipping is added in the final invoice. The exact CGST + SGST or IGST split is shown at checkout.</p>
+      <button type="button" class="cd-btn cd-btn-primary cd-checkout" id="cdCheckout">Checkout${est ? ` · ${money2(est.total - est.shipping)}` : subtotal ? ` · ${money(subtotal)}` : ""}</button>
       <button type="button" class="cd-btn cd-btn-ghost" data-cd-close>Continue shopping</button>
       <div class="cd-count-hint">${qty} unit${qty === 1 ? "" : "s"} in total</div>`;
     foot.querySelector("#cdCheckout").addEventListener("click", () => { location.href = "checkout.html"; });

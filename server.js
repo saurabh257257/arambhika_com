@@ -535,7 +535,7 @@ app.post('/api/checkout/estimate-preview', express.json(), async (req, res) => {
   if (!items.length || items.some((it) => !it.variantId || !/^\d+$/.test(String(it.variantId)))) return res.status(400).json({ error: 'Nothing to estimate.' })
   const now = Date.now()
   const recent = (publicEstimateHits.get(req.ip) || []).filter((t) => t > now - 10 * 60 * 1000)
-  if (recent.length >= 30) return res.status(429).json({ error: 'Please try again in a few minutes.' })
+  if (recent.length >= 60) return res.status(429).json({ error: 'Please try again in a few minutes.' })
   recent.push(now); publicEstimateHits.set(req.ip, recent)
   const key = 'preview:' + JSON.stringify(items.map((i) => [i.variantId, i.qty]))
   const hit = estimateCache.get(key)

@@ -80,7 +80,7 @@
         <h1 class="pp-title">${esc(P.name)}</h1>
         ${P.sku ? `<div class="pp-sku">SKU ${esc(P.sku)}</div>` : ""}
         <div class="pp-price">${P.price ? `${money(P.price)} <small>per ${esc(P.unit)}</small>` : "Price on request"}</div>
-        <div class="pp-note">Minimum order ${P.min} ${esc(P.unit)}. Shipping and tax are shown before you pay.</div>
+        <div class="pp-note">Minimum order ${P.min} ${esc(P.unit)}. GST is added at checkout, and shown in your cart before you pay. Shipping is added in the final invoice.</div>
         <div class="pp-tags">${tags.map((t) => `<span>${esc(t)}</span>`).join("")}</div>
         <div class="pp-buy" id="ppBuy"></div>
         <div class="pp-assure">
