@@ -2512,3 +2512,6 @@ body.rq-open { overflow: hidden; }
 .rq-card input[data-otp-mobile], .rq-card input.otp-code-input { display: block; width: 100%; margin: 4px 0 10px; padding: 9px 11px; border: 1px solid #cfdcd9; border-radius: 8px; font: inherit; box-sizing: border-box; }
 .rq-card label { display: block; font-size: 0.82rem; font-weight: 600; }
 .rq-card .form-note { font-size: 0.8rem; color: #5b6b7a; }
+
+/* checkout totals */
+.ck-totals .ck-total-final { border-top: 1px solid var(--line, #d9e1e5); margin-top: 6px; padding-top: 6px; font-size: 1.05em; }

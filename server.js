@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
 import { fetchStorefrontCatalog, fetchImage, fetchCategoryImage } from './lib/zoho.js'
 import { buildCatalog } from './lib/catalog.js'
 import * as zohoAuth from './lib/zoho-oauth.js'
-import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
+import { placeOrder, estimateOrder, CheckoutError } from './lib/zoho-checkout.js'
 import { listSalesOrdersByEmail, getSalesOrderItems, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
 import * as testStore from './lib/customer-store.js'
 import * as otp from './lib/otp.js'
@@ -477,6 +477,28 @@ app.post('/api/test-cart', express.json(), testSessionRequired, (req, res) => {
   res.json({ ok: true, cart })
 })
 
+// GST and total as Zoho will charge them, for the basket and the customer's saved address.
+// Cached briefly so reopening the page does not create a new Zoho cart every time.
+const estimateCache = new Map()
+app.post('/api/checkout/estimate', express.json(), testSessionRequired, async (req, res) => {
+  const profile = testStore.getProfile(req.mobile)
+  if (!profileStatus(profile).complete) return res.status(400).json({ error: 'Complete your delivery details to see GST.', code: 'PROFILE_INCOMPLETE' })
+  const items = Array.isArray(req.body?.items) ? req.body.items : []
+  if (!items.length || items.some((it) => !it.variantId)) return res.status(400).json({ error: 'Your cart has an item that cannot be ordered online.' })
+  const key = JSON.stringify([req.mobile, items.map((i) => [i.variantId, i.qty]), profile.state, profile.postalCode])
+  const hit = estimateCache.get(key)
+  if (hit && Date.now() - hit.at < 60_000) return res.json({ ok: true, ...hit.summary })
+  try {
+    const summary = await estimateOrder({ items, customer: profile })
+    if (estimateCache.size > 200) estimateCache.clear()
+    estimateCache.set(key, { at: Date.now(), summary })
+    res.json({ ok: true, ...summary })
+  } catch (err) {
+    console.error('[estimate] failed:', err.message)
+    res.status(err instanceof CheckoutError ? 400 : 502).json({ error: err.message })
+  }
+})
+
 // Places a real order on Zoho (cart -> address -> shipping -> offline payment), then
 // verifies against the Admin API that Zoho actually created it before reporting success.
 app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, res) => {
@@ -510,8 +532,8 @@ app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, 
     // (Razorpay, configured in Zoho Commerce). Zoho creates the Sales Order itself only once
     // the customer actually pays there — see /api/test-orders/:id/confirm-payment below.
     const result = await placeOrder({ items, customer: profile })
-    testStore.updateOrder(req.mobile, localOrder.id, { total: result.total })
-    res.json({ ok: true, orderId: localOrder.id, paymentUrl: result.paymentUrl, total: result.total })
+    testStore.updateOrder(req.mobile, localOrder.id, { total: result.total, tax: result.summary?.tax })
+    res.json({ ok: true, orderId: localOrder.id, paymentUrl: result.paymentUrl, total: result.total, summary: result.summary })
   } catch (err) {
     console.error('[test-checkout] failed:', err.message)
     testStore.updateOrder(req.mobile, localOrder.id, { status: 'failed', note: err.message })

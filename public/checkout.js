@@ -17,6 +17,8 @@
     status: null,
     products: [],
     paying: false,
+    estimate: null,
+    estimateKey: "",
     editing: false,
     wizardMounted: false,
   };
@@ -60,11 +62,31 @@
     }
   }
 
+  // GST, shipping and the total exactly as Zoho will charge them (needs the delivery address, so
+  // it appears once the customer is signed in with their details saved).
+  async function loadEstimate() {
+    const ready = state.session.loggedIn && state.status?.complete && !state.editing;
+    const items = [];
+    for (const { item, p } of cartLines()) {
+      if (!p?.ZohoVariantId) { state.estimate = null; return; }
+      items.push({ variantId: p.ZohoVariantId, qty: Number(item.qty) || 1, label: item.name });
+    }
+    if (!ready || !items.length) { state.estimate = null; return; }
+    const key = JSON.stringify([items.map((i) => [i.variantId, i.qty]), state.profile?.state, state.profile?.postalCode]);
+    if (key === state.estimateKey && state.estimate) return;
+    state.estimateKey = key;
+    const r = await post("/api/checkout/estimate", { items });
+    state.estimate = r.ok && r.data?.total ? r.data : null;
+    renderSummary();
+    renderPay();
+  }
+  const payableTotal = () => (state.estimate?.total ? state.estimate.total : subtotal());
+
   // ---- summary (right column) --------------------------------------------------------------
   function renderSummary() {
     const lines = cartLines();
     const total = subtotal();
-    $("ckSummaryTotal").textContent = total ? money(total) : "";
+    $("ckSummaryTotal").textContent = payableTotal() ? money(payableTotal()) : "";
     $("ckSummaryBody").innerHTML = `
       <ul class="ck-lines">
         ${lines.map(({ item, price, total: t, image }) => `
@@ -79,7 +101,12 @@
       </ul>
       <div class="ck-totals">
         <div><span>Subtotal</span><strong>${total ? money(total) : "—"}</strong></div>
-        <div class="ck-muted"><span>Shipping &amp; tax</span><span>Shown on the payment page</span></div>
+        ${state.estimate ? `
+          ${state.estimate.discount ? `<div><span>Discount</span><span>-${money(state.estimate.discount)}</span></div>` : ""}
+          ${(state.estimate.taxes.length ? state.estimate.taxes : [{ name: "GST", amount: state.estimate.tax }]).map((t) => `<div><span>${esc(t.name)}</span><span>${money(t.amount)}</span></div>`).join("")}
+          <div><span>Shipping</span><span>${state.estimate.shipping ? money(state.estimate.shipping) : "Free"}</span></div>
+          <div class="ck-total-final"><span>Total</span><strong>${money(state.estimate.total)}</strong></div>` : `
+        <div class="ck-muted"><span>GST &amp; shipping</span><span>Added once your delivery details are saved</span></div>`}
       </div>
       <a class="ck-link" href="index.html#catalog">&larr; Edit cart / continue shopping</a>`;
   }
@@ -173,9 +200,9 @@
     }
     setState("ckStepPay", "current");
     if (state.paying) return;
-    const total = subtotal();
+    const total = payableTotal();
     body.innerHTML = `
-      <p class="ck-lead">You will pay on Zoho's secure payment page: UPI, cards or net banking. Shipping and taxes are shown there before you confirm.</p>
+      <p class="ck-lead">You will pay on Zoho's secure payment page: UPI, cards or net banking. The total above already includes GST and shipping.</p>
       <div class="ck-banner" id="ckPayError" role="alert" hidden></div>
       <button type="button" class="ck-btn ck-btn-primary ck-pay" id="ckPayBtn">Pay${total ? ` ${money(total)}` : ""} securely</button>
       <p class="ck-fine">By paying you accept our <a href="terms.html">Terms</a> and <a href="refund-policy.html">Refund Policy</a>.</p>`;
@@ -191,6 +218,7 @@
     renderAccount();
     renderDelivery();
     renderPay();
+    loadEstimate().catch(() => {});
   }
 
   // ---- payment -----------------------------------------------------------------------------

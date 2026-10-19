@@ -298,3 +298,20 @@ describe('Shop by cell comes from the Zoho collections', () => {
     assert.doesNotMatch(js, /zig\s\*zag/i)
   })
 })
+
+describe('GST is shown at checkout from Zoho', () => {
+  test('the checkout page asks the server for GST and shows each tax line and the total', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/checkout.js'), 'utf8')
+    assert.match(js, /\/api\/checkout\/estimate/)
+    assert.match(js, /state\.estimate\.taxes/)
+    assert.doesNotMatch(js, /Shipping &amp; tax<\/span><span>Shown on the payment page/, 'the old "shown later" line is gone')
+  })
+
+  test('the estimate route needs a login and a complete profile, and takes its figures from Zoho', () => {
+    const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8')
+    assert.match(server, /app\.post\('\/api\/checkout\/estimate', express\.json\(\), testSessionRequired/)
+    const lib = fs.readFileSync(path.join(ROOT, 'lib/zoho-checkout.js'), 'utf8')
+    assert.match(lib, /order\.taxes/)
+    assert.doesNotMatch(lib, /\* 0\.18|\/ 100 \* 18|GST_RATE/, 'no hard-coded GST rate')
+  })
+})
