@@ -795,8 +795,12 @@ const createCard = (product, categoryName) => {
     if (!btn) return;
     event.preventDefault();
     if (btn.hasAttribute("data-notify")) {
-      const message = `Hi, ${name}${sku ? ` (${sku})` : ""} is available on request. Please share the price and lead time.`;
-      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+      if (window.openProductRequest) {
+        window.openProductRequest({ name, sku, unit, minQty });
+      } else {
+        const message = `Hi, ${name}${sku ? ` (${sku})` : ""} is available on request. Please share the price and lead time.`;
+        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+      }
       return;
     }
     if (btn.hasAttribute("data-add")) {

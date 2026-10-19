@@ -242,3 +242,30 @@ describe('blog images come from the products they list', () => {
     }
   })
 })
+
+describe('requesting an unavailable product', () => {
+  test('the store and product pages load the request modal, and neither opens WhatsApp directly for these items', () => {
+    assert.match(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'), /request-modal\.js/)
+    assert.match(fs.readFileSync(path.join(ROOT, 'public/product.html'), 'utf8'), /request-modal\.js/)
+    const product = fs.readFileSync(path.join(ROOT, 'public/product.js'), 'utf8')
+    assert.match(product, /openProductRequest/)
+    assert.doesNotMatch(product, /pp-btn-yellow" href="https:\/\/wa\.me/)
+  })
+
+  test('the modal asks for sign-in, then quantity and a note, before WhatsApp', () => {
+    const modal = fs.readFileSync(path.join(ROOT, 'public/request-modal.js'), 'utf8')
+    assert.match(modal, /api\/test-auth\/me/)
+    assert.match(modal, /initOtpLogin/)
+    assert.match(modal, /id="rqQty"/)
+    assert.match(modal, /id="rqNote"/)
+    assert.match(modal, /if \(session\) showForm\(product, session\); else showLogin\(product\)/, 'a signed-out visitor is sent to sign-in first')
+  })
+
+  test('every footer has the direct WhatsApp help button with a Call button beside it', () => {
+    for (const f of ['index.html', 'about.html', 'blog/index.html', 'faq.html']) {
+      const html = fs.readFileSync(path.join(ROOT, 'public', f), 'utf8')
+      assert.match(html, /class="footer-wa" href="https:\/\/wa\.me\/919315545821"/, f)
+      assert.match(html, /class="footer-call" href="tel:\+918112662827"/, f)
+    }
+  })
+})

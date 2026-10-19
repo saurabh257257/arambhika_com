@@ -2485,3 +2485,30 @@ html { font-size: 13px; }
 .cat-tile-img i { font-size: 1.1rem; }
 .cat-tile .cat-tile-text b { max-width: 82px !important; }
 @media (max-width: 640px) { .cat-tile, .cat-tile:nth-child(n) { width: 72px !important; } .cat-tile .cat-tile-img, .cat-tile-img { width: 42px; height: 42px; flex-basis: 42px; } }
+
+/* footer help buttons */
+.site-footer .footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.site-footer .footer-call { display: inline-block; padding: 7px 16px; border-radius: 999px; border: 1.5px solid #5fd0bf; color: #fff; font-weight: 600; font-size: 0.82rem; }
+.site-footer .footer-call:hover { background: rgba(95, 208, 191, 0.18); text-decoration: none; }
+
+/* request-on-WhatsApp modal */
+body.rq-open { overflow: hidden; }
+.rq-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(12, 31, 53, 0.55); display: grid; place-items: center; padding: 16px; }
+.rq-card { position: relative; width: 100%; max-width: 400px; max-height: 92vh; overflow: auto; background: #fff; border-radius: 14px; padding: 20px 20px 18px; box-shadow: 0 20px 50px rgba(12, 31, 53, 0.35); }
+.rq-card h3 { margin: 0 0 8px; font-size: 1.05rem; color: #12263f; }
+.rq-x { position: absolute; top: 8px; right: 10px; border: 0; background: none; font-size: 1.5rem; line-height: 1; color: #5b6b7a; cursor: pointer; }
+.rq-product { margin: 0 0 6px; font-weight: 700; font-size: 0.92rem; color: #12263f; }
+.rq-product small { font-weight: 500; color: #5b6b7a; }
+.rq-hint { margin: 0 0 12px; font-size: 0.82rem; line-height: 1.5; color: #5b6b7a; }
+.rq-label { display: block; margin-bottom: 10px; font-size: 0.82rem; font-weight: 600; color: #12263f; }
+.rq-opt { font-weight: 500; color: #8a98a6; }
+.rq-input { display: block; width: 100%; margin-top: 4px; padding: 9px 11px; border: 1px solid #cfdcd9; border-radius: 8px; font: inherit; font-size: 0.9rem; box-sizing: border-box; }
+.rq-input:focus { outline: 2px solid #0e8f7e; border-color: transparent; }
+.rq-btn { display: block; width: 100%; padding: 10px 14px; border: 0; border-radius: 999px; background: #0e8f7e; color: #fff; font: inherit; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 4px; }
+.rq-btn:hover { background: #0b6f62; }
+.rq-error { min-height: 1em; margin: 0 0 6px; font-size: 0.8rem; color: #b42318; }
+.rq-foot { margin: 8px 0 0; text-align: center; font-size: 0.74rem; color: #8a98a6; }
+.rq-card .acct-error { color: #b42318; font-size: 0.8rem; }
+.rq-card input[data-otp-mobile], .rq-card input.otp-code-input { display: block; width: 100%; margin: 4px 0 10px; padding: 9px 11px; border: 1px solid #cfdcd9; border-radius: 8px; font: inherit; box-sizing: border-box; }
+.rq-card label { display: block; font-size: 0.82rem; font-weight: 600; }
+.rq-card .form-note { font-size: 0.8rem; color: #5b6b7a; }

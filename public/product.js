@@ -129,9 +129,12 @@
         <button type="button" data-q="1" aria-label="Increase quantity">+</button>
       </div>`;
     if (notify) {
-      const link = `<a class="pp-btn pp-btn-yellow" href="https://wa.me/919315545821?text=${encodeURIComponent(`Hi, ${P.name} is available on request. Please share the price and lead time.`)}" target="_blank" rel="noopener">Request on WhatsApp</a>`;
+      const link = `<button type="button" class="pp-btn pp-btn-yellow" data-request>Request now</button>`;
       buy.innerHTML = link;
       sticky.innerHTML = `<div class="pp-sticky-price">Available on request<small>Ask us for price and lead time</small></div>${link}`; // phones show only the sticky bar
+      document.querySelectorAll("[data-request]").forEach((b) => b.addEventListener("click", () => {
+        if (window.openProductRequest) window.openProductRequest({ name: P.name, sku: P.sku, unit: P.unit, minQty: P.min });
+      }));
       return;
     }
     buy.innerHTML = `${stepper}
