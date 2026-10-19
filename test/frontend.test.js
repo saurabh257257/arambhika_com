@@ -34,13 +34,7 @@ describe('JavaScript files', () => {
 
 // Broken local references that existed before this suite. Same rule as the SEO list: it can only
 // shrink, and fixing one makes its entry fail until removed.
-const KNOWN_BROKEN = {
-  'index.html': [
-    'assets/products/nickel-plated/np-20-1.jpg',
-    'assets/products/nickel-pure/n-15-1.jpg',
-    'assets/products/copper-bus-bars/cb-10-1.jpg',
-  ],
-}
+const KNOWN_BROKEN = {}
 
 describe('local references resolve', () => {
   for (const page of htmlPages) {
@@ -51,6 +45,7 @@ describe('local references resolve', () => {
       const missing = []
       for (const ref of refs) {
         if (/^(https?:|mailto:|tel:|data:|javascript:|\/\/)/i.test(ref)) continue
+        if (/^\/(zimg|zcat|product)\//.test(ref)) continue // served by server.js, not files in public/
         const target = ref.startsWith('/') ? ref.slice(1) : path.posix.join(dir, ref)
         if (!target) continue
         const candidates = [target, `${target}.html`, path.posix.join(target, 'index.html')]
@@ -63,9 +58,9 @@ describe('local references resolve', () => {
 })
 
 describe('customer flow markup', () => {
-  test('account.html has the OTP login container, dashboard tabs and profile form', () => {
+  test('account.html has the OTP login container, dashboard tabs and profile section', () => {
     const html = read('account.html')
-    for (const id of ['acctOtpLogin', 'acctDashboard', 'acctProfileForm', 'acctOrdersList', 'acctInvoicesList', 'statConfirmed', 'statPending', 'statInvoices']) {
+    for (const id of ['acctOtpLogin', 'acctDashboard', 'acctProfileWizard', 'acctOrdersList', 'acctInvoicesList', 'statConfirmed', 'statPending', 'statInvoices']) {
       assert.match(html, new RegExp(`id=["']${id}["']`), `account.html is missing #${id}`)
     }
     assert.match(html, /otp-login\.js/, 'account.html must load otp-login.js')
@@ -100,5 +95,110 @@ describe('customer flow markup', () => {
 
   test('account.js refreshes every 30 seconds', () => {
     assert.match(read('account.js'), /setInterval\(refreshAll,\s*30000\)/)
+  })
+
+  test('the sign-up wizard script exposes initProfileWizard and covers every step', () => {
+    const js = read('profile-wizard.js')
+    assert.match(js, /window\.initProfileWizard\s*=/)
+    for (const step of ['mobile', 'details', 'address', 'gst']) assert.match(js, new RegExp(`"${step}"`))
+    for (const f of ['firstName', 'lastName', 'email', 'address', 'state', 'city', 'postalCode', 'hasGst', 'gstin']) {
+      assert.match(js, new RegExp(f), `wizard is missing the ${f} field`)
+    }
+    assert.match(js, /\/api\/meta\/states/, 'state dropdown must come from the server list')
+    assert.match(js, /\/api\/test-gst\/verify/)
+  })
+
+  test('My Account hosts the wizard: overlay, banner, profile form and script order', () => {
+    const html = read('account.html')
+    for (const id of ['acctWizardOverlay', 'acctWizardRoot', 'acctCompleteBanner', 'acctProfileWizard']) {
+      assert.match(html, new RegExp(`id=["']${id}["']`), `account.html is missing #${id}`)
+    }
+    assert.ok(html.indexOf('profile-wizard.js') > -1 && html.indexOf('profile-wizard.js') < html.indexOf('account.js'))
+    assert.doesNotMatch(html, /id=["']acctProfileForm["']/, 'the old free-text profile form must be gone')
+  })
+
+  test('the checkout popup uses the wizard and no longer has the old address form', () => {
+    const html = read('index.html')
+    assert.match(html, /id=["']testStepWizard["']/)
+    assert.match(html, /id=["']testWizardRoot["']/)
+    assert.doesNotMatch(html, /id=["']testProfileForm["']/)
+    assert.ok(html.indexOf('profile-wizard.js') < html.indexOf('test-account.js'))
+    const js = read('test-account.js')
+    assert.match(js, /initProfileWizard\(/)
+    assert.match(js, /PROFILE_INCOMPLETE/, 'server refusal must reopen the wizard')
+    assert.match(js, /checkout"\) === "1"/, 'arriving from My Account with a basket must carry on')
+  })
+
+  test('every page header offers only Store and the account icon', () => {
+    const withNav = htmlPages.filter((p) => /<nav class="nav-links">/.test(read(p)))
+    assert.ok(withNav.length >= 12, `expected the site pages, found ${withNav.length}`)
+    for (const page of withNav) {
+      const nav = read(page).match(/<nav class="nav-links">([\s\S]*?)<\/nav>/)[1]
+      const links = [...nav.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1])
+      assert.equal(links.length, 2, `${page} header has ${links.length} links: ${links.join(', ')}`)
+      assert.match(links[0], /#catalog$/)
+      assert.match(links[1], /account\.html$/)
+      assert.doesNotMatch(nav, /nav-dropdown|nav-contact|navHome/, `${page} still has the old header items`)
+    }
+  })
+
+  test('the pages that were in the More menu are linked from every footer', () => {
+    const wanted = ['/blog/', '/catalog.html?autoprint=1', '/capabilities.html', '/about.html', '/terms.html', '/refund-policy.html']
+    const withFooter = htmlPages.filter((p) => /<footer class="site-footer">/.test(read(p)))
+    assert.ok(withFooter.length >= 12)
+    for (const page of withFooter) {
+      const html = read(page)
+      assert.match(html, /class="footer-col" aria-label="Company"/, `${page} footer has no Company column`)
+      assert.match(html, /class="footer-bottom"/, `${page} footer has no bottom bar`)
+      for (const href of wanted) assert.ok(html.includes(`href="${href}"`), `${page} footer is missing ${href}`)
+    }
+  })
+
+  test('the store page uses the slide-over cart', () => {
+    const html = read('index.html')
+    assert.match(html, /<script src="cart-drawer\.js"><\/script>/)
+    assert.ok(html.indexOf('script.js') < html.indexOf('cart-drawer.js'), 'drawer needs script.js first')
+    const drawer = read('cart-drawer.js')
+    assert.match(drawer, /cart:added/)
+    assert.match(drawer, /checkout\.html/)
+    assert.match(drawer, /window\.openCartDrawer\s*=/)
+    const store = read('script.js')
+    assert.match(store, /new CustomEvent\("cart:added"/)
+    assert.match(store, /new CustomEvent\("cart:changed"/)
+    assert.match(store, /window\.openCartDrawer/, 'the old quote sheet must hand over to the drawer')
+  })
+
+  test('checkout page: three steps, summary, login, wizard and payment confirmation', () => {
+    const html = read('checkout.html')
+    for (const id of ['ckStepAccount', 'ckStepDelivery', 'ckStepPay', 'ckSummaryBody', 'ckEmpty', 'ckDone']) {
+      assert.match(html, new RegExp(`id="${id}"`), `checkout.html is missing #${id}`)
+    }
+    assert.match(html, /noindex/)
+    const order = ['otp-login.js', 'profile-wizard.js', 'checkout.js'].map((s) => html.indexOf(s))
+    assert.ok(order.every((i) => i > -1) && order[0] < order[2] && order[1] < order[2])
+    const js = read('checkout.js')
+    assert.match(js, /\/api\/test-checkout/)
+    assert.match(js, /confirm-payment/)
+    assert.match(js, /PROFILE_INCOMPLETE/)
+    assert.match(js, /initProfileWizard\(/)
+    assert.match(js, /initOtpLogin\(/)
+  })
+
+  test('My Account has a way back to the store and shows a waiting basket', () => {
+    const html = read('account.html')
+    assert.match(html, /id="acctShopLink"/)
+    assert.match(html, /id="acctCartBanner"[^>]*href="checkout\.html"/)
+    assert.match(read('account.js'), /\/api\/test-cart/)
+  })
+
+  test('the home page no longer has the "Our Strengths" carousel', () => {
+    const html = read('index.html')
+    assert.doesNotMatch(html, /id="solutions"|solutionsCarousel|solution-card/)
+    assert.doesNotMatch(html, /Our Strengths|What Sets Us Apart/i)
+  })
+
+  test('the old client-side address rule is gone (the server decides)', () => {
+    assert.doesNotMatch(read('test-account.js'), /profileAddressIsComplete/)
+    assert.doesNotMatch(read('account.js'), /fillProfileForm/)
   })
 })

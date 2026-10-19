@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
-import { fetchStorefrontCatalog, fetchImage } from './lib/zoho.js'
+import { fetchStorefrontCatalog, fetchImage, fetchCategoryImage } from './lib/zoho.js'
 import { buildCatalog } from './lib/catalog.js'
 import * as zohoAuth from './lib/zoho-oauth.js'
 import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
@@ -13,6 +13,10 @@ import * as testStore from './lib/customer-store.js'
 import * as otp from './lib/otp.js'
 import { signSession, readSession, SESSION_COOKIE, SESSION_DAYS } from './lib/session.js'
 import { syncProfileToZoho, fetchProfileFromZoho, clearContactCache } from './lib/zoho-contacts.js'
+import { verifyGstin, providerConfigured as gstProviderConfigured } from './lib/gst.js'
+import { selectableStates, findState, isValidPostalCode, isValidEmail } from './lib/india.js'
+import { profileStatus } from './lib/profile-status.js'
+import { renderProductPage, renderProductSitemap } from './lib/product-pages.js'
 
 try { process.loadEnvFile() } catch {}
 
@@ -341,26 +345,109 @@ app.get('/api/test-account', testSessionRequired, async (req, res) => {
       if (changed) profile = testStore.saveProfile(req.mobile, next)
     }
   }
-  res.json({ profile })
+  res.json({ profile, status: profileStatus(profile) })
 })
 
-// Only the name is required to save a profile at all — full address is checked separately,
-// only at the moment of actually checking out (see /api/test-checkout below).
+// States for the address dropdown, and whether live GST confirmation is switched on.
+app.get('/api/meta/states', (req, res) => {
+  res.json({
+    states: selectableStates().map((s) => ({ name: s.name, code: s.code, gst: s.gst })),
+    gstLookup: gstProviderConfigured(),
+  })
+})
+
+// Checks a GST number: format and check digit always, and against the GST portal when a provider
+// is configured. The wizard calls this before it lets a customer tick "I have GST" and continue.
+const gstAttempts = new Map() // mobile -> [timestamps]
+app.post('/api/test-gst/verify', express.json(), testSessionRequired, async (req, res) => {
+  const recent = (gstAttempts.get(req.mobile) || []).filter((t) => t > Date.now() - 10 * 60 * 1000)
+  if (recent.length >= 15) return res.status(429).json({ error: 'Too many checks. Please wait a few minutes.' })
+  recent.push(Date.now())
+  gstAttempts.set(req.mobile, recent)
+
+  const result = await verifyGstin(req.body?.gstin)
+  const profile = testStore.getProfile(req.mobile)
+  const state = findState(profile?.state)
+  res.json({
+    ...result,
+    // A business can ship to a state other than the one it is registered in, so this only informs.
+    stateMismatch: Boolean(result.ok && state && result.state && state.name !== result.state),
+  })
+})
+
+// Partial saves are fine (the sign-up wizard saves one step at a time): only fields present in the
+// request change, and a first name is always required. What is needed to actually place an order
+// is decided by profileStatus() and enforced at checkout.
 app.post('/api/test-account', express.json(), testSessionRequired, async (req, res) => {
-  const { firstName, lastName, email, address, city, state, postalCode } = req.body || {}
-  if (!firstName) return res.status(400).json({ error: 'Please enter your name' })
-  const known = testStore.getProfile(req.mobile)?.zohoContacts || {}
-  const prevSnapshot = testStore.getProfile(req.mobile)?.zohoSnapshot || {}
+  const body = req.body || {}
+  const existing = testStore.getProfile(req.mobile) || {}
+  const pick = (key) => (body[key] !== undefined ? String(body[key] ?? '').trim() : String(existing[key] ?? ''))
+
+  const firstName = pick('firstName')
+  if (!firstName) return res.status(400).json({ error: 'Please enter your first name', field: 'firstName' })
+  // Last name is only demanded once a customer sets up their details (the sign-up wizard sends it
+  // together with the email); older saves and Zoho-driven updates may not carry it yet.
+  if (body.lastName !== undefined && !String(body.lastName).trim()) {
+    return res.status(400).json({ error: 'Please enter your last name', field: 'lastName' })
+  }
+
+  const lastName = pick('lastName')
+  const email = pick('email')
+  if (email && !isValidEmail(email)) return res.status(400).json({ error: 'Please enter a valid email address', field: 'email' })
+
+  let state = pick('state')
+  if (state) {
+    const found = findState(state)
+    if (!found) return res.status(400).json({ error: 'Please choose your state from the list', field: 'state' })
+    state = found.name
+  }
+
+  const postalCode = pick('postalCode')
+  if (postalCode && !isValidPostalCode(postalCode)) {
+    return res.status(400).json({ error: 'PIN code must be 6 digits', field: 'postalCode' })
+  }
+
+  // GST: "no" clears everything; "yes" needs a number that passes verification.
+  let gst = {
+    hasGst: existing.hasGst,
+    gstin: existing.gstin || '',
+    gstVerified: existing.gstVerified || '',
+    gstLegalName: existing.gstLegalName || '',
+    gstTradeName: existing.gstTradeName || '',
+  }
+  if (body.hasGst !== undefined) {
+    const has = body.hasGst === true || body.hasGst === 'true' || body.hasGst === 'on'
+    if (!has) {
+      gst = { hasGst: false, gstin: '', gstVerified: '', gstLegalName: '', gstTradeName: '' }
+    } else {
+      const wanted = String(body.gstin ?? existing.gstin ?? '').replace(/\s+/g, '').toUpperCase()
+      if (existing.gstin === wanted && existing.gstVerified === 'verified') {
+        gst = { ...gst, hasGst: true } // already confirmed with the portal; do not ask again
+      } else {
+        const v = await verifyGstin(wanted)
+        if (!v.ok) return res.status(400).json({ error: v.message, field: 'gstin', code: 'GSTIN_INVALID' })
+        gst = {
+          hasGst: true, gstin: v.gstin, gstVerified: v.verified,
+          gstLegalName: v.legalName || '', gstTradeName: v.tradeName || '',
+        }
+      }
+    }
+  }
+
+  const known = existing.zohoContacts || {}
+  const prevSnapshot = existing.zohoSnapshot || {}
   const profile = testStore.saveProfile(req.mobile, {
     zohoContacts: known,
+    zohoSnapshot: prevSnapshot,
     firstName,
-    lastName: lastName || '',
-    email: email || '',
+    lastName,
+    email,
     phone: req.mobile,
-    address: address || '',
-    city: city || '',
-    state: state || '',
-    postalCode: postalCode || '',
+    address: pick('address'),
+    city: pick('city'),
+    state,
+    postalCode,
+    ...gst,
   })
   // Saved locally first, so a Zoho problem never loses the edit. Then pushed to the Zoho Books /
   // Inventory contact with the same mobile number (the session cookie is that number).
@@ -378,18 +465,8 @@ app.post('/api/test-account', express.json(), testSessionRequired, async (req, r
   }
   clearContactCache()
   const saved = testStore.saveProfile(req.mobile, { ...profile, zohoContacts, zohoSnapshot })
-  res.json({ ok: true, profile: saved, zoho })
+  res.json({ ok: true, profile: saved, status: profileStatus(saved), zoho })
 })
-
-// Zoho's checkout API rejects the order if last_name or email is blank ("Mandatory field ...
-// is not given"), confirmed live one at a time — so both are required at checkout time too,
-// not just the address fields.
-function profileAddressIsComplete(profile) {
-  return Boolean(
-    profile?.firstName && profile?.lastName && profile?.email &&
-    profile?.address && profile?.city && profile?.state && profile?.postalCode
-  )
-}
 
 app.get('/api/test-cart', testSessionRequired, (req, res) => {
   res.json({ cart: testStore.getCart(req.mobile) })
@@ -404,8 +481,15 @@ app.post('/api/test-cart', express.json(), testSessionRequired, (req, res) => {
 // verifies against the Admin API that Zoho actually created it before reporting success.
 app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, res) => {
   const profile = testStore.getProfile(req.mobile)
-  if (!profileAddressIsComplete(profile)) {
-    return res.status(400).json({ error: 'Please add your shipping address to checkout', code: 'ADDRESS_REQUIRED' })
+  // Everything the sign-up wizard collects must be done before an order can be placed.
+  const status = profileStatus(profile)
+  if (!status.complete) {
+    return res.status(400).json({
+      error: 'Please complete your profile to place an order',
+      code: 'PROFILE_INCOMPLETE',
+      missing: status.missing,
+      status,
+    })
   }
 
   const items = Array.isArray(req.body?.items) ? req.body.items : []
@@ -528,6 +612,22 @@ app.get('/admin/zoho-orders', adminRequired, (req, res) => {
   res.json({ orders: testStore.getAllOrders() })
 })
 
+// One address per product, with its own title, description, canonical link and structured data.
+app.get('/product/:slug', (req, res) => {
+  let template
+  try { template = fs.readFileSync(path.join(PUBLIC_DIR, 'product.html'), 'utf8') } catch { return res.status(500).send('Product page template missing') }
+  const html = renderProductPage(template, current.data, String(req.params.slug || '').toLowerCase())
+  if (!html) {
+    res.status(404).set('X-Robots-Tag', 'noindex')
+    return res.send('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Product not found | Arambhika</title><meta name="robots" content="noindex"><body style="font-family:system-ui;padding:40px;text-align:center"><h1>We could not find that product</h1><p><a href="/">Back to the store</a></p>')
+  }
+  res.set('Cache-Control', 'no-cache').type('html').send(html)
+})
+
+app.get('/product-sitemap.xml', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=900').type('application/xml').send(renderProductSitemap(current.data))
+})
+
 app.get('/products.json', (req, res) => {
   res.set({
     'Cache-Control': 'no-cache',
@@ -535,6 +635,20 @@ app.get('/products.json', (req, res) => {
     'X-Catalog-Age-Seconds': current.at ? String(Math.round((Date.now() - current.at) / 1000)) : 'unknown',
   })
   res.json(current.data)
+})
+
+const categoryImageCache = new Map()
+app.get('/zcat/:id/:file', async (req, res) => {
+  const { id, file } = req.params
+  if (!/^\d+$/.test(id) || !/^[A-Za-z0-9_.+%-]+$/.test(file)) return res.status(400).end()
+  let img = categoryImageCache.get(`${id}/${file}`)
+  if (!img) {
+    try { img = await fetchCategoryImage(id, file) } catch (err) { console.error('[category image]', err.message) }
+    if (img) categoryImageCache.set(`${id}/${file}`, img)
+  }
+  if (!img) return res.status(404).end()
+  res.set({ 'Content-Type': img.type, 'Cache-Control': 'public, max-age=86400' })
+  res.send(img.buffer)
 })
 
 app.get('/zimg/:docId/:file', async (req, res) => {

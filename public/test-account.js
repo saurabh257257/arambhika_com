@@ -16,13 +16,12 @@
   const steps = {
     login: document.getElementById("testStepLogin"),
     account: document.getElementById("testStepAccount"),
+    wizard: document.getElementById("testStepWizard"),
     orders: document.getElementById("testStepOrders"),
   };
   const otpLoginBox = document.getElementById("testOtpLogin");
   const accountMobile = document.getElementById("testAccountMobile");
-  const profileForm = document.getElementById("testProfileForm");
-  const profileError = document.getElementById("testProfileError");
-  const profileOk = document.getElementById("testProfileOk");
+  const wizardRoot = document.getElementById("testWizardRoot");
   const myOrdersBtn = document.getElementById("testMyOrdersBtn");
   const logoutBtn = document.getElementById("testLogoutBtn");
   const backBtn = document.getElementById("testBackToAccount");
@@ -30,12 +29,10 @@
   const closeBtn = document.getElementById("testAcctClose");
   const nameEl = document.getElementById("testAcctName");
 
-  // Full address (plus last name and email — Zoho's checkout API rejects either if blank) is
-  // only required at the moment of actually checking out. Saving a profile with just a first
-  // name is fine before that.
-  function profileAddressIsComplete(p) {
-    return Boolean(p?.firstName && p?.lastName && p?.email && p?.address && p?.city && p?.state && p?.postalCode);
-  }
+  // What the sign-up wizard still needs from this customer comes from the server (profileStatus),
+  // so the rule lives in one place. Order is blocked until it says "complete".
+  let profileStatus = null;
+  const profileIsComplete = () => Boolean(profileStatus?.complete);
 
   // Desktop panel + mobile sheet share the same logic, driven off two independent note targets.
   const proceedButtons = [
@@ -157,15 +154,15 @@
   function updateHeaderAndProceed() {
     navBtn.classList.toggle("is-logged-in", session.loggedIn);
     navBtn.title = session.loggedIn ? `Account (${session.mobile})` : "Account";
-    if (nameEl) nameEl.textContent = session.loggedIn && profile?.firstName ? profile.firstName : "";
+    if (nameEl) nameEl.textContent = session.loggedIn ? (profile?.firstName || "Profile") : "Login";
     const subNav = document.getElementById("acctSubNav");
     if (subNav) subNav.hidden = !session.loggedIn;
     if (!session.loggedIn) {
       setProceedDisabled(false);
       setProceedNote("Log in to proceed with your order.");
-    } else if (!profileAddressIsComplete(profile)) {
+    } else if (!profileIsComplete()) {
       setProceedDisabled(false);
-      setProceedNote("Add your delivery address to proceed.");
+      setProceedNote(`Complete your profile (${profileStatus?.percent ?? 25}%) to place your order.`);
     } else {
       setProceedDisabled(false);
       setProceedNote(`Logged in as ${profile.firstName || session.mobile}.`);
@@ -222,16 +219,31 @@
     try {
       const data = await fetch("/api/test-account").then((r) => r.json());
       profile = data.profile || null;
-      if (profile) fillProfileForm(profile);
-    } catch { profile = null; }
+      profileStatus = data.status || null;
+    } catch { profile = null; profileStatus = null; }
   }
 
-  function fillProfileForm(p) {
-    if (!profileForm) return;
-    for (const [key, value] of Object.entries(p)) {
-      const field = profileForm.elements[key];
-      if (field) field.value = value;
-    }
+  // The same step-by-step set-up as My Account, inside the checkout popup. When it finishes the
+  // order carries straight on, so the customer only ever clicks Proceed once.
+  let wizardStarted = false;
+  function openWizard() {
+    wizardRoot.replaceChildren();
+    wizardStarted = true;
+    initProfileWizard(wizardRoot, {
+      mode: "wizard",
+      onSaved: (p, st) => { profile = p; profileStatus = st; updateHeaderAndProceed(); },
+      onDone: async (p, st) => {
+        profile = p;
+        profileStatus = st;
+        updateHeaderAndProceed();
+        closeModal();
+        if (resumeProceedAfterProfile) {
+          resumeProceedAfterProfile = false;
+          continueProceed();
+        }
+      },
+    });
+    openModal("wizard");
   }
 
   // Clicking the header icon directly (not via the Proceed/checkout flow) now goes to the
@@ -246,11 +258,17 @@
     onSuccess: async (data) => {
       session = { loggedIn: true, mobile: data.mobile };
       profile = data.profile || null;
-      if (profile) fillProfileForm(profile);
+      await loadProfile();
       await restoreCartAfterLogin(data.cart);
       updateHeaderAndProceed();
 
-      if (resumeProceedAfterLogin) {
+      if (!profileIsComplete()) {
+        // First sign-up (or an unfinished profile): guided set-up, then straight on to the order
+        // if there was one waiting.
+        resumeProceedAfterProfile = resumeProceedAfterLogin || Object.keys(typeof getOrder === "function" ? getOrder() : {}).length > 0;
+        resumeProceedAfterLogin = false;
+        openWizard();
+      } else if (resumeProceedAfterLogin) {
         resumeProceedAfterLogin = false;
         continueProceed();
       } else {
@@ -258,33 +276,6 @@
         showStep("account");
       }
     },
-  });
-
-  profileForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    profileError.textContent = "";
-    profileOk.textContent = "";
-    const fd = new FormData(profileForm);
-    const body = Object.fromEntries(fd.entries());
-    try {
-      const res = await fetch("/api/test-account", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not save profile");
-      profile = data.profile;
-      profileOk.textContent = "Saved.";
-      updateHeaderAndProceed();
-
-      if (resumeProceedAfterProfile) {
-        resumeProceedAfterProfile = false;
-        continueProceed();
-      }
-    } catch (err) {
-      profileError.textContent = err.message;
-    }
   });
 
   myOrdersBtn.addEventListener("click", loadOrders);
@@ -353,12 +344,9 @@
       openModal("login");
       return;
     }
-    if (!profileAddressIsComplete(profile)) {
+    if (!profileIsComplete()) {
       resumeProceedAfterProfile = true;
-      accountMobile.textContent = session.mobile;
-      profileError.textContent = "";
-      profileOk.textContent = "Complete your last name and shipping address below to place this order.";
-      openModal("account");
+      openWizard();
       return;
     }
     continueProceed();
@@ -401,6 +389,13 @@
         openModal("login");
         return;
       }
+      if (res.status === 400 && data.code === "PROFILE_INCOMPLETE") {
+        profileStatus = data.status || profileStatus;
+        resumeProceedAfterProfile = true;
+        updateHeaderAndProceed();
+        openWizard();
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "Could not place your order");
       // Opens Zoho's real payment page automatically; the customer also gets a "Pay Now" link
       // in case the popup was blocked.
@@ -415,4 +410,10 @@
   }
 
   sessionReady = loadSession();
+  if (new URLSearchParams(location.search).get("checkout") === "1") {
+    sessionReady.then(() => {
+      history.replaceState(null, "", location.pathname);
+      if (session.loggedIn && typeof getOrder === "function" && Object.keys(getOrder()).length) onProceedClick();
+    });
+  }
 })();
