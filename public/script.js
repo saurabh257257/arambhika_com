@@ -68,6 +68,7 @@ const normalizeCatalogData = (data) => {
     return {
       name: cat.name || fallbackName,
       Image: cat.Image || "",
+      Handle: cat.Handle || "",
       products: (cat.products || []).map((product) => {
         const availabilityRaw = String(product.Availability || "Now").trim().toLowerCase();
         const availability =
@@ -123,8 +124,9 @@ const renderFilters = (categories) => {
     const withImage = products.find((p) => (Array.isArray(p.Image_Link) ? p.Image_Link[0] : p.Image_Link));
     const productSrc = withImage ? (Array.isArray(withImage.Image_Link) ? withImage.Image_Link[0] : withImage.Image_Link) : "";
     const imageSrc = cat.Image || productSrc; // the category's own picture first, then a product photo
-    const btn = document.createElement("button");
-    btn.type = "button";
+    const btn = document.createElement(cat.Handle ? "a" : "button");
+    if (cat.Handle) btn.href = "/category/" + String(cat.Handle).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    else btn.type = "button";
     btn.className = "cat-tile filter-btn";
     btn.dataset.filter = cat.name;
     btn.innerHTML = `
@@ -134,7 +136,8 @@ const renderFilters = (categories) => {
   });
   // tapping the active tile again shows everything
   categoryFilters.querySelectorAll(".filter-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
       currentCategoryFilter = currentCategoryFilter === btn.dataset.filter ? "all" : btn.dataset.filter;
       setFilterButtonState(currentCategoryFilter);
       filterCatalog();
@@ -775,7 +778,7 @@ const createCard = (product, categoryName) => {
 
   card.innerHTML = `
     <a class="prod-link" href="${href}" aria-label="${name}">
-      <span class="prod-img">${images[0] ? `<img src="${images[0]}" alt="${name}" loading="lazy" decoding="async" />` : ""}</span>
+      <span class="prod-img">${images[0] ? `<img src="${/^\/zimg\//.test(images[0]) ? images[0] + "?w=400" : images[0]}" alt="${name}" width="400" height="400" loading="lazy" decoding="async" />` : ""}</span>
       ${isNotify ? '<span class="prod-flag prod-flag-req">Available on request</span>' : isRequest ? '<span class="prod-flag prod-flag-req">Available on request</span>' : ""}
       <span class="prod-name">${name}</span>
     </a>
@@ -992,7 +995,8 @@ if (homeTab && storeTab && catalogSection && "IntersectionObserver" in window) {
     },
     { rootMargin: "-45% 0px -45% 0px" }
   );
-  sectionObserver.observe(document.querySelector("#home"));
+  const homeSection = document.querySelector("#home") || document.querySelector(".site-header");
+  if (homeSection) sectionObserver.observe(homeSection);
   sectionObserver.observe(catalogSection);
 }
 

@@ -1,4 +1,5 @@
 import express from 'express'
+import compression from 'compression'
 import dns from 'node:dns'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -7,7 +8,7 @@ import crypto from 'node:crypto'
 import { fetchStorefrontCatalog, fetchImage, fetchCategoryImage } from './lib/zoho.js'
 import { buildCatalog } from './lib/catalog.js'
 import * as zohoAuth from './lib/zoho-oauth.js'
-import { placeOrder, CheckoutError } from './lib/zoho-checkout.js'
+import { placeOrder, estimateOrder, CheckoutError } from './lib/zoho-checkout.js'
 import { listSalesOrdersByEmail, getSalesOrderItems, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
 import * as testStore from './lib/customer-store.js'
 import * as otp from './lib/otp.js'
@@ -17,6 +18,7 @@ import { verifyGstin, providerConfigured as gstProviderConfigured } from './lib/
 import { selectableStates, findState, isValidPostalCode, isValidEmail } from './lib/india.js'
 import { profileStatus } from './lib/profile-status.js'
 import { renderProductPage, renderProductSitemap } from './lib/product-pages.js'
+import { renderCategoryPage, renderBrowseList, listCategories } from './lib/category-pages.js'
 
 try { process.loadEnvFile() } catch {}
 
@@ -102,7 +104,7 @@ async function refreshCatalog() {
 const imageCache = new Map()
 const IMAGE_CACHE_MAX = 400
 
-const imagePaths = (docId) => ({ body: path.join(IMAGE_DIR, docId), meta: path.join(IMAGE_DIR, `${docId}.type`) })
+const imagePaths = (key) => ({ body: path.join(IMAGE_DIR, key), meta: path.join(IMAGE_DIR, `${key}.type`) })
 
 function readImageFromDisk(docId) {
   const { body, meta } = imagePaths(docId)
@@ -122,12 +124,14 @@ function writeImageToDisk(docId, img) {
   }
 }
 
-async function getImage(docId, file) {
-  const memKey = `${docId}/${file}`
-  let img = imageCache.get(memKey) || readImageFromDisk(docId)
+// size: undefined = the full photo; 200, 400 or 800 = a smaller copy for cards, tiles and thumbnails
+async function getImage(docId, file, size) {
+  const key = size ? `${docId}_${size}` : docId
+  const memKey = `${key}/${file}`
+  let img = imageCache.get(memKey) || readImageFromDisk(key)
   if (!img) {
-    try { img = await fetchImage(docId, file) } catch (err) { console.error('[image] fetch failed:', err.message) }
-    if (img) writeImageToDisk(docId, img)
+    try { img = await fetchImage(docId, file, size ? `${size}x${size}` : undefined) } catch (err) { console.error('[image] fetch failed:', err.message) }
+    if (img) writeImageToDisk(key, img)
   }
   if (img) {
     if (imageCache.size >= IMAGE_CACHE_MAX) imageCache.delete(imageCache.keys().next().value)
@@ -171,12 +175,18 @@ function pruneImages(data) {
   }
   try {
     for (const name of fs.readdirSync(IMAGE_DIR)) {
-      if (!inUse.has(name.replace(/\.type$/, ''))) fs.rmSync(path.join(IMAGE_DIR, name), { force: true })
+      if (!inUse.has(name.replace(/\.type$/, '').replace(/_\d+$/, ''))) fs.rmSync(path.join(IMAGE_DIR, name), { force: true })
     }
   } catch {}
 }
 
 const app = express()
+app.use(compression())
+// Anything that is not production must never be indexed (this runs before every route, including pages built on the server).
+app.use((req, res, next) => {
+  if ((process.env.APP_ENV || 'production') !== 'production') res.set('X-Robots-Tag', 'noindex, nofollow')
+  next()
+})
 app.set('trust proxy', 1) // behind nginx: req.ip must be the visitor's IP, not nginx's, for OTP rate limits
 app.disable('x-powered-by')
 
@@ -477,6 +487,55 @@ app.post('/api/test-cart', express.json(), testSessionRequired, (req, res) => {
   res.json({ ok: true, cart })
 })
 
+// GST and total as Zoho will charge them, for the basket and the customer's saved address.
+// Cached briefly so reopening the page does not create a new Zoho cart every time.
+const estimateCache = new Map()
+app.post('/api/checkout/estimate', express.json(), testSessionRequired, async (req, res) => {
+  const profile = testStore.getProfile(req.mobile)
+  if (!profileStatus(profile).complete) return res.status(400).json({ error: 'Complete your delivery details to see GST.', code: 'PROFILE_INCOMPLETE' })
+  const items = Array.isArray(req.body?.items) ? req.body.items : []
+  if (!items.length || items.some((it) => !it.variantId)) return res.status(400).json({ error: 'Your cart has an item that cannot be ordered online.' })
+  const key = JSON.stringify([req.mobile, items.map((i) => [i.variantId, i.qty]), profile.state, profile.postalCode])
+  const hit = estimateCache.get(key)
+  if (hit && Date.now() - hit.at < 60_000) return res.json({ ok: true, ...hit.summary })
+  try {
+    const summary = await estimateOrder({ items, customer: profile })
+    if (estimateCache.size > 200) estimateCache.clear()
+    estimateCache.set(key, { at: Date.now(), summary })
+    res.json({ ok: true, ...summary })
+  } catch (err) {
+    console.error('[estimate] failed:', err.message)
+    res.status(err instanceof CheckoutError ? 400 : 502).json({ error: err.message })
+  }
+})
+
+// Same figures before sign-in, so the breakup is visible from the first step. There is no address yet,
+// so the business's own state stands in: the rate is right, and the CGST/SGST or IGST split is
+// confirmed once the customer's real address is saved. Cached and rate limited per visitor.
+const publicEstimateHits = new Map()
+app.post('/api/checkout/estimate-preview', express.json(), async (req, res) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 30) : []
+  if (!items.length || items.some((it) => !it.variantId || !/^\d+$/.test(String(it.variantId)))) return res.status(400).json({ error: 'Nothing to estimate.' })
+  const now = Date.now()
+  const recent = (publicEstimateHits.get(req.ip) || []).filter((t) => t > now - 10 * 60 * 1000)
+  if (recent.length >= 30) return res.status(429).json({ error: 'Please try again in a few minutes.' })
+  recent.push(now); publicEstimateHits.set(req.ip, recent)
+  const key = 'preview:' + JSON.stringify(items.map((i) => [i.variantId, i.qty]))
+  const hit = estimateCache.get(key)
+  if (hit && now - hit.at < 60_000) return res.json({ ok: true, preview: true, ...hit.summary })
+  try {
+    const summary = await estimateOrder({
+      items,
+      customer: { firstName: 'Guest', lastName: 'Visitor', email: 'guest@arambhika.com', phone: '9999999999', address: 'Sector 116', city: 'Noida', state: 'Uttar Pradesh', postalCode: '201301' },
+    })
+    if (estimateCache.size > 200) estimateCache.clear()
+    estimateCache.set(key, { at: now, summary })
+    res.json({ ok: true, preview: true, ...summary })
+  } catch (err) {
+    res.status(err instanceof CheckoutError ? 400 : 502).json({ error: err.message })
+  }
+})
+
 // Places a real order on Zoho (cart -> address -> shipping -> offline payment), then
 // verifies against the Admin API that Zoho actually created it before reporting success.
 app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, res) => {
@@ -510,8 +569,8 @@ app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, 
     // (Razorpay, configured in Zoho Commerce). Zoho creates the Sales Order itself only once
     // the customer actually pays there — see /api/test-orders/:id/confirm-payment below.
     const result = await placeOrder({ items, customer: profile })
-    testStore.updateOrder(req.mobile, localOrder.id, { total: result.total })
-    res.json({ ok: true, orderId: localOrder.id, paymentUrl: result.paymentUrl, total: result.total })
+    testStore.updateOrder(req.mobile, localOrder.id, { total: result.total, tax: result.summary?.tax })
+    res.json({ ok: true, orderId: localOrder.id, paymentUrl: result.paymentUrl, total: result.total, summary: result.summary })
   } catch (err) {
     console.error('[test-checkout] failed:', err.message)
     testStore.updateOrder(req.mobile, localOrder.id, { status: 'failed', note: err.message })
@@ -624,6 +683,36 @@ app.get('/product/:slug', (req, res) => {
   res.set('Cache-Control', 'no-cache').type('html').send(html)
 })
 
+// One address per category, from Zoho's own category handle.
+app.get('/category/:slug', (req, res) => {
+  let template
+  try { template = fs.readFileSync(path.join(PUBLIC_DIR, 'category.html'), 'utf8') } catch { return res.status(500).send('Category page template missing') }
+  const html = renderCategoryPage(template, current.data, String(req.params.slug || '').toLowerCase())
+  if (!html) return sendNotFound(req, res)
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600').type('html').send(html)
+})
+
+// The home page carries a plain-HTML list of every category and product, so it is crawlable without JavaScript.
+function sendHome(req, res, next) {
+  let html
+  try { html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8') } catch { return next() }
+  html = html.replace(/<!-- browse:start -->[\s\S]*?<!-- browse:end -->/, () => `<!-- browse:start -->${renderBrowseList(current.data)}<!-- browse:end -->`)
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600').type('html').send(html)
+}
+app.get(['/', '/index.html'], sendHome)
+
+// A friendly, indexable-free 404 with the way back into the store.
+function sendNotFound(req, res) {
+  let template
+  try { template = fs.readFileSync(path.join(PUBLIC_DIR, '404.html'), 'utf8') } catch { return res.status(404).type('text').send('Not found') }
+  const cats = listCategories(current.data)
+  const main = `<h1 class="cp-title">We could not find that page</h1>
+      <p class="cp-intro">The link may be old or mistyped. Here is where to go next.</p>
+      <nav class="cp-others" aria-label="Categories"><h2>Shop by category</h2>${cats.map((c) => `<a href="/category/${c.slug}">${c.name}</a>`).join('')}</nav>
+      <p class="cp-intro"><a href="/">Back to the store</a> &middot; <a href="/blog/">Read the guides</a> &middot; <a href="/faq.html">FAQs</a> &middot; <a href="https://wa.me/919315545821" target="_blank" rel="noopener">Ask us on WhatsApp</a></p>`
+  res.status(404).set('X-Robots-Tag', 'noindex').type('html').send(template.replace('<!--SEO_HEAD-->', () => '<title>Page not found | Arambhika</title>\n  <meta name="robots" content="noindex" />').replace('<!--PAGE_MAIN-->', () => main))
+}
+
 app.get('/product-sitemap.xml', (req, res) => {
   res.set('Cache-Control', 'public, max-age=900').type('application/xml').send(renderProductSitemap(current.data))
 })
@@ -654,9 +743,10 @@ app.get('/zcat/:id/:file', async (req, res) => {
 app.get('/zimg/:docId/:file', async (req, res) => {
   const { docId, file } = req.params
   if (!/^\d+$/.test(docId)) return res.status(400).end()
-  const img = await getImage(docId, file)
+  const w = [200, 400, 800].includes(Number(req.query.w)) ? Number(req.query.w) : undefined
+  const img = await getImage(docId, file, w)
   if (!img) return res.status(404).end()
-  res.set({ 'Content-Type': img.type, 'Cache-Control': 'public, max-age=86400' })
+  res.set({ 'Content-Type': img.type, 'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400' })
   res.send(img.buffer)
 })
 
@@ -673,7 +763,30 @@ app.get('/healthz', (req, res) => {
   res.json({ ok: true, env: process.env.APP_ENV || 'production', catalog: current.source })
 })
 
-app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }))
+// Stylesheets are served with comments and extra whitespace removed (cached by file time).
+const cssCache = new Map()
+function minifyCss(text) {
+  return text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{};,])\s*/g, '$1').replace(/;}/g, '}').trim()
+}
+app.get(['/styles.css', '/_theme_overrides.css', '/blog/blog.css'], (req, res, next) => {
+  const file = path.join(PUBLIC_DIR, req.path)
+  try {
+    const mtime = fs.statSync(file).mtimeMs
+    let hit = cssCache.get(file)
+    if (!hit || hit.mtime !== mtime) { hit = { mtime, body: minifyCss(fs.readFileSync(file, 'utf8')) }; cssCache.set(file, hit) }
+    // revalidated on every visit (a cheap 304 when unchanged), so a release never leaves a visitor with old styles next to new pages
+    res.set('Cache-Control', 'public, max-age=0, must-revalidate').type('text/css').send(hit.body)
+  } catch { next() }
+})
+
+app.use(express.static(PUBLIC_DIR, {
+  extensions: ['html'],
+  setHeaders(res, filePath) {
+    if (/\.(png|jpe?g|webp|svg|ico|gif|woff2?|pdf)$/i.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=604800')
+    // scripts and styles are revalidated on each visit, so they always match the page they belong to
+  },
+}))
+app.use(sendNotFound)
 
 app.listen(PORT, () => {
   console.log(`Arambhika store running at http://localhost:${PORT} (catalog source: ${current.source})`)

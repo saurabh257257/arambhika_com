@@ -17,6 +17,8 @@
     status: null,
     products: [],
     paying: false,
+    estimate: null,
+    estimateKey: "",
     editing: false,
     wizardMounted: false,
   };
@@ -60,11 +62,48 @@
     }
   }
 
+  // GST, shipping and the total exactly as Zoho will charge them (needs the delivery address, so
+  // it appears once the customer is signed in with their details saved).
+  async function loadEstimate() {
+    const ready = state.session.loggedIn && state.status?.complete && !state.editing;
+    const items = [];
+    for (const { item, p } of cartLines()) {
+      if (!p?.ZohoVariantId) { state.estimate = null; return; }
+      items.push({ variantId: p.ZohoVariantId, qty: Number(item.qty) || 1, label: item.name });
+    }
+    if (!items.length) { state.estimate = null; return; }
+    const key = JSON.stringify([ready, items.map((i) => [i.variantId, i.qty]), ready ? [state.profile?.state, state.profile?.postalCode] : null]);
+    if (key === state.estimateKey && state.estimate) return;
+    state.estimateKey = key;
+    const r = await post(ready ? "/api/checkout/estimate" : "/api/checkout/estimate-preview", { items });
+    state.estimate = r.ok && r.data?.total ? r.data : null;
+    renderSummary();
+    renderPay();
+  }
+  // Subtotal is drawn by the caller; this is everything under it: taxable value, each tax, shipping, total.
+  const money2 = (n) => `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  function breakupHtml(e) {
+    const rate = e.subtotal ? Math.round((e.tax / e.subtotal) * 10000) / 100 : 0;
+    const taxLines = e.preview
+      ? [{ name: `GST @ ${rate}%`, amount: e.tax }]
+      : (e.taxes.length ? e.taxes : [{ name: "GST", amount: e.tax }]);
+    return `
+      ${e.discount ? `<div><span>Discount</span><span>-${money2(e.discount)}</span></div>` : ""}
+      <div class="ck-muted"><span>Taxable value</span><span>${money2(e.subtotal - (e.discount || 0))}</span></div>
+      ${taxLines.map((t) => `<div><span>${esc(t.name)}</span><span>${money2(t.amount)}</span></div>`).join("")}
+      <div class="ck-total-final"><span>Total${e.preview ? " (estimate)" : ""}</span><strong>${money2(totalBeforeShipping(e))}</strong></div>
+      <p class="ck-fine">Shipping is added in the final invoice. We deliver it ourselves.</p>
+      ${e.preview ? `<p class="ck-fine">GST is split into CGST + SGST or IGST once your delivery address is saved. The rate stays the same.</p>` : ""}`;
+  }
+  // Zoho adds a token shipping charge only to get past its own shipping step; customers are shown the amount without it.
+  const totalBeforeShipping = (e) => Math.max(0, Number(e.total || 0) - Number(e.shipping || 0));
+  const payableTotal = () => (state.estimate?.total ? totalBeforeShipping(state.estimate) : subtotal());
+
   // ---- summary (right column) --------------------------------------------------------------
   function renderSummary() {
     const lines = cartLines();
     const total = subtotal();
-    $("ckSummaryTotal").textContent = total ? money(total) : "";
+    $("ckSummaryTotal").textContent = payableTotal() ? (state.estimate ? money2(payableTotal()) : money(payableTotal())) : "";
     $("ckSummaryBody").innerHTML = `
       <ul class="ck-lines">
         ${lines.map(({ item, price, total: t, image }) => `
@@ -79,7 +118,8 @@
       </ul>
       <div class="ck-totals">
         <div><span>Subtotal</span><strong>${total ? money(total) : "—"}</strong></div>
-        <div class="ck-muted"><span>Shipping &amp; tax</span><span>Shown on the payment page</span></div>
+        ${state.estimate ? breakupHtml(state.estimate) : `
+        <div class="ck-muted"><span>GST &amp; shipping</span><span>Calculating…</span></div>`}
       </div>
       <a class="ck-link" href="index.html#catalog">&larr; Edit cart / continue shopping</a>`;
   }
@@ -173,11 +213,11 @@
     }
     setState("ckStepPay", "current");
     if (state.paying) return;
-    const total = subtotal();
+    const total = payableTotal();
     body.innerHTML = `
-      <p class="ck-lead">You will pay on Zoho's secure payment page: UPI, cards or net banking. Shipping and taxes are shown there before you confirm.</p>
+      <p class="ck-lead">You will pay on Zoho's secure payment page: UPI, cards or net banking. The total above includes GST. Shipping is added in the final invoice.</p>
       <div class="ck-banner" id="ckPayError" role="alert" hidden></div>
-      <button type="button" class="ck-btn ck-btn-primary ck-pay" id="ckPayBtn">Pay${total ? ` ${money(total)}` : ""} securely</button>
+      <button type="button" class="ck-btn ck-btn-primary ck-pay" id="ckPayBtn">Pay securely</button>
       <p class="ck-fine">By paying you accept our <a href="terms.html">Terms</a> and <a href="refund-policy.html">Refund Policy</a>.</p>`;
     $("ckPayBtn").addEventListener("click", pay);
   }
@@ -191,6 +231,7 @@
     renderAccount();
     renderDelivery();
     renderPay();
+    loadEstimate().catch(() => {});
   }
 
   // ---- payment -----------------------------------------------------------------------------

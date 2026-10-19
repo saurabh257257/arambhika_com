@@ -52,7 +52,7 @@ describe('/product/<slug>', () => {
   test('has valid Product structured data with price, SKU and Zoho images', async () => {
     const r = await get(`/product/${SLUG}`)
     const blocks = [...r.text.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]))
-    const product = blocks.find((b) => b['@type'] === 'Product')
+    const product = blocks.flatMap((b) => b['@graph'] || [b]).find((b) => b['@type'] === 'Product')
     assert.ok(product, 'no Product JSON-LD')
     assert.equal(product.sku, 'T-NP1')
     assert.equal(product.offers.price, '480')
@@ -140,12 +140,11 @@ describe('store home markup', () => {
 
   test('the page title is the h1, and there is exactly one', () => {
     assert.equal((home.match(/<h1[\s>]/g) || []).length, 1)
-    assert.match(home, /<h1>Lithium Ion Battery B2B Component Manufacturer and Supplier<\/h1>/)
+    assert.match(home, /<h1 class="brand-tag" id="brandTag">Lithium Ion Battery B2B Component Manufacturer and Supplier<\/h1>/)
   })
 
-  test('there is no banner: the title is one slim line above the categories', () => {
-    assert.doesNotMatch(home, /home-hero|heroThumbs|hero-btn/)
-    assert.match(home, /<section id="home" class="home-title"/)
+  test('there is no banner and no separate title strip: the H1 is the tagline under the logo', () => {
+    assert.doesNotMatch(home, /home-hero|heroThumbs|hero-btn|class="home-title"/)
   })
 
   test('there is no Track order anywhere in the header (orders live in the profile)', () => {
@@ -296,5 +295,32 @@ describe('Shop by cell comes from the Zoho collections', () => {
     const js = fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8')
     assert.match(js, /categories\.collections/)
     assert.doesNotMatch(js, /zig\s\*zag/i)
+  })
+})
+
+describe('GST is shown at checkout from Zoho', () => {
+  test('the checkout page asks the server for GST and shows each tax line and the total', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/checkout.js'), 'utf8')
+    assert.match(js, /\/api\/checkout\/estimate/)
+    assert.match(js, /estimate-preview/, 'the breakup shows before sign-in too')
+    assert.match(js, /e\.taxes/)
+    assert.doesNotMatch(js, /Shipping &amp; tax<\/span><span>Shown on the payment page/, 'the old "shown later" line is gone')
+  })
+
+  test('the estimate route needs a login and a complete profile, and takes its figures from Zoho', () => {
+    const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8')
+    assert.match(server, /app\.post\('\/api\/checkout\/estimate', express\.json\(\), testSessionRequired/)
+    const lib = fs.readFileSync(path.join(ROOT, 'lib/zoho-checkout.js'), 'utf8')
+    assert.match(lib, /order\.taxes/)
+    assert.doesNotMatch(lib, /\* 0\.18|\/ 100 \* 18|GST_RATE/, 'no hard-coded GST rate')
+  })
+})
+
+describe('shipping at checkout', () => {
+  test('the token shipping charge is never shown; customers are told shipping comes on the final invoice', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/checkout.js'), 'utf8')
+    assert.match(js, /Shipping is added in the final invoice/)
+    assert.match(js, /totalBeforeShipping/)
+    assert.doesNotMatch(js, /<span>Shipping<\/span><span>/, 'no shipping amount row')
   })
 })

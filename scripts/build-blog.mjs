@@ -30,12 +30,14 @@ const absolutize = (html) => html
 
 // The home page header carries a product search and the logged-in sub-nav; blog pages have
 // neither (their scripts are not loaded), so take just the logo and the Store / account links.
-const header = absolutize(
+// the home page's tagline is its H1; on blog pages it is plain text so each page keeps a single H1
+const headerPlain = (h) => h.replace(/<h1 class="brand-tag" id="brandTag">([^<]*)<\/h1>/, '<p class="brand-tag">$1</p>')
+const header = absolutize(headerPlain(
   grab(/<header class="site-header[^"]*">[\s\S]*?<\/header>/)
     .replace(/<header class="site-header[^"]*">/, '<header class="site-header">')
     .replace(/<div class="header-search">[\s\S]*?<div class="search-suggestions"[^>]*><\/div>\s*<\/div>/, '')
     .replace(/<div class="acct-subnav"[\s\S]*?<\/div>\s*<\/div>/, '')
-)
+))
 const footer = absolutize(grab(/<footer class="site-footer">[\s\S]*?<\/footer>/))
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
@@ -118,6 +120,7 @@ for (const post of posts) {
   })
   const [headline, sub] = SHORT[post.slug] || [post.title, post.teaser]
   post.headline = headline
+  post.metaTitle = `${headline} | Arambhika Blog`.length <= 60 ? `${headline} | Arambhika Blog` : `${headline} | Arambhika`
   post.subline = sub
 }
 for (const g of guides) {
@@ -215,7 +218,7 @@ function renderPost(post, all) {
   const at = all.findIndex((p) => p.slug === post.slug)
   const related = [1, 2, 3].map((n) => all[(at + n) % all.length]).map((p) => `
         <a class="blog-tile" href="/blog/${p.slug}.html" data-tile-cat="${esc(p.category)}">
-          <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
+          <div class="blog-tile-img"><img src="${p.heroImage}?w=300" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
           <div class="blog-tile-body"><span class="blog-tag">${esc(p.tag)}</span><h3>${esc(p.headline)}</h3><span class="blog-more">Read blog &rarr;</span></div>
         </a>`).join('')
 
@@ -240,7 +243,7 @@ function renderPost(post, all) {
         <h2>Products in this guide</h2>
         <div class="blog-listed-grid">${post.listed.slice(0, 6).map((x) => `
           <a class="blog-listed-card" href="${x.url}">
-            <span class="blog-listed-img">${x.image ? `<img src="${x.image}" alt="${esc(x.name)}" loading="lazy" />` : ''}</span>
+            <span class="blog-listed-img">${x.image ? `<img src="${x.image}?w=300" alt="${esc(x.name)}" loading="lazy" />` : ''}</span>
             <span class="blog-listed-name">${esc(x.name)}</span>
             <span class="blog-listed-price">${x.price ? '\u20B9' + Number(x.price).toLocaleString('en-IN') + ' / ' + esc(x.unit || 'KG') : 'Price on request'}</span>
           </a>`).join('')}
@@ -284,7 +287,7 @@ function renderPost(post, all) {
 
 function renderIndex(all) {
   const url = `${SITE}/blog/`
-  const title = 'Arambhika Blog | Nickel Strip, Copper Busbar & Battery Pack Guides for India'
+  const title = 'Battery Pack Guides | Arambhika Blog'
   const description = 'Practical guides for Indian battery pack makers: nickel-plated strip, pure nickel strip and copper busbars for EV, e-bike, inverter and solar storage packs. Sizes, welding tips and live prices.'
   const jsonld = {
     '@context': 'https://schema.org',
@@ -301,13 +304,13 @@ function renderIndex(all) {
   }
   const tiles = all.map((p) => `
         <a class="blog-tile" href="/blog/${p.slug}.html" data-tile-cat="${esc(p.category)}">
-          <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
+          <div class="blog-tile-img"><img src="${p.heroImage}?w=300" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
           <div class="blog-tile-body"><span class="blog-tag">${esc(p.tag)}</span><h3>${esc(p.headline)}</h3><p>${esc(p.subline)}</p><span class="blog-more">Read blog &rarr;</span></div>
         </a>`).join('')
   // Older guides live at their original URLs (kept for SEO) but are listed as ordinary blog tiles.
   const guideTiles = guides.map((g) => `
         <a class="blog-tile" href="${g.href}">
-          <div class="blog-tile-img"><img src="${g.heroImage}" alt="${esc(g.imageAlt)}" loading="lazy" /></div>
+          <div class="blog-tile-img"><img src="${g.heroImage}?w=300" alt="${esc(g.imageAlt)}" loading="lazy" /></div>
           <div class="blog-tile-body"><span class="blog-tag">${esc(g.tag)}</span><h3>${esc(g.title)}</h3><p>${esc(g.text)}</p><span class="blog-more">Read guide &rarr;</span></div>
         </a>`).join('')
 
@@ -335,12 +338,12 @@ function renderIndex(all) {
 const BOOK_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:4px"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h6M8 11h6"/></svg>'
 const homeTile = (p) => `
           <a class="blog-tile" href="/blog/${p.slug}.html">
-            <div class="blog-tile-img"><img src="${p.heroImage}" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
+            <div class="blog-tile-img"><img src="${p.heroImage}?w=300" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
             <div class="blog-tile-body"><span class="blog-tag">${BOOK_ICON}Blog &middot; ${esc(p.tag)}</span><h3>${esc(p.headline)}</h3><p>${esc(p.subline)}</p><span class="blog-more">Read blog &rarr;</span></div>
           </a>`
 const homeGuideTile = (g) => `
           <a class="blog-tile" href="${g.href}">
-            <div class="blog-tile-img"><img src="${g.heroImage}" alt="${esc(g.imageAlt)}" loading="lazy" /></div>
+            <div class="blog-tile-img"><img src="${g.heroImage}?w=300" alt="${esc(g.imageAlt)}" loading="lazy" /></div>
             <div class="blog-tile-body"><span class="blog-tag">${BOOK_ICON}${esc(g.tag)}</span><h3>${esc(g.title)}</h3><p>${esc(g.text)}</p><span class="blog-more">Read guide &rarr;</span></div>
           </a>`
 const homeHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
@@ -372,7 +375,7 @@ function renderFaqPage() {
       mainEntity: flat.map(([q, a]) => ({ '@type': 'Question', name: plain(q), acceptedAnswer: { '@type': 'Answer', text: plain(a) } })),
     }],
   }
-  const title = 'FAQ | Nickel Strip, Copper Busbar & Battery Pack Questions Answered | Arambhika'
+  const title = 'Nickel Strip & Busbar FAQs | Arambhika'
   const description = 'Every question we get about nickel strip, copper busbar, welding, sizing, pricing and ordering, answered in one place.'
   return `${baseHead({ title, description, keywords: 'nickel strip FAQ, copper busbar FAQ, battery pack questions India', url, image: `${SITE}/assets/logo.png`, type: 'website', jsonld })}
 <body class="blog-page">
