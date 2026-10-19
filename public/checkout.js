@@ -71,14 +71,29 @@
       if (!p?.ZohoVariantId) { state.estimate = null; return; }
       items.push({ variantId: p.ZohoVariantId, qty: Number(item.qty) || 1, label: item.name });
     }
-    if (!ready || !items.length) { state.estimate = null; return; }
-    const key = JSON.stringify([items.map((i) => [i.variantId, i.qty]), state.profile?.state, state.profile?.postalCode]);
+    if (!items.length) { state.estimate = null; return; }
+    const key = JSON.stringify([ready, items.map((i) => [i.variantId, i.qty]), ready ? [state.profile?.state, state.profile?.postalCode] : null]);
     if (key === state.estimateKey && state.estimate) return;
     state.estimateKey = key;
-    const r = await post("/api/checkout/estimate", { items });
+    const r = await post(ready ? "/api/checkout/estimate" : "/api/checkout/estimate-preview", { items });
     state.estimate = r.ok && r.data?.total ? r.data : null;
     renderSummary();
     renderPay();
+  }
+  // Subtotal is drawn by the caller; this is everything under it: taxable value, each tax, shipping, total.
+  const money2 = (n) => `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  function breakupHtml(e) {
+    const rate = e.subtotal ? Math.round((e.tax / e.subtotal) * 10000) / 100 : 0;
+    const taxLines = e.preview
+      ? [{ name: `GST @ ${rate}%`, amount: e.tax }]
+      : (e.taxes.length ? e.taxes : [{ name: "GST", amount: e.tax }]);
+    return `
+      ${e.discount ? `<div><span>Discount</span><span>-${money2(e.discount)}</span></div>` : ""}
+      <div class="ck-muted"><span>Taxable value</span><span>${money2(e.subtotal - (e.discount || 0))}</span></div>
+      ${taxLines.map((t) => `<div><span>${esc(t.name)}</span><span>${money2(t.amount)}</span></div>`).join("")}
+      <div><span>Shipping</span><span>${e.shipping ? money2(e.shipping) : "Free"}</span></div>
+      <div class="ck-total-final"><span>Total${e.preview ? " (estimate)" : ""}</span><strong>${money2(e.total)}</strong></div>
+      ${e.preview ? `<p class="ck-fine">GST is split into CGST + SGST or IGST once your delivery address is saved. The rate stays the same.</p>` : ""}`;
   }
   const payableTotal = () => (state.estimate?.total ? state.estimate.total : subtotal());
 
@@ -86,7 +101,7 @@
   function renderSummary() {
     const lines = cartLines();
     const total = subtotal();
-    $("ckSummaryTotal").textContent = payableTotal() ? money(payableTotal()) : "";
+    $("ckSummaryTotal").textContent = payableTotal() ? (state.estimate ? money2(payableTotal()) : money(payableTotal())) : "";
     $("ckSummaryBody").innerHTML = `
       <ul class="ck-lines">
         ${lines.map(({ item, price, total: t, image }) => `
@@ -101,12 +116,8 @@
       </ul>
       <div class="ck-totals">
         <div><span>Subtotal</span><strong>${total ? money(total) : "—"}</strong></div>
-        ${state.estimate ? `
-          ${state.estimate.discount ? `<div><span>Discount</span><span>-${money(state.estimate.discount)}</span></div>` : ""}
-          ${(state.estimate.taxes.length ? state.estimate.taxes : [{ name: "GST", amount: state.estimate.tax }]).map((t) => `<div><span>${esc(t.name)}</span><span>${money(t.amount)}</span></div>`).join("")}
-          <div><span>Shipping</span><span>${state.estimate.shipping ? money(state.estimate.shipping) : "Free"}</span></div>
-          <div class="ck-total-final"><span>Total</span><strong>${money(state.estimate.total)}</strong></div>` : `
-        <div class="ck-muted"><span>GST &amp; shipping</span><span>Added once your delivery details are saved</span></div>`}
+        ${state.estimate ? breakupHtml(state.estimate) : `
+        <div class="ck-muted"><span>GST &amp; shipping</span><span>Calculating…</span></div>`}
       </div>
       <a class="ck-link" href="index.html#catalog">&larr; Edit cart / continue shopping</a>`;
   }

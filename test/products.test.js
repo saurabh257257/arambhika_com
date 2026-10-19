@@ -303,6 +303,7 @@ describe('GST is shown at checkout from Zoho', () => {
   test('the checkout page asks the server for GST and shows each tax line and the total', () => {
     const js = fs.readFileSync(path.join(ROOT, 'public/checkout.js'), 'utf8')
     assert.match(js, /\/api\/checkout\/estimate/)
+    assert.match(js, /estimate-preview/, 'the breakup shows before sign-in too')
     assert.match(js, /state\.estimate\.taxes/)
     assert.doesNotMatch(js, /Shipping &amp; tax<\/span><span>Shown on the payment page/, 'the old "shown later" line is gone')
   })

@@ -499,6 +499,33 @@ app.post('/api/checkout/estimate', express.json(), testSessionRequired, async (r
   }
 })
 
+// Same figures before sign-in, so the breakup is visible from the first step. There is no address yet,
+// so the business's own state stands in: the rate is right, and the CGST/SGST or IGST split is
+// confirmed once the customer's real address is saved. Cached and rate limited per visitor.
+const publicEstimateHits = new Map()
+app.post('/api/checkout/estimate-preview', express.json(), async (req, res) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 30) : []
+  if (!items.length || items.some((it) => !it.variantId || !/^\d+$/.test(String(it.variantId)))) return res.status(400).json({ error: 'Nothing to estimate.' })
+  const now = Date.now()
+  const recent = (publicEstimateHits.get(req.ip) || []).filter((t) => t > now - 10 * 60 * 1000)
+  if (recent.length >= 30) return res.status(429).json({ error: 'Please try again in a few minutes.' })
+  recent.push(now); publicEstimateHits.set(req.ip, recent)
+  const key = 'preview:' + JSON.stringify(items.map((i) => [i.variantId, i.qty]))
+  const hit = estimateCache.get(key)
+  if (hit && now - hit.at < 60_000) return res.json({ ok: true, preview: true, ...hit.summary })
+  try {
+    const summary = await estimateOrder({
+      items,
+      customer: { firstName: 'Guest', lastName: 'Visitor', email: 'guest@arambhika.com', phone: '9999999999', address: 'Sector 116', city: 'Noida', state: 'Uttar Pradesh', postalCode: '201301' },
+    })
+    if (estimateCache.size > 200) estimateCache.clear()
+    estimateCache.set(key, { at: now, summary })
+    res.json({ ok: true, preview: true, ...summary })
+  } catch (err) {
+    res.status(err instanceof CheckoutError ? 400 : 502).json({ error: err.message })
+  }
+})
+
 // Places a real order on Zoho (cart -> address -> shipping -> offline payment), then
 // verifies against the Admin API that Zoho actually created it before reporting success.
 app.post('/api/test-checkout', express.json(), testSessionRequired, async (req, res) => {
