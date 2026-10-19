@@ -2515,3 +2515,23 @@ body.rq-open { overflow: hidden; }
 
 /* checkout totals */
 .ck-totals .ck-total-final { border-top: 1px solid var(--line, #d9e1e5); margin-top: 6px; padding-top: 6px; font-size: 1.05em; }
+
+/* category pages, the home browse list and the 404 */
+.cp-title { margin: 6px 0 4px; font-size: 1.5rem; color: var(--f-navy, #12263f); }
+.cp-intro { margin: 0 0 14px; color: #5b6b7a; max-width: 70ch; }
+.cp-others { margin: 26px 0 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cp-others h2 { flex: 0 0 100%; font-size: 1rem; margin: 0 0 2px; }
+.cp-others a { padding: 5px 12px; border: 1px solid #cfdcd9; border-radius: 999px; background: #fff; text-decoration: none; color: #0b6f62; font-size: 0.85rem; }
+.cp-others a:hover { background: #0e8f7e; color: #fff; }
+.cp-main .cat-grid { margin-top: 8px; }
+.pp-seo-related { margin-top: 18px; font-size: 0.85rem; }
+.pp-seo-related h2 { font-size: 0.95rem; margin: 0 0 6px; }
+.pp-seo-related ul { margin: 0; padding-left: 18px; columns: 2; }
+.seo-browse { padding: 18px 0 8px; }
+.seo-browse h2 { font-size: 1.05rem; margin: 0 0 10px; }
+.seo-browse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 22px; }
+.seo-browse-group h3 { font-size: 0.88rem; margin: 0 0 4px; }
+.seo-browse-group h3 small { color: #5b6b7a; font-weight: 500; }
+.seo-browse-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.seo-browse-group a { font-size: 0.76rem; color: #3a5a6b; text-decoration: none; }
+.seo-browse-group a:hover { color: #0b6f62; text-decoration: underline; }

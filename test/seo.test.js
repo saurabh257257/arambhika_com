@@ -25,7 +25,7 @@ function htmlFiles(dir = PUBLIC, base = '') {
 const read = (rel) => fs.readFileSync(path.join(PUBLIC, rel), 'utf8')
 const meta = (html, name) => (html.match(new RegExp(`<meta[^>]+(?:name|property)=["']${name}["'][^>]*content=["']([^"']*)["']`, 'i')) || [])[1]
 // product.html is a template: the server fills in its head per product (checked in products.test.js)
-const TEMPLATE_PAGES = new Set(['product.html'])
+const TEMPLATE_PAGES = new Set(['product.html', 'category.html', '404.html'])
 const pages = htmlFiles().filter((p) => !TEMPLATE_PAGES.has(p))
 const indexable = pages.filter((p) => !PRIVATE_PAGES.has(p))
 
@@ -78,7 +78,6 @@ describe('private pages stay out of search results', () => {
 const KNOWN_GAPS = {
   'capabilities.html': ['h1'],
   'catalog.html': ['h1', 'og'],
-  'contact.html': ['h1'],
   'contactus.html': ['description', 'h1', 'canonical', 'og'],
   'refund-policy.html': ['og'],
   'terms.html': ['og'],

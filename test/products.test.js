@@ -52,7 +52,7 @@ describe('/product/<slug>', () => {
   test('has valid Product structured data with price, SKU and Zoho images', async () => {
     const r = await get(`/product/${SLUG}`)
     const blocks = [...r.text.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]))
-    const product = blocks.find((b) => b['@type'] === 'Product')
+    const product = blocks.flatMap((b) => b['@graph'] || [b]).find((b) => b['@type'] === 'Product')
     assert.ok(product, 'no Product JSON-LD')
     assert.equal(product.sku, 'T-NP1')
     assert.equal(product.offers.price, '480')
@@ -140,12 +140,11 @@ describe('store home markup', () => {
 
   test('the page title is the h1, and there is exactly one', () => {
     assert.equal((home.match(/<h1[\s>]/g) || []).length, 1)
-    assert.match(home, /<h1>Lithium Ion Battery B2B Component Manufacturer and Supplier<\/h1>/)
+    assert.match(home, /<h1 class="brand-tag" id="brandTag">Lithium Ion Battery B2B Component Manufacturer and Supplier<\/h1>/)
   })
 
-  test('there is no banner: the title is one slim line above the categories', () => {
-    assert.doesNotMatch(home, /home-hero|heroThumbs|hero-btn/)
-    assert.match(home, /<section id="home" class="home-title"/)
+  test('there is no banner and no separate title strip: the H1 is the tagline under the logo', () => {
+    assert.doesNotMatch(home, /home-hero|heroThumbs|hero-btn|class="home-title"/)
   })
 
   test('there is no Track order anywhere in the header (orders live in the profile)', () => {
