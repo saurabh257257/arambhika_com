@@ -60,7 +60,7 @@ const setOrder = (order) => {
 
 const normalizeCatalogData = (data) => {
   const categories = Array.isArray(data?.categories) ? data.categories : [];
-  return categories.map((cat) => {
+  const mapped = categories.map((cat) => {
     const fallbackName =
       cat.Category ||
       (Array.isArray(cat.products) && cat.products[0] && cat.products[0].Category) ||
@@ -101,6 +101,8 @@ const normalizeCatalogData = (data) => {
       })
     };
   });
+  mapped.collections = Array.isArray(data?.collections) ? data.collections : undefined;
+  return mapped;
 };
 
 let currentCategoryFilter = "all";
@@ -143,31 +145,39 @@ const renderFilters = (categories) => {
   setFilterButtonState(currentCategoryFilter);
 };
 
-// "Shop by cell type": 18650, 21700, 32650 ... found in the product names themselves
+// "Shop by cell": the collections from Zoho Commerce (18650, 21700, 32650 ...), exactly as set up there.
+// Only a catalogue saved before collections existed falls back to reading sizes out of product names.
+let currentCellCodes = null;
 const renderCellPills = (categories) => {
   const holder = document.querySelector("#cellPills");
   if (!holder) return;
-  const counts = new Map();
-  categories.forEach((c) => (c.products || []).forEach((p) => {
-    const m = String(p.ProductCode || "").match(/\((\d{4,5})\)/);
-    if (m) counts.set(m[1], (counts.get(m[1]) || 0) + 1);
-    if (/zig\s*zag/i.test(p.ProductCode || "")) counts.set("ZigZag", (counts.get("ZigZag") || 0) + 1);
-  }));
+  let groups;
+  if (Array.isArray(categories.collections)) {
+    groups = categories.collections.map((col) => ({ key: col.name, codes: new Set(col.products || []), count: (col.products || []).length }));
+  } else {
+    const found = new Map();
+    categories.forEach((c) => (c.products || []).forEach((p) => {
+      const m = String(p.ProductCode || "").match(/\((\d{4,5})\)/);
+      if (m) { if (!found.has(m[1])) found.set(m[1], new Set()); found.get(m[1]).add(p.ProductCode); }
+    }));
+    groups = [...found.entries()].sort().map(([key, codes]) => ({ key, codes, count: codes.size }));
+  }
   holder.innerHTML = "";
-  if (!counts.size) return;
+  if (!groups.length) return;
   const label = document.createElement("span");
   label.className = "cell-pills-label";
   label.textContent = "Shop by cell:";
   holder.appendChild(label);
-  [...counts.keys()].sort().forEach((key) => {
+  groups.forEach((g) => {
     const pill = document.createElement("button");
     pill.type = "button";
     pill.className = "cell-pill";
-    pill.dataset.cell = key;
-    pill.innerHTML = `${key} <small>${counts.get(key)}</small>`;
+    pill.dataset.cell = g.key;
+    pill.innerHTML = `${g.key} <small>${g.count}</small>`;
     pill.addEventListener("click", () => {
-      const next = currentCellFilter === key ? "" : key;
+      const next = currentCellFilter === g.key ? "" : g.key;
       currentCellFilter = next;
+      currentCellCodes = next ? g.codes : null;
       holder.querySelectorAll(".cell-pill").forEach((b) => b.classList.toggle("active", b.dataset.cell === next));
       filterCatalog();
     });
@@ -218,7 +228,7 @@ const filterCatalog = () => {
       currentCategoryFilter === "all" || card.dataset.category === currentCategoryFilter;
     const haystack = `${card.dataset.search || ""}`.toLowerCase();
     const matchesSearch = !currentSearchTerm || haystack.includes(currentSearchTerm);
-    const matchesCell = !currentCellFilter || haystack.includes(currentCellFilter.toLowerCase());
+    const matchesCell = !currentCellFilter || (currentCellCodes ? currentCellCodes.has(card.dataset.productCode) : haystack.includes(currentCellFilter.toLowerCase()));
     card.style.display = matchesCategory && matchesSearch && matchesCell ? "" : "none";
   });
   // a category block with nothing left in it disappears too

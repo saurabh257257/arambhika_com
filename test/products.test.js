@@ -269,3 +269,32 @@ describe('requesting an unavailable product', () => {
     }
   })
 })
+
+describe('Shop by cell comes from the Zoho collections', () => {
+  test('the catalogue carries the collections exactly as set up in Zoho', async () => {
+    const { buildCatalog } = await import('../lib/catalog.js')
+    const zoho = {
+      categories: [{ category_id: '1', name: 'Nickel Strip Plated', visibility: true, sub_categories: [] }],
+      products: [
+        { product_id: 'a', name: 'Strip 2P(18650) 26x0.15 mm', category_id: '1', variants: [{}] },
+        { product_id: 'b', name: 'Strip 1P 8x0.15 mm', category_id: '1', variants: [{}] },
+      ],
+      collections: [{ name: '18650', handle: '18650', productIds: ['a'] }, { name: 'Empty', handle: 'e', productIds: [] }],
+    }
+    const out = buildCatalog(zoho, { categories: [] })
+    assert.deepEqual(out.collections.map((c) => [c.name, c.products.length]), [['18650', 1]], 'empty collections are left out')
+    assert.equal(out.collections[0].products[0], 'Strip 2P(18650) 26x0.15 mm')
+  })
+
+  test('without collections the catalogue has none, so an older snapshot still works', async () => {
+    const { buildCatalog } = await import('../lib/catalog.js')
+    const out = buildCatalog({ categories: [], products: [], collections: null }, { categories: [] })
+    assert.equal(out.collections, undefined)
+  })
+
+  test('the pills are built from the collections, not invented from product names', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8')
+    assert.match(js, /categories\.collections/)
+    assert.doesNotMatch(js, /zig\s\*zag/i)
+  })
+})
