@@ -122,9 +122,10 @@ app.use('/css', express.static(path.join(__dirname, 'css'), { maxAge: '1h' }));
 app.use('/js', express.static(path.join(__dirname, 'js'), { maxAge: '1h' }));
 app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '1d' }));
 const page = (file) => (req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.sendFile(path.join(__dirname, file)); };
-app.get('/login.html', (req, res) => (isAuthed(req) ? res.redirect('/image-generator.html') : page('login.html')(req, res)));
+app.get('/login.html', (req, res) => (isAuthed(req) ? res.redirect('/studio.html') : page('login.html')(req, res)));
 app.get('/image-generator.html', requireAuth, page('image-generator.html'));
-app.get('/', (req, res) => res.redirect(isAuthed(req) ? '/image-generator.html' : '/login.html'));
+app.get('/studio.html', requireAuth, page('studio.html'));
+app.get('/', (req, res) => res.redirect(isAuthed(req) ? '/studio.html' : '/login.html'));
 
 // ── Image upload setup ────────────────────────────────────────
 
@@ -133,6 +134,17 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/[^a-zA-Z0-9.]/g, '-')),
 });
 const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
+
+// Upload a photo or logo to use as a reference or as the brand logo (images only).
+app.post('/api/uploads', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Choose an image to upload' });
+  const ext = path.extname(req.file.filename).toLowerCase();
+  if (!BYTEPLUS_MIME[ext]) {
+    try { fs.unlinkSync(req.file.path); } catch (e) {}
+    return res.status(400).json({ error: 'Use a JPG, PNG, WebP, GIF or BMP image' });
+  }
+  res.json({ filename: req.file.filename, url: '/uploads/' + req.file.filename });
+});
 
 // ── Products ─────────────────────────────────────────────────────
 app.get('/api/products', (req, res) => {
@@ -399,7 +411,7 @@ app.post('/api/byteplus/generate-image', async (req, res) => {
   try {
     const key = process.env.BYTEPLUS_API_KEY;
     if (!key) return res.status(400).json({ error: 'BYTEPLUS_API_KEY not set in .env' });
-    const { model, size, response_format, region, referenceImages, imageUrl } = req.body;
+    const { model, size, response_format, region, referenceImages, imageUrl, noLogo } = req.body;
     let { prompt } = req.body;
     if (!model || !prompt) return res.status(400).json({ error: 'model and prompt are required' });
 
@@ -414,7 +426,7 @@ app.post('/api/byteplus/generate-image', async (req, res) => {
     } else {
       const refs = [];
       const noteLines = [];
-      if (fs.existsSync(LOGO_PATH)) {
+      if (!noLogo && fs.existsSync(LOGO_PATH)) {
         refs.push(`data:image/jpeg;base64,${fs.readFileSync(LOGO_PATH).toString('base64')}`);
         noteLines.push(`Reference image ${refs.length} is the exact Arambhika Enablers logo (wordmark + bolt icon) — reproduce it exactly as shown, do not redraw, restyle, or approximate it.`);
       }
@@ -485,6 +497,23 @@ app.post('/api/byteplus/generate-image', async (req, res) => {
 // ── Anthropic — Instagram caption / LinkedIn post generation ───
 // Claude Haiku 4.5 — the cheapest current Claude model — is plenty for a
 // short social caption/post and keeps this cheap to run on every click.
+// WhatsApp marketing message: short, plain, with a clear next step.
+app.post('/api/anthropic/generate-whatsapp', async (req, res) => {
+  try {
+    const { brief, productContext, tone, language, brand } = req.body || {};
+    if (!brief) return res.status(400).json({ error: 'brief is required' });
+    if (!process.env.ANTHROPIC_API_KEY) return res.status(400).json({ error: 'ANTHROPIC_API_KEY not set' });
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 400,
+      system: 'You write WhatsApp marketing messages for Arambhika, an Indian B2B manufacturer and supplier of nickel strips, copper and aluminium busbars, BMS and lithium battery components in Noida. Write one message under 700 characters. Use WhatsApp formatting (*bold* for the first line and key facts), short lines, at most two emojis, no hashtags. Include one clear next step (reply, call or visit the website). Never invent prices, stock or numbers: only use the facts given. Match the requested tone and language. Output only the message text.',
+      messages: [{ role: 'user', content: 'Task: ' + brief + '\nTone: ' + (tone || 'Professional') + '\nLanguage: ' + (language || 'English') + (productContext ? '\nProduct facts: ' + productContext : '') + (brand ? '\nContact: WhatsApp ' + (brand.wa || '') + ', website ' + (brand.web || '') + ', ' + (brand.loc || '') : '') }],
+    });
+    res.json({ message: msg.content[0].text.trim() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/anthropic/generate-caption', async (req, res) => {
   try {
     const { prompt, productContext } = req.body;

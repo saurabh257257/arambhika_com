@@ -63,7 +63,7 @@ async function start(env = {}) {
   return {
     base, dir, request, output: () => out,
     login: (pw = PASSWORD) => request('POST', '/api/auth/login', { password: pw }),
-    forget: () => { cookie = ''; },
+    forget: () => { cookie = ''; }, cookie: () => cookie,
     stop: async () => { child.kill(); await new Promise((r) => child.once('exit', r)); fs.rmSync(dir, { recursive: true, force: true }); },
   };
 }
@@ -93,7 +93,7 @@ describe('login is enforced on the server', () => {
   });
 
   test('pages send a signed-out visitor to the login page', async () => {
-    for (const p of ['/', '/image-generator.html']) {
+    for (const p of ['/', '/image-generator.html', '/studio.html']) {
       const r = await app.request('GET', p);
       assert.equal(r.status, 302, p);
       assert.equal(r.headers.get('location'), '/login.html');
@@ -377,5 +377,49 @@ describe('the tool mirrors the website', () => {
     const r = await app.request('POST', '/api/products/import-website', {});
     assert.equal(r.json.removed, 1);
     assert.deepEqual((await app.request('GET', '/api/products')).json.data.map((p) => p.sku), ['M1']);
+  });
+});
+
+describe('daily marketing studio', () => {
+  let app;
+  before(async () => { app = await start(); });
+  after(async () => { await app.stop(); });
+
+  test('the studio, uploads and the WhatsApp writer need a login', async () => {
+    assert.equal((await app.request('GET', '/studio.html')).status, 302);
+    assert.equal((await app.request('POST', '/api/uploads')).status, 401);
+    assert.equal((await app.request('POST', '/api/anthropic/generate-whatsapp', { brief: 'x' })).status, 401);
+  });
+
+  test('after login the landing page is the studio', async () => {
+    await app.login();
+    const r = await app.request('GET', '/');
+    assert.equal(r.status, 302);
+    assert.equal(r.headers.get('location'), '/studio.html');
+    const page = await app.request('GET', '/studio.html');
+    assert.equal(page.status, 200);
+    assert.match(page.text, /Daily Marketing Studio/);
+  });
+
+  test('an image can be uploaded, and a non-image is refused', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    const good = new FormData();
+    good.append('file', new Blob([png], { type: 'image/png' }), 'photo.png');
+    const ok = await fetch(app.base + '/api/uploads', { method: 'POST', body: good, headers: { Cookie: app.cookie() } });
+    assert.equal(ok.status, 200);
+    const body = await ok.json();
+    assert.match(body.url, /^\/uploads\/.*photo\.png$/);
+    assert.ok(fs.existsSync(path.join(app.dir, 'uploads', body.filename)));
+    const bad = new FormData();
+    bad.append('file', new Blob(['not an image'], { type: 'text/plain' }), 'notes.txt');
+    const no = await fetch(app.base + '/api/uploads', { method: 'POST', body: bad, headers: { Cookie: app.cookie() } });
+    assert.equal(no.status, 400);
+  });
+
+  test('the studio has templates for every channel, brand details and an upload box', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['data-ch="ig-image"', 'data-ch="ig-carousel"', 'data-ch="wa-message"', 'data-ch="wa-template"', 'id="brWa"', 'id="brWeb"', 'id="brLoc"', 'id="brLogoIn"', 'id="drop"', 'message_templates', "category: 'MARKETING'", 'noLogo: true']) {
+      assert.ok(page.includes(needle), needle + ' is missing');
+    }
   });
 });

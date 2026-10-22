@@ -32,7 +32,7 @@
   </div>
 <script>
 // Already signed in (the server says so, not the browser)? skip straight through
-fetch('/api/auth/me').then((r) => r.json()).then((d) => { if (d.authenticated) location.replace('image-generator.html'); }).catch(() => {});
+fetch('/api/auth/me').then((r) => r.json()).then((d) => { if (d.authenticated) location.replace('studio.html'); }).catch(() => {});
 
 async function doLogin(ev) {
   ev.preventDefault();
@@ -46,7 +46,7 @@ async function doLogin(ev) {
     const r = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password: pw }) });
     const d = await r.json();
     if (!d.success) throw new Error(d.error || 'Incorrect password');
-    location.href = 'image-generator.html';
+    location.href = 'studio.html';
   } catch(e) {
     err.textContent = e.message;
     btn.disabled = false; btn.textContent = 'Sign in';
