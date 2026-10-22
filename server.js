@@ -19,6 +19,7 @@ import { selectableStates, findState, isValidPostalCode, isValidEmail } from './
 import { profileStatus } from './lib/profile-status.js'
 import { renderProductPage, renderProductSitemap } from './lib/product-pages.js'
 import { renderCategoryPage, renderBrowseList, listCategories } from './lib/category-pages.js'
+import { renderLlmsTxt, indexNowKey, pingIndexNow } from './lib/discovery.js'
 
 try { process.loadEnvFile() } catch {}
 
@@ -92,6 +93,8 @@ async function refreshCatalog() {
     writeSnapshot({ at: current.at, data })
     lastError = ''
     prefetchImages(data).catch(() => {})
+    // Only the real site tells search engines about its pages.
+    if (IS_PRODUCTION && !process.env.DISABLE_CATALOG_REFRESH) pingIndexNow(data, DATA_DIR).catch(() => {})
   } catch (err) {
     if (err.message !== lastError) console.error('[catalog] refresh failed:', err.message)
     lastError = err.message
@@ -762,6 +765,13 @@ function sendNotFound(req, res) {
       <p class="cp-intro"><a href="/">Back to the store</a> &middot; <a href="/blog/">Read the guides</a> &middot; <a href="/faq.html">FAQs</a> &middot; <a href="https://wa.me/919315545821" target="_blank" rel="noopener">Ask us on WhatsApp</a></p>`
   res.status(404).set('X-Robots-Tag', 'noindex').type('html').send(template.replace('<!--SEO_HEAD-->', () => '<title>Page not found | Arambhika</title>\n  <meta name="robots" content="noindex" />').replace('<!--PAGE_MAIN-->', () => main))
 }
+
+app.get('/llms.txt', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=900').type('text/plain; charset=utf-8').send(renderLlmsTxt(current.data))
+})
+
+// Proves to IndexNow that this site is ours.
+app.get(`/${indexNowKey()}.txt`, (req, res) => res.type('text/plain').send(indexNowKey()))
 
 app.get('/product-sitemap.xml', (req, res) => {
   res.set('Cache-Control', 'public, max-age=900').type('application/xml').send(renderProductSitemap(current.data))

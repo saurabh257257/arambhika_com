@@ -3,6 +3,7 @@
 import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { startApp } from '../test-helpers/server.js'
@@ -463,5 +464,28 @@ describe('favourites list', () => {
     const js = fs.readFileSync(path.join(ROOT, 'public/wishlist.js'), 'utf8')
     assert.ok(js.includes('const CROSS ='))
     assert.equal(js.split('title="Remove">${CROSS}').length - 1, 2)
+  })
+})
+
+describe('discovery files for search engines and AI assistants', () => {
+  test('llms.txt lists the company, categories and products; IndexNow key is served', async () => {
+    const { renderLlmsTxt, indexNowKey, pingIndexNow } = await import('../lib/discovery.js')
+    const catalog = { categories: [{ name: 'Nickel Strip Pure', Handle: 'nickel-strip-pure', products: [{ ProductCode: 'Nickel Strip Pure 1P 6x0.15 mm', Price: '3250', Unit: 'KG' }] }] }
+    const txt = renderLlmsTxt(catalog)
+    assert.match(txt, /^# Arambhika/)
+    assert.ok(txt.includes('/category/nickel-strip-pure'))
+    assert.ok(txt.includes('/product/nickel-strip-pure-1p-6x0-15-mm'))
+    assert.ok(txt.includes('+91 93155 45821'))
+    assert.match(indexNowKey(), /^[a-f0-9]{32}$/)
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'indexnow-'))
+    const calls = []
+    const fake = async (url, opts) => { calls.push(JSON.parse(opts.body)); return { status: 200 } }
+    assert.equal((await pingIndexNow(catalog, dir, { fetchImpl: fake })).sent, 2)
+    assert.equal((await pingIndexNow(catalog, dir, { fetchImpl: fake })).sent, 0, 'nothing new, nothing sent')
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0].keyLocation, 'https://www.arambhika.com/' + indexNowKey() + '.txt')
+    const down = async () => ({ status: 500 })
+    const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'indexnow-'))
+    assert.equal((await pingIndexNow(catalog, dir2, { fetchImpl: down })).sent, 0)
   })
 })
