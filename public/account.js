@@ -79,7 +79,7 @@
     sidebarName.textContent = name || session.mobile;
     sidebarPhone.textContent = session.mobile;
     avatar.textContent = (profile?.firstName || session.mobile || "?").charAt(0).toUpperCase();
-    if (dashGreeting) dashGreeting.textContent = profile?.firstName ? `${profile.firstName}'s Dashboard` : "Your Dashboard";
+    if (dashGreeting) dashGreeting.textContent = profile?.firstName ? `Hello, ${profile.firstName}` : "Your dashboard";
   }
 
   async function loadSession() {
@@ -240,7 +240,54 @@
   }
   refreshBtn.addEventListener("click", () => loadOrders());
 
+  // the three most recent orders, shown on the dashboard itself
+  function renderRecent() {
+    const box = document.getElementById("acctRecent");
+    if (!box) return;
+    if (!allOrders.length) {
+      box.innerHTML = "<p class='form-note'>No orders yet. Your first order will show up here.</p>";
+      return;
+    }
+    const recent = [...allOrders].sort((x, y) => new Date(y.placedAt) - new Date(x.placedAt)).slice(0, 3);
+    box.innerHTML = recent.map((o) => {
+      const count = (o.items || []).reduce((s, it) => s + (Number(it.qty) || 0), 0);
+      return `<button type="button" class="acct-recent-row" data-goto-order="${o.id}">
+        <span class="acct-recent-main"><b>${o.zohoSalesOrderNumber || o.id}</b><small>${fmtDate(o.placedAt)} &middot; ${count} item${count === 1 ? "" : "s"}${o.total ? ` &middot; ${fmtMoney(o.total)}` : ""}</small></span>
+        <span class="acct-order-status is-${o.status}">${String((o.live && o.live.status) || o.status).replace(/_/g, " ")}</span>
+      </button>`;
+    }).join("");
+    box.querySelectorAll("[data-goto-order]").forEach((b) => b.addEventListener("click", () => switchTab("orders")));
+  }
+
+  // counts on the quick cards: favourites and the basket
+  function updateQuickCounts() {
+    const saved = document.getElementById("quickSaved");
+    const cart = document.getElementById("quickCart");
+    const heroCount = document.getElementById("acctHeroCartCount");
+    if (saved && window.Wishlist) {
+      const n = document.querySelectorAll("#acctSavedList .wl-row").length;
+      saved.textContent = "Your favourites";
+    }
+    let items = 0;
+    try { items = Object.keys(JSON.parse(sessionStorage.getItem("orderCart") || "{}")).length; } catch { items = 0; }
+    if (cart) cart.textContent = items ? `${items} item${items === 1 ? "" : "s"} waiting` : "Nothing yet";
+    if (heroCount) heroCount.textContent = items ? `(${items})` : "";
+  }
+  document.addEventListener("cart:changed", updateQuickCounts);
+  document.addEventListener("wishlist:changed", async () => {
+    const el = document.getElementById("quickSaved");
+    if (!el) return;
+    try {
+      const r = await fetch("/api/wishlist");
+      const d = await r.json();
+      const n = (d.items || []).length;
+      el.textContent = n ? `${n} saved` : "Your favourites";
+    } catch { /* keep the default text */ }
+  });
+  updateQuickCounts();
+
   function updateDashboardStats() {
+    renderRecent();
     if (!statConfirmed) return;
     statPending.textContent = String(allOrders.filter((o) => o.status === "awaiting_payment").length);
     statConfirmed.textContent = String(allOrders.filter((o) => o.status === "confirmed").length);

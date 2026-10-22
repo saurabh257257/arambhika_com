@@ -374,3 +374,13 @@ describe('choosing a category', () => {
     assert.match(js, /setTimeout\(\(\) => go\("auto"\), 800\)/)
   })
 })
+
+describe('dashboard', () => {
+  test('has a welcome banner, quick actions and recent orders, and still only three stat tiles', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'public/account.html'), 'utf8')
+    assert.match(html, /acct-hero-banner/)
+    assert.match(html, /id="acctRecent"/)
+    assert.equal((html.match(/acct-quick-card/g) || []).length, 4)
+    assert.ok((html.match(/class=["'][^"']*acct-stat-card/g) || []).length <= 3)
+  })
+})
