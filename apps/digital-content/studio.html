@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Marketing Studio | Arambhika</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+:root { --teal: #0e8f7e; --teal-dark: #0b6f62; --navy: #12263f; --wa: #25d366; --wa-dark: #128c7e; }
+.st-wrap { padding: 20px 24px 60px; display: grid; gap: 18px; max-width: 1500px; }
+.st-today { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 22px; border-radius: 16px; color: #fff; background: linear-gradient(120deg, #12263f, #1c3a5c 55%, #0b6f62); }
+.st-today small { text-transform: uppercase; letter-spacing: .1em; font-size: 11px; opacity: .8; font-weight: 600; }
+.st-today h3 { font-size: 20px; margin: 2px 0; } .st-today p { font-size: 13px; opacity: .9; max-width: 60ch; }
+.st-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 16px; border-radius: 10px; border: 0; background: var(--teal); color: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+.st-btn:hover { background: var(--teal-dark); } .st-btn[disabled] { opacity: .55; cursor: not-allowed; }
+.st-btn.ghost { background: #fff; color: var(--navy); border: 1px solid var(--border); } .st-btn.ghost:hover { background: #f1f5f9; }
+.st-btn.light { background: #fff; color: var(--teal-dark); } .st-btn.wa { background: var(--wa-dark); }
+.st-btn.sm { padding: 6px 11px; font-size: 12px; border-radius: 8px; }
+.st-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.st-day { border: 1px solid var(--border); background: #fff; border-radius: 12px; padding: 10px; text-align: left; cursor: pointer; font: inherit; }
+.st-day b { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; } .st-day span { display: block; font-size: 13px; font-weight: 600; margin-top: 2px; }
+.st-day.is-today { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(14, 143, 126, .18); } .st-day:hover { background: #f1f7f6; }
+.st-grid { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.st-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: grid; gap: 14px; }
+.st-card h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--teal-dark); }
+.st-tabs { display: flex; flex-wrap: wrap; gap: 6px; scrollbar-width: none; } .st-tabs::-webkit-scrollbar { display: none; }
+.st-tab { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.st-tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.st-tpls { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.st-tpl { text-align: left; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--border); background: #fff; font: inherit; cursor: pointer; }
+.st-tpl b { display: block; font-size: 13px; } .st-tpl small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; line-height: 1.35; }
+.st-tpl.active { border-color: var(--teal); background: #eefaf7; } .st-tpl:hover { border-color: var(--teal); }
+.st-field { display: grid; gap: 5px; } .st-field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.st-field input[type=text], .st-field input[type=number], .st-field select, .st-field textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 9px; font: inherit; font-size: 13px; background: #fff; }
+.st-field textarea { min-height: 70px; resize: vertical; }
+.st-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.st-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 4px; border-radius: 999px; background: #eef2ff; font-size: 12px; font-weight: 600; }
+.st-chip img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: #fff; } .st-chip button { border: 0; background: none; cursor: pointer; font-size: 15px; color: var(--muted); }
+.st-drop { border: 2px dashed #b8c9cf; border-radius: 12px; padding: 14px; text-align: center; font-size: 13px; color: var(--muted); cursor: pointer; background: #f8fbfb; }
+.st-drop.over { border-color: var(--teal); background: #eefaf7; } .st-drop b { color: var(--teal-dark); }
+.st-brand { display: grid; gap: 10px; } .st-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.st-brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.st-logo-prev { display: flex; align-items: center; gap: 10px; } .st-logo-prev img { height: 34px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; }
+details.st-fold > summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--navy); list-style: none; display: flex; justify-content: space-between; }
+details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > summary::after { content: "\25B4"; }
+.st-results { display: grid; gap: 14px; }
+.st-empty { border: 2px dashed var(--border); border-radius: 14px; padding: 44px 20px; text-align: center; color: var(--muted); font-size: 14px; background: #fff; }
+.st-res { background: #fff; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; display: grid; }
+.st-res img.st-final { width: 100%; display: block; background: #f1f5f9; }
+.st-res-body { padding: 12px 14px; display: grid; gap: 8px; } .st-res-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.st-slides { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.st-caption { width: 100%; min-height: 150px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font: inherit; font-size: 13px; line-height: 1.5; resize: vertical; }
+.st-progress { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; } .st-spin { width: 16px; height: 16px; border: 2px solid #cbd5e1; border-top-color: var(--teal); border-radius: 50%; animation: st-sp .8s linear infinite; }
+@keyframes st-sp { to { transform: rotate(360deg); } }
+.st-err { background: #fef2f2; color: #b42318; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+.st-phone { background: #e5ddd5; border-radius: 18px; padding: 14px; max-width: 340px; }
+.st-bubble { background: #fff; border-radius: 10px 10px 10px 2px; padding: 6px; box-shadow: 0 1px 1px rgba(0, 0, 0, .13); font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.st-bubble img { width: 100%; border-radius: 6px; display: block; margin-bottom: 6px; } .st-bubble .pad { padding: 2px 6px; } .st-bubble .foot { color: #8696a0; font-size: 12px; padding: 4px 6px 2px; }
+.st-bubble .btnrow { border-top: 1px solid #e9edef; margin-top: 6px; }
+.st-bubble .wabtn { text-align: center; padding: 9px; color: #027eb5; font-weight: 600; border-top: 1px solid #e9edef; font-size: 13.5px; }
+.st-code { background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 12px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; overflow: auto; max-height: 320px; white-space: pre; }
+.st-warn { font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; line-height: 1.5; }
+.st-modal { position: fixed; inset: 0; z-index: 300; background: rgba(15, 23, 42, .5); display: grid; place-items: center; padding: 16px; }
+.st-modal-card { background: #fff; border-radius: 14px; width: min(860px, 100%); max-height: 88vh; display: flex; flex-direction: column; }
+.st-modal-head { padding: 14px 16px; border-bottom: 1px solid var(--border); display: grid; gap: 10px; } .st-modal-body { padding: 14px 16px; overflow: auto; } .st-modal-foot { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.st-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.st-pick-item { border: 2px solid var(--border); border-radius: 10px; overflow: hidden; cursor: pointer; background: #fff; position: relative; }
+.st-pick-item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #f1f5f9; } .st-pick-item span { display: block; padding: 5px 7px; font-size: 11px; line-height: 1.3; }
+.st-pick-item.sel { border-color: var(--teal); } .st-pick-item.sel::after { content: "\2713"; position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 13px; }
+.st-toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; z-index: 400; opacity: 0; transition: opacity .2s; pointer-events: none; } .st-toast.show { opacity: 1; }
+.st-tabbar { display: flex; gap: 4px; padding: 0 24px; background: #fff; border-bottom: 1px solid var(--border); overflow-x: auto; position: sticky; top: 0; z-index: 20; }
+.st-pt { padding: 13px 16px; border: 0; border-bottom: 3px solid transparent; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.st-pt.active { color: var(--teal-dark); border-bottom-color: var(--teal); }
+.st-sync { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12.5px; color: var(--muted); padding: 8px 12px; border-radius: 10px; background: #f1f7f6; }
+.st-sync b { color: var(--navy); } .st-sync .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
+.st-plan { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.st-plan-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.st-plan-card.is-today { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(14, 143, 126, .18); }
+.st-plan-card small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; } .st-plan-card h5 { font-size: 15px; } .st-plan-card p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.st-lib-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.st-lib-group { display: grid; gap: 10px; } .st-lib-group > h5 { font-size: 15px; display: flex; align-items: baseline; gap: 8px; } .st-lib-group > h5 small { color: var(--muted); font-weight: 500; font-size: 12px; }
+.st-lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.st-lib-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; display: grid; }
+.st-lib-thumbs { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 2px; background: #f1f5f9; } .st-lib-thumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; cursor: zoom-in; }
+.st-lib-body { padding: 10px 12px; display: grid; gap: 6px; } .st-lib-body b { font-size: 13.5px; } .st-lib-meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.st-lib-cap { font-size: 12.5px; color: #334155; max-height: 64px; overflow: hidden; white-space: pre-wrap; }
+.st-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eef2ff; font-size: 11px; font-weight: 600; color: #4338ca; }
+@media (max-width: 1100px) { .st-grid { grid-template-columns: minmax(0, 1fr); } .st-week { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .st-tabbar { padding: 0 8px; } .st-pt { padding: 12px 12px; font-size: 13px; }
+  .st-today { padding: 14px 16px; } .st-today h3 { font-size: 17px; } .st-today .st-btn { width: 100%; }
+  .st-card { padding: 14px; border-radius: 12px; }
+  .st-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; } .st-tab { white-space: nowrap; flex: 0 0 auto; }
+  .st-tpls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .st-field input[type=text], .st-field input[type=number], .st-field select, .st-field textarea, .st-modal-head input, .st-modal-head select { font-size: 16px; }
+  #generate { position: sticky; bottom: 10px; z-index: 15; box-shadow: 0 8px 20px rgba(18, 38, 63, .3); }
+  .st-modal { padding: 0; align-items: end; } .st-modal-card { width: 100%; max-height: 92vh; border-radius: 16px 16px 0 0; }
+  .st-modal-head .st-row2 { grid-template-columns: 1fr !important; }
+  .st-slides { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .st-res-actions .st-btn { flex: 1 1 auto; } .st-phone { max-width: 100%; }
+  .st-toast { left: 12px; right: 12px; bottom: 76px; text-align: center; }
+  .st-lib-grid, .st-plan { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) { .st-wrap { padding: 14px 12px 50px; } .st-row2, .st-brand-grid { grid-template-columns: 1fr; } .st-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo"><h1>Arambhika</h1><p>Enablers Dashboard</p></div>
+  <nav class="sidebar-nav">
+    <a href="studio.html" class="nav-link active"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Daily Studio</a>
+    <a href="image-generator.html" class="nav-link"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15l-5-5L5 21"/></svg>Content Generator</a>
+  </nav>
+</aside>
+<div class="sidebar-overlay" id="sbOverlay" onclick="document.querySelector('.sidebar').classList.remove('open');this.classList.remove('show')"></div>
+
+<div class="main">
+  <div class="topbar">
+    <h2>Daily Marketing Studio</h2>
+    <button class="btn btn-sm" onclick="fetch('/api/auth/logout',{method:'POST'}).finally(function(){location.replace('login.html')});" title="Sign out">&#9211; Logout</button>
+  </div>
+
+  <div class="st-tabbar" id="pageTabs" role="tablist">
+    <button type="button" class="st-pt active" data-pt="create" role="tab">Create</button>
+    <button type="button" class="st-pt" data-pt="plan" role="tab">Weekly plan</button>
+    <button type="button" class="st-pt" data-pt="library" role="tab">Library</button>
+  </div>
+
+  <div class="st-wrap" id="pt-create">
+    <section class="st-today" aria-label="Today's idea">
+      <div><small id="todayDay">Today</small><h3 id="todayTitle">Today's post</h3><p id="todayText"></p></div>
+      <button type="button" class="st-btn light" id="useToday">Use today's idea</button>
+    </section>
+
+    <div class="st-grid">
+      <div class="st-card" id="builder">
+        <h4>1 &middot; What are you posting?</h4>
+        <div class="st-tabs" id="channels">
+          <button type="button" class="st-tab active" data-ch="ig-image">Instagram image</button>
+          <button type="button" class="st-tab" data-ch="ig-carousel">Instagram carousel</button>
+          <button type="button" class="st-tab" data-ch="wa-message">WhatsApp message</button>
+          <button type="button" class="st-tab" data-ch="wa-template">WhatsApp template (API)</button>
+        </div>
+
+        <h4>2 &middot; Pick a template</h4>
+        <div class="st-tpls" id="tpls"></div>
+
+        <div id="creativeInputs" style="display:grid;gap:14px">
+          <div class="st-sync" id="syncBar"><span class="dot"></span><span>Products from the website: <b id="syncWhen">checking...</b></span><button type="button" class="st-btn ghost sm" id="syncNow">Refresh now</button></div>
+          <h4>3 &middot; Products and photos</h4>
+          <div>
+            <div class="st-chips" id="selChips"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+              <button type="button" class="st-btn ghost sm" id="openPicker">Choose products</button>
+              <button type="button" class="st-btn ghost sm" id="clearProducts">Clear</button>
+            </div>
+          </div>
+          <div class="st-drop" id="drop"><b>Upload your own photo</b> or drop it here<br><small>JPG, PNG or WebP, up to 20 MB. Used as a reference for the image.</small><input type="file" id="fileIn" accept="image/*" multiple hidden></div>
+          <div class="st-chips" id="upChips"></div>
+
+          <h4>4 &middot; Make it yours</h4>
+          <div class="st-field"><label for="headline">Headline or offer (optional)</label><input type="text" id="headline" placeholder="e.g. Bulk nickel strip. Best factory price." maxlength="80"></div>
+          <div class="st-field"><label for="extra">Anything else to include</label><textarea id="extra" placeholder="e.g. Ready stock, dispatch in 24 hours, GST invoice"></textarea></div>
+          <div class="st-row2">
+            <div class="st-field"><label for="tone">Tone</label><select id="tone"><option>Professional</option><option>Friendly</option><option>Urgent offer</option><option>Educational</option></select></div>
+            <div class="st-field"><label for="lang">Language</label><select id="lang"><option>English</option><option>Hinglish</option><option>Hindi</option></select></div>
+          </div>
+          <div class="st-row2">
+            <div class="st-field" id="slidesBox" style="display:none"><label for="slides">Carousel slides</label><select id="slides"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option></select></div>
+            <div class="st-field" id="festBox" style="display:none"><label for="festival">Festival or occasion</label><input type="text" id="festival" value="Diwali" maxlength="40"></div>
+          </div>
+          <label class="st-check"><input type="checkbox" id="aiText" checked> Let the image carry the headline text</label>
+          <label class="st-check"><input type="checkbox" id="incDesc" checked> Include the product description (specs) in the image brief, caption and message</label>
+        </div>
+
+        <details class="st-fold" id="brandFold" open>
+          <summary>Brand details on the image</summary>
+          <div class="st-brand" style="margin-top:12px">
+            <label class="st-check"><input type="checkbox" id="brOn" checked> Add a brand strip to every image</label>
+            <div class="st-brand-grid">
+              <div class="st-field"><label for="brWa">WhatsApp</label><input type="text" id="brWa"></div>
+              <div class="st-field"><label for="brWeb">Website</label><input type="text" id="brWeb"></div>
+              <div class="st-field"><label for="brLoc">Location</label><input type="text" id="brLoc"></div>
+              <div class="st-field"><label for="brStyle">Strip style</label><select id="brStyle"><option value="navy">Navy</option><option value="teal">Teal</option><option value="white">White</option></select></div>
+            </div>
+            <div class="st-brand-grid">
+              <label class="st-check"><input type="checkbox" id="brShowLogo" checked> Logo</label>
+              <label class="st-check"><input type="checkbox" id="brShowWa" checked> WhatsApp</label>
+              <label class="st-check"><input type="checkbox" id="brShowWeb" checked> Website</label>
+              <label class="st-check"><input type="checkbox" id="brShowLoc" checked> Location</label>
+            </div>
+            <div class="st-logo-prev"><img id="brLogoImg" alt="Logo"><button type="button" class="st-btn ghost sm" id="brLogoBtn">Upload a different logo</button><button type="button" class="st-btn ghost sm" id="brLogoReset">Reset</button><input type="file" id="brLogoIn" accept="image/*" hidden></div>
+          </div>
+        </details>
+
+        <button type="button" class="st-btn" id="generate" style="padding:12px 18px;font-size:14px">Generate</button>
+      </div>
+
+      <div class="st-results" id="results">
+        <div class="st-empty" id="empty">Pick a template, choose a product and press <b>Generate</b>.<br>Your image, caption and WhatsApp message appear here, ready to download or copy.</div>
+      </div>
+    </div>
+  </div>
+  <div class="st-wrap" id="pt-plan" hidden>
+    <div class="st-card"><h4>This week's plan</h4><p style="font-size:13px;color:var(--muted)">One idea for each day, so there is always something ready to post. Tap "Use" to set it up in the Create tab.</p></div>
+    <div class="st-plan" id="week"></div>
+  </div>
+
+  <div class="st-wrap" id="pt-library" hidden>
+    <div class="st-card">
+      <h4>Library</h4>
+      <p style="font-size:13px;color:var(--muted)">Every image you generate is saved here automatically, sorted by product category.</p>
+      <div class="st-lib-filters" id="libCats"></div>
+      <div class="st-field" style="max-width:240px"><label for="libChannel">Channel</label><select id="libChannel"><option value="">All channels</option><option value="ig-image">Instagram image</option><option value="ig-carousel">Instagram carousel</option><option value="wa-message">WhatsApp message</option></select></div>
+    </div>
+    <div id="libList"></div>
+  </div>
+</div>
+<div class="st-toast" id="toast" role="status"></div>
+
+<script src="js/nav.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var toastTimer;
+  function toast(t) { var el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2200); }
+  function copy(text, msg) {
+    var done = function () { toast(msg || 'Copied'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+    else fallback();
+    function fallback() { var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Press Ctrl+C to copy'); } t.remove(); }
+  }
+  var MODEL = 'dola-seedream-5-0-flash-260915';
+
+  /* ---------------- brand kit (kept in this browser) ---------------- */
+  var BRAND_DEFAULT = { on: true, wa: '+91 93155 45821', web: 'www.arambhika.com', loc: 'Sector 116, Noida, UP', style: 'navy', showLogo: true, showWa: true, showWeb: true, showLoc: true, logo: '/assets/arambhika-logo.jpeg' };
+  var brand = Object.assign({}, BRAND_DEFAULT);
+  try { brand = Object.assign(brand, JSON.parse(localStorage.getItem('studioBrand') || '{}')); } catch (e) {}
+  function saveBrand() { try { localStorage.setItem('studioBrand', JSON.stringify(brand)); } catch (e) {} }
+  function brandToForm() {
+    $('brOn').checked = brand.on; $('brWa').value = brand.wa; $('brWeb').value = brand.web; $('brLoc').value = brand.loc; $('brStyle').value = brand.style;
+    $('brShowLogo').checked = brand.showLogo; $('brShowWa').checked = brand.showWa; $('brShowWeb').checked = brand.showWeb; $('brShowLoc').checked = brand.showLoc; $('brLogoImg').src = brand.logo;
+  }
+  function formToBrand() {
+    brand.on = $('brOn').checked; brand.wa = $('brWa').value.trim(); brand.web = $('brWeb').value.trim(); brand.loc = $('brLoc').value.trim(); brand.style = $('brStyle').value;
+    brand.showLogo = $('brShowLogo').checked; brand.showWa = $('brShowWa').checked; brand.showWeb = $('brShowWeb').checked; brand.showLoc = $('brShowLoc').checked;
+    saveBrand(); repaintAll();
+  }
+  ['brOn', 'brWa', 'brWeb', 'brLoc', 'brStyle', 'brShowLogo', 'brShowWa', 'brShowWeb', 'brShowLoc'].forEach(function (id) { $(id).addEventListener('input', formToBrand); $(id).addEventListener('change', formToBrand); });
+  $('brLogoBtn').addEventListener('click', function () { $('brLogoIn').click(); });
+  $('brLogoReset').addEventListener('click', function () { brand.logo = BRAND_DEFAULT.logo; $('brLogoImg').src = brand.logo; saveBrand(); repaintAll(); });
+  $('brLogoIn').addEventListener('change', function () {
+    var f = this.files[0]; if (!f) return;
+    upload(f).then(function (u) { brand.logo = u.url; $('brLogoImg').src = u.url; saveBrand(); repaintAll(); toast('Logo updated'); }).catch(function (e) { toast(e.message); });
+    this.value = '';
+  });
+  brandToForm();
+
+  /* ---------------- upload ---------------- */
+  function upload(file) {
+    var fd = new FormData(); fd.append('file', file);
+    return fetch('/api/uploads', { method: 'POST', body: fd }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Upload failed'); return j; }); });
+  }
+  var uploads = [];
+  function drawUploads() {
+    $('upChips').innerHTML = uploads.map(function (u, i) { return '<span class="st-chip"><img src="' + esc(u.url) + '" alt=""><span>Your photo ' + (i + 1) + '</span><button type="button" data-rm-up="' + i + '" aria-label="Remove">&times;</button></span>'; }).join('');
+  }
+  function addFiles(files) {
+    Array.prototype.forEach.call(files, function (f) {
+      if (!/^image\//.test(f.type)) { toast('Only image files'); return; }
+      upload(f).then(function (u) { uploads.push(u); drawUploads(); toast('Photo added'); }).catch(function (e) { toast(e.message); });
+    });
+  }
+  $('drop').addEventListener('click', function () { $('fileIn').click(); });
+  $('fileIn').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
+  ['dragenter', 'dragover'].forEach(function (ev) { $('drop').addEventListener(ev, function (e) { e.preventDefault(); this.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { $('drop').addEventListener(ev, function (e) { e.preventDefault(); this.classList.remove('over'); if (ev === 'drop') addFiles(e.dataTransfer.files); }); });
+  $('upChips').addEventListener('click', function (e) { var b = e.target.closest('[data-rm-up]'); if (b) { uploads.splice(Number(b.dataset.rmUp), 1); drawUploads(); } });
+
+  /* ---------------- products ---------------- */
+  var products = [], selected = [];
+  function firstImage(p) { try { return JSON.parse(p.images || '[]')[0] || ''; } catch (e) { return ''; } }
+  function loadProducts() {
+    return fetch('/api/products/sync-if-stale', { method: 'POST' }).catch(function () {}).then(function () { return fetch('/api/products'); })
+      .then(function (r) { return r.json(); }).then(function (b) { products = (b.data || []).filter(function (p) { return firstImage(p); }); }).catch(function () { products = []; });
+  }
+  function drawChips() {
+    $('selChips').innerHTML = selected.length ? selected.map(function (p) { return '<span class="st-chip"><img src="/uploads/' + esc(firstImage(p)) + '" alt=""><span>' + esc(p.name.slice(0, 34)) + '</span><button type="button" data-rm="' + p.id + '" aria-label="Remove">&times;</button></span>'; }).join('') : '<span style="font-size:12.5px;color:var(--muted)">No product chosen. The image will be a general Arambhika brand creative.</span>';
+  }
+  $('selChips').addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (b) { selected = selected.filter(function (p) { return String(p.id) !== b.dataset.rm; }); drawChips(); } });
+  $('clearProducts').addEventListener('click', function () { selected = []; drawChips(); });
+
+  var pickTmp = [];
+  $('openPicker').addEventListener('click', function () {
+    pickTmp = selected.slice();
+    var cats = Array.from(new Set(products.map(function (p) { return p.category; }).filter(Boolean)));
+    var cols = new Set(); products.forEach(function (p) { try { JSON.parse(p.collections || '[]').forEach(function (n) { cols.add(n); }); } catch (e) {} });
+    var m = document.createElement('div'); m.className = 'st-modal';
+    m.innerHTML = '<div class="st-modal-card" role="dialog" aria-modal="true" aria-label="Choose products"><div class="st-modal-head"><b>Choose products (up to 8)</b><div class="st-row2" style="grid-template-columns:1.4fr 1fr 1fr"><input type="text" id="pkQ" placeholder="Search name or SKU" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px"><select id="pkCat" style="padding:8px;border:1px solid var(--border);border-radius:8px"><option value="">All categories</option>' + cats.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') + '</select><select id="pkCol" style="padding:8px;border:1px solid var(--border);border-radius:8px"><option value="">All collections</option>' + Array.from(cols).sort().map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') + '</select></div></div><div class="st-modal-body"><div class="st-pick" id="pkGrid"></div></div><div class="st-modal-foot"><span id="pkCount" style="font-size:13px;color:var(--muted)"></span><span style="display:flex;gap:8px"><button type="button" class="st-btn ghost sm" id="pkCancel">Cancel</button><button type="button" class="st-btn sm" id="pkDone">Use these</button></span></div></div>';
+    document.body.appendChild(m);
+    function draw() {
+      var q = $('pkQ').value.toLowerCase(), cat = $('pkCat').value, col = $('pkCol').value;
+      var list = products.filter(function (p) {
+        var inCol = true; if (col) { try { inCol = JSON.parse(p.collections || '[]').indexOf(col) > -1; } catch (e) { inCol = false; } }
+        return (!cat || p.category === cat) && inCol && (!q || (p.name + ' ' + p.sku).toLowerCase().indexOf(q) > -1);
+      });
+      $('pkGrid').innerHTML = list.map(function (p) { var on = pickTmp.some(function (x) { return x.id === p.id; }); return '<div class="st-pick-item ' + (on ? 'sel' : '') + '" data-id="' + p.id + '"><img src="/uploads/' + esc(firstImage(p)) + '" alt="" loading="lazy"><span>' + esc(p.name.slice(0, 48)) + '</span></div>'; }).join('') || '<p style="font-size:13px;color:var(--muted)">No products match.</p>';
+      $('pkCount').textContent = pickTmp.length + ' selected';
+    }
+    ['pkQ', 'pkCat', 'pkCol'].forEach(function (id) { $(id).addEventListener('input', draw); });
+    $('pkGrid').addEventListener('click', function (e) {
+      var it = e.target.closest('[data-id]'); if (!it) return; var id = Number(it.dataset.id);
+      var at = pickTmp.findIndex(function (x) { return x.id === id; });
+      if (at > -1) pickTmp.splice(at, 1); else if (pickTmp.length < 8) pickTmp.push(products.find(function (p) { return p.id === id; })); else toast('Up to 8 products');
+      draw();
+    });
+    $('pkCancel').addEventListener('click', function () { m.remove(); });
+    m.addEventListener('click', function (e) { if (e.target === m) m.remove(); });
+    $('pkDone').addEventListener('click', function () { selected = pickTmp.slice(); drawChips(); m.remove(); });
+    draw();
+  });
+
+  /* ---------------- templates ---------------- */
+  var BRAND_STYLE = 'Premium B2B industrial marketing creative for Arambhika, an Indian manufacturer and supplier of nickel strips, copper busbars, BMS and lithium battery components. Clean modern look, deep navy and teal colour palette with white, soft studio lighting, sharp macro detail and realistic metal textures. Square 1:1 composition. Keep the bottom 14% of the picture calm and uncluttered (a contact strip is added afterwards). Do not draw any logo, phone number, website address or small print.';
+  function facts(ctx) {
+    if (!ctx.products.length) return '';
+    return ctx.products.map(function (p) {
+      var bits = [p.name]; if (p.category) bits.push('category ' + p.category); if (p.price) bits.push('price Rs ' + p.price + ' per ' + (p.unit || 'unit')); if (p.min_quantity > 1) bits.push('minimum order ' + p.min_quantity);
+      if (ctx.incDesc !== false) { if (p.dimensions) bits.push(p.dimensions); var d = String(p.details || '').replace(/\s+/g, ' ').trim(); if (d) bits.push('description: ' + d.slice(0, 220)); }
+      return bits.join(', ');
+    }).join('; ');
+  }
+  function headlineLine(ctx, fallback) { var h = ctx.headline || fallback; return ctx.aiText && h ? ' Include the headline "' + h + '" exactly, in bold clean sans-serif, large and high contrast.' : ' Do not draw any text.'; }
+  var refNote = function (ctx) { return ctx.refs ? ' Use the supplied reference photo(s) as the real product, keep it accurate and unaltered.' : ''; };
+  var T = [
+    { id: 'spotlight', ch: ['ig-image'], name: 'Product spotlight', desc: 'One hero shot of a product', day: 1, build: function (c) { return BRAND_STYLE + ' A hero product shot of ' + (facts(c) || 'a nickel strip coil and copper busbars') + ' on a dark reflective surface with a soft teal glow and shallow depth of field.' + headlineLine(c, c.products[0] ? c.products[0].name : '') + refNote(c) + (c.extra ? ' Also: ' + c.extra + '.' : ''); }, brief: 'Product spotlight post' },
+    { id: 'offer', ch: ['ig-image'], name: 'Bulk quote offer', desc: 'Offer / quote layout', day: 4, build: function (c) { return BRAND_STYLE + ' An offer-style layout with ' + (facts(c) || 'nickel strip coils and copper busbars') + ' on the right and bold geometric shapes on the left for text, energetic but professional.' + headlineLine(c, 'Bulk orders. Best factory price.') + refNote(c) + (c.extra ? ' Also: ' + c.extra + '.' : ''); }, brief: 'Bulk quote offer, call to action: get a quote on WhatsApp' },
+    { id: 'arrival', ch: ['ig-image'], name: 'New arrival', desc: 'Now in stock announcement', day: 0, build: function (c) { return BRAND_STYLE + ' A "new arrival" announcement showing ' + (facts(c) || 'new battery components') + ' with a modern spotlight and a sense of freshness, a ribbon or badge shape reading NEW.' + headlineLine(c, 'New in stock') + refNote(c); }, brief: 'New arrival announcement' },
+    { id: 'tip', ch: ['ig-image'], name: 'Tech tip', desc: 'Educational explainer', day: 2, build: function (c) { return BRAND_STYLE + ' An educational infographic-style visual about choosing the right nickel strip for a lithium battery pack, with a clean diagram of cells joined by a strip, simple icons, plenty of whitespace.' + headlineLine(c, 'Pick the right strip') + refNote(c) + (facts(c) ? ' Relate it to ' + facts(c) + '.' : ''); }, brief: 'Educational tip about nickel strip selection for battery packs' },
+    { id: 'compare', ch: ['ig-image'], name: 'Plated vs pure', desc: 'Side-by-side comparison', day: 6, build: function (c) { return BRAND_STYLE + ' A split comparison image: nickel-plated strip on the left and pure nickel strip on the right, labelled clearly, same lighting, symmetrical layout.' + headlineLine(c, 'Plated vs Pure nickel') + refNote(c); }, brief: 'Comparison of nickel plated and pure nickel strip' },
+    { id: 'factory', ch: ['ig-image'], name: 'Made in India', desc: 'Behind the scenes', day: 5, build: function (c) { return BRAND_STYLE + ' A behind-the-scenes manufacturing scene: precision strip slitting and spot welding of a battery pack in a clean Indian factory, warm industrial light, authentic and credible.' + headlineLine(c, 'Made in India. Built to last.') + refNote(c); }, brief: 'Behind the scenes of manufacturing' },
+    { id: 'usecase', ch: ['ig-image'], name: 'Use case', desc: 'EV / ESS / e-rickshaw pack', day: 3, build: function (c) { return BRAND_STYLE + ' ' + (facts(c) || 'Nickel strip and copper busbar') + ' shown inside a finished lithium battery pack for an electric two-wheeler or solar energy storage system, cells neatly connected, premium product photography.' + headlineLine(c, 'Powering EV and ESS packs') + refNote(c); }, brief: 'Use case in EV and ESS battery packs' },
+    { id: 'festival', ch: ['ig-image'], name: 'Festival greeting', desc: 'Wishes with brand look', day: 6, build: function (c) { return BRAND_STYLE + ' A tasteful ' + (c.festival || 'festival') + ' greeting in the brand colours, subtle festive motifs, a few glowing battery cells and metal strips as an elegant nod to our industry, warm and uncluttered.' + headlineLine(c, 'Happy ' + (c.festival || 'Festival')); }, brief: 'Festival greeting for ' },
+    { id: 'car-why', ch: ['ig-carousel'], name: '5 reasons to choose us', desc: 'Trust-building carousel', day: 3, slides: ['Hook slide: a bold title card that makes a battery pack maker want to swipe.', 'Quality: close-up of precision nickel strip with clean edges, consistent thickness.', 'Range: an organised flat-lay of strips, busbars and BMS boards.', 'B2B service: bulk pricing, GST invoice and fast dispatch from Noida, shown as three clean icons.', 'Call to action: get a quote on WhatsApp, a friendly closing card.'], brief: 'Carousel: reasons to choose Arambhika' },
+    { id: 'car-choose', ch: ['ig-carousel'], name: 'How to choose nickel strip', desc: 'Step-by-step guide', day: 5, slides: ['Hook: "How to choose a nickel strip" title card.', 'Step 1: match the strip to the cell format (18650, 21700, 32650).', 'Step 2: pick the width and thickness for your pack current.', 'Step 3: plated or pure nickel, when to use which.', 'Step 4: spot welding versus laser welding.', 'Call to action: need help choosing, message us on WhatsApp.'], brief: 'Carousel: how to choose a nickel strip' },
+    { id: 'car-range', ch: ['ig-carousel'], name: 'Product range', desc: 'One slide per product', day: 1, perProduct: true, brief: 'Carousel: product range' },
+    { id: 'car-weld', ch: ['ig-carousel'], name: 'Spot welding tips', desc: 'Practical tips', day: 2, slides: ['Hook: "5 spot welding tips for stronger battery packs".', 'Tip 1: clean strip and cell surfaces before welding.', 'Tip 2: set the right pulse energy for the strip thickness.', 'Tip 3: use two weld spots per cell for reliability.', 'Tip 4: check weld strength with a pull test.', 'Call to action: get tested strips from Arambhika.'], brief: 'Carousel: spot welding tips' },
+    { id: 'wa-daily', ch: ['wa-message'], name: 'Daily offer', desc: 'Short daily broadcast', day: 4, text: function (c) { var p = c.products[0]; return '*Today at Arambhika*\n\n' + (p ? p.name + (p.price ? ' at Rs ' + p.price + ' per ' + (p.unit || 'kg') : '') : 'Nickel strips, copper busbars and BMS') + '.\n' + (c.headline ? c.headline + '\n' : '') + (c.extra ? c.extra + '\n' : '') + '\nBulk orders welcome. GST invoice, dispatch from Noida.\nReply to this message or call us for a quote.\n' + brand.web; }, brief: 'Daily offer broadcast' },
+    { id: 'wa-price', ch: ['wa-message'], name: 'Price update', desc: 'Rates for the week', day: 0, text: function (c) { var lines = c.products.slice(0, 6).map(function (p) { return '- ' + p.name + (p.price ? ': Rs ' + p.price + '/' + (p.unit || 'kg') : ''); }); return '*Price update*\n\n' + (lines.length ? lines.join('\n') : 'Rates on nickel strip and copper busbar are updated.') + '\n\n' + (c.extra ? c.extra + '\n\n' : '') + 'Message us for bulk rates. ' + brand.web; }, brief: 'Price update message' },
+    { id: 'wa-stock', ch: ['wa-message'], name: 'Back in stock', desc: 'Restock alert', day: 0, text: function (c) { var p = c.products[0]; return '*Back in stock*\n\n' + (p ? p.name : 'Your favourite strips') + ' is available again.\n' + (c.extra ? c.extra + '\n' : '') + '\nOrder now before it sells out: ' + brand.web; }, brief: 'Back in stock alert' },
+    { id: 'wa-launch', ch: ['wa-message'], name: 'New product', desc: 'Launch announcement', day: 0, text: function (c) { var p = c.products[0]; return '*New from Arambhika*\n\n' + (p ? p.name : 'New battery components') + (p && p.details ? '\n' + String(p.details).split('\n')[0].slice(0, 140) : '') + '\n' + (c.headline ? c.headline + '\n' : '') + '\nSee it here: ' + brand.web + '\nAsk us for a sample or a bulk quote.'; }, brief: 'New product launch message' },
+    { id: 'wa-fest', ch: ['wa-message'], name: 'Festival wishes', desc: 'Warm greeting', day: 6, text: function (c) { return 'Warm ' + (c.festival || 'festival') + ' wishes from all of us at *Arambhika*.\n\nThank you for trusting us with your battery components. We are here whenever you need nickel strip, busbars or BMS.\n\n' + brand.web; }, brief: 'Festival greeting' },
+    { id: 'wa-quote', ch: ['wa-message'], name: 'Quote follow-up', desc: 'Nudge after a quote', day: 3, text: function (c) { return 'Hello, this is *Arambhika*.\n\nA quick follow-up on the quote we shared' + (c.products[0] ? ' for ' + c.products[0].name : '') + '. Do you have any questions, or shall we reserve the stock for you?\n\nReply here and we will help right away.'; }, brief: 'Follow-up on a shared quote' },
+    { id: 'wa-catalog', ch: ['wa-message'], name: 'Catalogue share', desc: 'Share the full range', day: 1, text: function () { return '*Arambhika product catalogue*\n\nNickel strip (plated and pure), copper and aluminium busbars, BMS and lithium cells, with GST invoice and delivery across India.\n\nBrowse everything: ' + brand.web + '\nBulk quote on WhatsApp: ' + brand.wa; }, brief: 'Catalogue share' },
+    { id: 'wt-offer', ch: ['wa-template'], name: 'Daily offer template', desc: 'Marketing, image header', tpl: { name: 'arambhika_daily_offer', header: 'image', headerText: '', body: 'Hello {{1}}, today\'s offer from Arambhika: {{2}} at Rs {{3}} per kg. Bulk orders welcome with GST invoice and fast dispatch.', examples: ['Rahul', 'Nickel Strip Plated 1P 8x0.15 mm', '480'], footer: 'Arambhika, Noida', buttons: [{ type: 'url', text: 'View products', url: 'https://www.arambhika.com' }, { type: 'quick', text: 'Get a quote' }] } },
+    { id: 'wt-price', ch: ['wa-template'], name: 'Price update template', desc: 'Marketing, text header', tpl: { name: 'arambhika_price_update', header: 'text', headerText: 'Price update', body: 'Hello {{1}}, rates on {{2}} have been updated. Message us for the latest bulk price.', examples: ['Rahul', 'nickel strip'], footer: 'Arambhika', buttons: [{ type: 'url', text: 'See rates', url: 'https://www.arambhika.com' }] } },
+    { id: 'wt-stock', ch: ['wa-template'], name: 'Back in stock template', desc: 'Marketing, image header', tpl: { name: 'arambhika_back_in_stock', header: 'image', headerText: '', body: 'Good news {{1}}! {{2}} is back in stock. Order now and we will dispatch quickly.', examples: ['Rahul', 'Copper Bus Bar 60x20x2mm'], footer: 'Arambhika', buttons: [{ type: 'url', text: 'Order now', url: 'https://www.arambhika.com' }] } },
+    { id: 'wt-fest', ch: ['wa-template'], name: 'Festival template', desc: 'Marketing, text only', tpl: { name: 'arambhika_festival_wishes', header: 'none', headerText: '', body: 'Warm {{1}} wishes from the Arambhika team. Thank you for your trust, {{2}}. We are here for all your battery component needs.', examples: ['Diwali', 'Rahul'], footer: 'Arambhika', buttons: [{ type: 'call', text: 'Call us', phone: '+919315545821' }] } }
+  ];
+  T.forEach(function (t) { if (!t.ch) t.ch = ['wa-template']; });
+  var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var PLAN = { 1: ['spotlight', 'ig-image', 'Product spotlight', 'Start the week with one hero product.'], 2: ['tip', 'ig-image', 'Tech tip', 'Teach something useful to battery pack makers.'], 3: ['usecase', 'ig-image', 'Use case', 'Show the product inside a real battery pack.'], 4: ['offer', 'ig-image', 'Bulk quote offer', 'Push an offer or a price to move stock.'], 5: ['car-choose', 'ig-carousel', 'How to choose (carousel)', 'A swipeable guide people save and share.'], 6: ['factory', 'ig-image', 'Made in India', 'Show the factory and build trust.'], 0: ['wa-catalog', 'wa-message', 'WhatsApp catalogue share', 'Weekly catalogue message for your broadcast list.'] };
+  var channel = 'ig-image', tplId = 'spotlight';
+  var CHANNEL_LABEL = { 'ig-image': 'Instagram image', 'ig-carousel': 'Instagram carousel', 'wa-message': 'WhatsApp message', 'wa-template': 'WhatsApp template' };
+
+  function drawWeek() {
+    var today = new Date().getDay();
+    $('week').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(function (d) { var p = PLAN[d]; return '<div class="st-plan-card ' + (d === today ? 'is-today' : '') + '"><small>' + DAYS[d] + (d === today ? ' &middot; today' : '') + '</small><h5>' + esc(p[2]) + '</h5><p>' + esc(p[3]) + '</p><span class="st-pill">' + esc(CHANNEL_LABEL[p[1]]) + '</span><button type="button" class="st-btn sm" data-day="' + d + '">Use</button></div>'; }).join('');
+    var tp = PLAN[today];
+    $('todayDay').textContent = DAYS[today] + "'s idea"; $('todayTitle').textContent = tp[2]; $('todayText').textContent = tp[3] + ' One click sets everything up; add a product and press Generate.';
+  }
+  function applyPlan(d) { var p = PLAN[d]; showTab('create'); setChannel(p[1]); chooseTemplate(p[0]); window.scrollTo({ top: $('builder').offsetTop - 70, behavior: 'smooth' }); }
+  $('week').addEventListener('click', function (e) { var b = e.target.closest('[data-day]'); if (b) applyPlan(Number(b.dataset.day)); });
+  $('useToday').addEventListener('click', function () { applyPlan(new Date().getDay()); });
+
+  function setChannel(ch) {
+    channel = ch;
+    Array.prototype.forEach.call($('channels').children, function (b) { b.classList.toggle('active', b.dataset.ch === ch); });
+    var first = T.find(function (t) { return t.ch.indexOf(ch) > -1; }); drawTpls(); chooseTemplate(first.id);
+  }
+  $('channels').addEventListener('click', function (e) { var b = e.target.closest('[data-ch]'); if (b) setChannel(b.dataset.ch); });
+  function drawTpls() {
+    $('tpls').innerHTML = T.filter(function (t) { return t.ch.indexOf(channel) > -1; }).map(function (t) { return '<button type="button" class="st-tpl ' + (t.id === tplId ? 'active' : '') + '" data-tpl="' + t.id + '"><b>' + esc(t.name) + '</b><small>' + esc(t.desc) + '</small></button>'; }).join('');
+  }
+  function curTpl() { return T.find(function (t) { return t.id === tplId; }); }
+  function chooseTemplate(id) {
+    tplId = id; drawTpls();
+    var t = curTpl();
+    $('slidesBox').style.display = channel === 'ig-carousel' && !t.perProduct ? '' : 'none';
+    $('festBox').style.display = (id === 'festival' || id === 'wa-fest') ? '' : 'none';
+    $('creativeInputs').style.display = channel === 'wa-template' ? 'none' : 'grid';
+    $('generate').textContent = channel === 'wa-template' ? 'Design this template' : channel === 'wa-message' ? 'Write the message' : 'Generate';
+    if (channel === 'wa-template') openTemplateDesigner(t);
+  }
+  $('tpls').addEventListener('click', function (e) { var b = e.target.closest('[data-tpl]'); if (b) chooseTemplate(b.dataset.tpl); });
+
+  /* ---------------- generation ---------------- */
+  function ctx() {
+    return { products: selected, headline: $('headline').value.trim(), extra: $('extra').value.trim(), tone: $('tone').value, lang: $('lang').value, festival: $('festival').value.trim(), aiText: $('aiText').checked, incDesc: $('incDesc').checked, refs: selected.length + uploads.length };
+  }
+  function refFiles() { var r = selected.slice(0, 4).map(firstImage); uploads.forEach(function (u) { r.push(u.filename); }); return r.slice(0, 6); }
+  function post(url, body) { return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Request failed'); return j; }); }); }
+  function genImage(prompt) {
+    return post('/api/byteplus/generate-image', { model: MODEL, size: '2k', response_format: 'url', referenceImages: refFiles(), prompt: prompt, noLogo: true }).then(function (j) { var d = j.data && j.data[0]; if (!d || !d.url) throw new Error('No image came back'); return d.url; });
+  }
+  function slidePrompts(t, c) {
+    if (t.perProduct) {
+      var list = c.products.length ? c.products : [];
+      if (!list.length) throw new Error('Choose at least one product for this carousel.');
+      return list.map(function (p, i) { return BRAND_STYLE + ' Carousel slide ' + (i + 1) + ' of ' + (list.length + 1) + ': a product card for ' + facts({ products: [p] }) + ', centred hero shot, big clean name and price area.' + headlineLine({ aiText: c.aiText, headline: p.name }, p.name) + ' Use the supplied reference photo as the real product.'; }).concat([BRAND_STYLE + ' Final carousel slide: a closing call-to-action card, "Get a quote on WhatsApp", in the same visual style.' + (c.aiText ? ' Include the headline "Get a quote on WhatsApp" exactly.' : '')]);
+    }
+    var n = Math.min(Number($('slides').value), t.slides.length), arr = t.slides.slice(0, n - 1).concat([t.slides[t.slides.length - 1]]);
+    return arr.map(function (s, i) { return BRAND_STYLE + ' Carousel slide ' + (i + 1) + ' of ' + arr.length + ' with one consistent look across all slides. ' + s + ' ' + (facts(c) ? 'Product context: ' + facts(c) + '.' : '') + refNote(c) + (c.aiText ? ' Put a short bold headline for this slide on the image.' : ' Do not draw text.'); });
+  }
+  function captionFor(t, c) {
+    var brief = (t.brief || 'Marketing post') + (t.id === 'festival' ? c.festival : '') + '. ' + (c.headline ? 'Headline: ' + c.headline + '. ' : '') + (c.extra ? c.extra + '. ' : '') + 'Tone: ' + c.tone + '. Language: ' + c.lang + '.';
+    return post('/api/anthropic/generate-caption', { prompt: brief, productContext: facts(c) }).then(function (j) { return j.caption; });
+  }
+  function whatsappFor(t, c) {
+    return post('/api/anthropic/generate-whatsapp', { brief: (t.brief || 'Marketing message') + '. ' + (c.headline ? 'Headline: ' + c.headline + '. ' : '') + (c.extra || ''), productContext: facts(c), tone: c.tone, language: c.lang, brand: { wa: brand.wa, web: brand.web, loc: brand.loc } }).then(function (j) { return j.message; });
+  }
+
+  var resultsState = { items: [], captions: {} };
+  function setBusy(on, text) { $('generate').disabled = on; if (on) { $('results').innerHTML = '<div class="st-res"><div class="st-res-body"><div class="st-progress"><span class="st-spin"></span><span id="prog">' + esc(text || 'Working...') + '</span></div></div></div>'; } }
+  function setProg(t) { var p = $('prog'); if (p) p.textContent = t; }
+  function showError(e) { $('generate').disabled = false; $('results').innerHTML = '<div class="st-err">' + esc(e.message || String(e)) + '</div>'; }
+
+  $('generate').addEventListener('click', function () {
+    var t = curTpl(), c = ctx();
+    if (channel === 'wa-template') return openTemplateDesigner(t);
+    if (channel === 'wa-message') return runWhatsApp(t, c);
+    runInstagram(t, c);
+  });
+
+  function runInstagram(t, c) {
+    var prompts;
+    try { prompts = channel === 'ig-carousel' ? slidePrompts(t, c) : [t.build(c)]; } catch (e) { return showError(e); }
+    setBusy(true, 'Generating ' + prompts.length + ' image' + (prompts.length > 1 ? 's' : '') + '. This takes about 10 to 30 seconds each...');
+    var urls = [];
+    (function step(i) {
+      if (i >= prompts.length) return finishInstagram(t, c, urls);
+      setProg('Creating image ' + (i + 1) + ' of ' + prompts.length + '...');
+      genImage(prompts[i]).then(function (u) { urls.push(u); step(i + 1); }).catch(showError);
+    })(0);
+  }
+  function finishInstagram(t, c, urls) {
+    setProg('Writing the caption...');
+    captionFor(t, c).catch(function (e) { return 'Caption could not be written: ' + e.message; }).then(function (cap) {
+      $('generate').disabled = false;
+      resultsState = { items: urls.map(function (u) { return { src: u }; }), caption: cap, kind: channel, title: t.name, tplId: t.id, ctx: c };
+      renderResults();
+      Promise.all(resultsState.items.map(function (it) { return it.ready; })).then(function () { return saveToLibrary(); });
+    });
+  }
+  function runWhatsApp(t, c) {
+    var base = t.text(c);
+    $('generate').disabled = false;
+    resultsState = { kind: 'wa-message', message: base, items: [], title: t.name, tpl: t, tplId: t.id, ctx: c };
+    renderResults();
+  }
+
+  /* ---------------- brand strip on the picture ---------------- */
+  var imgCache = {};
+  function loadImg(src) { if (imgCache[src]) return imgCache[src]; imgCache[src] = new Promise(function (res, rej) { var i = new Image(); i.crossOrigin = 'anonymous'; i.onload = function () { res(i); }; i.onerror = function () { delete imgCache[src]; rej(new Error('Could not load the image')); }; i.src = src; }); return imgCache[src]; }
+  function fit(ctx2, text, maxW, size, weight) { var s = size; ctx2.font = weight + ' ' + s + 'px Inter, system-ui, sans-serif'; while (ctx2.measureText(text).width > maxW && s > 9) { s -= 1; ctx2.font = weight + ' ' + s + 'px Inter, system-ui, sans-serif'; } return s; }
+  function compose(src) {
+    return Promise.all([loadImg(src), brand.on && brand.showLogo ? loadImg(brand.logo).catch(function () { return null; }) : Promise.resolve(null)]).then(function (r) {
+      var img = r[0], logo = r[1], W = img.naturalWidth, H = img.naturalHeight;
+      var cv = document.createElement('canvas'); cv.width = W; cv.height = H; var g = cv.getContext('2d'); g.drawImage(img, 0, 0, W, H);
+      if (!brand.on) return cv.toDataURL('image/jpeg', 0.93);
+      var bh = Math.round(Math.min(W, H) * 0.12), y0 = H - bh, pad = Math.round(bh * 0.22);
+      var dark = brand.style !== 'white', bg = brand.style === 'teal' ? 'rgba(11,111,98,0.96)' : brand.style === 'white' ? 'rgba(255,255,255,0.97)' : 'rgba(18,38,63,0.96)';
+      g.fillStyle = bg; g.fillRect(0, y0, W, bh);
+      g.fillStyle = brand.style === 'white' ? '#0e8f7e' : 'rgba(255,255,255,0.35)'; g.fillRect(0, y0, W, Math.max(2, Math.round(bh * 0.04)));
+      var x = pad;
+      if (logo) { var lh = bh - pad * 2, lw = Math.round(logo.naturalWidth / logo.naturalHeight * lh); if (dark) { g.fillStyle = '#fff'; g.beginPath(); g.roundRect ? g.roundRect(x - 6, y0 + pad - 6, lw + 12, lh + 12, 8) : g.rect(x - 6, y0 + pad - 6, lw + 12, lh + 12); g.fill(); } g.drawImage(logo, x, y0 + pad, lw, lh); x += lw + pad * 1.6; }
+      var items = []; if (brand.showWa && brand.wa) items.push(['WHATSAPP', brand.wa]); if (brand.showWeb && brand.web) items.push(['WEBSITE', brand.web]); if (brand.showLoc && brand.loc) items.push(['LOCATION', brand.loc]);
+      if (items.length) {
+        var avail = W - x - pad, slot = avail / items.length, label = dark ? 'rgba(255,255,255,0.65)' : '#64748b', val = dark ? '#ffffff' : '#12263f';
+        items.forEach(function (it, i) {
+          var tx = x + slot * i, mw = slot - pad;
+          var ls = Math.round(bh * 0.16); g.font = '600 ' + ls + 'px Inter, system-ui, sans-serif'; g.fillStyle = label; g.textBaseline = 'alphabetic'; g.fillText(it[0], tx, y0 + bh * 0.4);
+          var vs = fit(g, it[1], mw, Math.round(bh * 0.27), 700); g.fillStyle = val; g.fillText(it[1], tx, y0 + bh * 0.4 + vs * 1.25);
+        });
+      }
+      return cv.toDataURL('image/jpeg', 0.93);
+    });
+  }
+  function repaintAll() { if (resultsState.items && resultsState.items.length) paintImages(); if (window.__tplDraw) window.__tplDraw(); }
+  function paintImages() {
+    resultsState.items.forEach(function (it, i) {
+      var el = document.querySelector('[data-final="' + i + '"]'); if (!el) return;
+      it.ready = compose(it.src).then(function (d) { it.data = d; el.src = d; }).catch(function (e) { el.alt = e.message; });
+    });
+  }
+
+  /* ---------------- results ---------------- */
+  function dl(i) { var it = resultsState.items[i]; if (!it || !it.data) return toast('Still preparing the image'); var a = document.createElement('a'); a.href = it.data; a.download = 'arambhika-' + (resultsState.title || 'post').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + (i + 1) + '.jpg'; document.body.appendChild(a); a.click(); a.remove(); }
+  function renderResults() {
+    var R = resultsState, html = '';
+    if (R.kind === 'wa-message') {
+      html += '<div class="st-res"><div class="st-res-body"><h4 style="color:var(--teal-dark);font-size:13px;text-transform:uppercase;letter-spacing:.08em">WhatsApp message</h4><div class="st-phone"><div class="st-bubble"><div class="pad" id="waPrev"></div></div></div><textarea class="st-caption" id="waText" aria-label="WhatsApp message">' + esc(R.message) + '</textarea><div class="st-res-actions"><button type="button" class="st-btn sm" id="waAI">Improve with AI</button><button type="button" class="st-btn ghost sm" id="waCopy">Copy message</button><a class="st-btn wa sm" id="waOpen" target="_blank" rel="noopener">Open in WhatsApp</a><button type="button" class="st-btn ghost sm" id="waImg">Add a matching image</button><button type="button" class="st-btn ghost sm" id="waSave">Save to Library</button></div><div class="st-warn">Sending to many customers at once needs the WhatsApp Business API with an approved template and the customer&rsquo;s opt-in. Use the <b>WhatsApp template (API)</b> tab to design one.</div></div></div><div id="waImgBox"></div>';
+    } else {
+      var slides = R.items.length > 1;
+      html += '<div class="' + (slides ? 'st-slides' : '') + '">' + R.items.map(function (it, i) { return '<div class="st-res"><img class="st-final" data-final="' + i + '" alt="Generated image ' + (i + 1) + '"><div class="st-res-body"><div class="st-res-actions"><button type="button" class="st-btn sm" data-dl="' + i + '">Download' + (slides ? ' ' + (i + 1) : '') + '</button></div></div></div>'; }).join('') + '</div>';
+      if (slides) html += '<div class="st-res-actions"><button type="button" class="st-btn" id="dlAll">Download all ' + R.items.length + ' slides</button></div>';
+      html += '<div class="st-res"><div class="st-res-body"><h4 style="color:var(--teal-dark);font-size:13px;text-transform:uppercase;letter-spacing:.08em">Caption</h4><textarea class="st-caption" id="capText">' + esc(R.caption || '') + '</textarea><div class="st-res-actions"><button type="button" class="st-btn ghost sm" id="capCopy">Copy caption</button><button type="button" class="st-btn ghost sm" id="capWa">Make a WhatsApp message from this</button></div></div></div>';
+    }
+    $('results').innerHTML = html;
+    if (R.kind === 'wa-message') bindWhatsApp(); else { paintImages(); bindInstagram(); }
+  }
+  function bindInstagram() {
+    $('results').onclick = function (e) {
+      var d = e.target.closest('[data-dl]'); if (d) return dl(Number(d.dataset.dl));
+      if (e.target.id === 'dlAll') resultsState.items.forEach(function (_, i) { setTimeout(function () { dl(i); }, i * 350); });
+      if (e.target.id === 'capCopy') copy($('capText').value, 'Caption copied');
+      if (e.target.id === 'capWa') { setChannel('wa-message'); chooseTemplate('wa-daily'); runWhatsApp(curTpl(), ctx()); }
+    };
+  }
+  function bindWhatsApp() {
+    var R = resultsState;
+    function prev() { var t = $('waText').value; $('waPrev').textContent = t; $('waOpen').href = 'https://wa.me/?text=' + encodeURIComponent(t); }
+    prev(); $('waText').addEventListener('input', prev);
+    $('waCopy').onclick = function () { copy($('waText').value, 'Message copied'); };
+    $('waSave').onclick = function () { resultsState.message = $('waText').value; resultsState.saved = false; saveToLibrary(true); };
+    $('waAI').onclick = function () { var b = this; b.disabled = true; b.textContent = 'Writing...'; whatsappFor(R.tpl, R.ctx).then(function (m) { $('waText').value = m; prev(); }).catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; b.textContent = 'Improve with AI'; }); };
+    $('waImg').onclick = function () {
+      var b = this, c = R.ctx; b.disabled = true; b.textContent = 'Creating image...';
+      var base = T.find(function (x) { return x.id === 'spotlight'; });
+      genImage(base.build(c)).then(function (u) { resultsState.items = [{ src: u }]; $('waImgBox').innerHTML = '<div class="st-res"><img class="st-final" data-final="0" alt="Generated image"><div class="st-res-body"><button type="button" class="st-btn sm" data-dl="0">Download image</button></div></div>'; paintImages(); $('waImgBox').onclick = function (e) { var d = e.target.closest('[data-dl]'); if (d) dl(0); }; }).catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; b.textContent = 'Add a matching image'; });
+    };
+  }
+
+  /* ---------------- WhatsApp template designer (Meta Cloud API) ---------------- */
+  var tpl = null;
+  function openTemplateDesigner(t) {
+    tpl = JSON.parse(JSON.stringify(t.tpl)); tpl.lang = 'en'; tpl.headerImage = (resultsState.items[0] && resultsState.items[0].src) || 'https://www.arambhika.com/assets/logo.png';
+    $('results').innerHTML = '<div class="st-card"><h4>Design the WhatsApp template</h4><div class="st-row2"><div class="st-field"><label for="tName">Template name (lowercase, underscores)</label><input type="text" id="tName"></div><div class="st-field"><label for="tLang">Language</label><select id="tLang"><option value="en">English (en)</option><option value="en_US">English US (en_US)</option><option value="hi">Hindi (hi)</option></select></div></div><div class="st-row2"><div class="st-field"><label for="tHeader">Header</label><select id="tHeader"><option value="none">None</option><option value="text">Text</option><option value="image">Image</option></select></div><div class="st-field" id="tHeaderBox"><label for="tHeaderVal" id="tHeaderLbl">Header text</label><input type="text" id="tHeaderVal"></div></div><div class="st-field"><label for="tBody">Message (use {{1}}, {{2}} for personal details)</label><textarea id="tBody" maxlength="1024" style="min-height:110px"></textarea></div><div class="st-field"><label>Example for each {{variable}} (Meta needs these to approve)</label><div id="tEx" class="st-brand-grid"></div></div><div class="st-row2"><div class="st-field"><label for="tFooter">Footer (optional)</label><input type="text" id="tFooter" maxlength="60"></div><div class="st-field"><label>Buttons</label><div class="st-res-actions"><button type="button" class="st-btn ghost sm" id="tAddUrl">+ Website</button><button type="button" class="st-btn ghost sm" id="tAddQuick">+ Quick reply</button><button type="button" class="st-btn ghost sm" id="tAddCall">+ Call</button></div></div></div><div id="tBtns"></div><div id="tWarn"></div></div><div class="st-card"><h4>Preview</h4><div class="st-phone"><div class="st-bubble" id="tPrev"></div></div></div><div class="st-card"><h4>API output</h4><div class="st-tabs" id="tTabs"><button type="button" class="st-tab active" data-out="create">1. Create template</button><button type="button" class="st-tab" data-out="send">2. Send message</button><button type="button" class="st-tab" data-out="curl">cURL</button></div><div class="st-code" id="tOut"></div><div class="st-res-actions"><button type="button" class="st-btn sm" id="tCopy">Copy</button></div><div class="st-warn">Meta reviews every marketing template before use, and you may only message people who opted in. The server does not send anything: copy the output into your WhatsApp Business Platform account.</div></div>';
+    $('tName').value = tpl.name; $('tHeader').value = tpl.header; $('tHeaderVal').value = tpl.header === 'image' ? tpl.headerImage : tpl.headerText; $('tBody').value = tpl.body; $('tFooter').value = tpl.footer;
+    var outKind = 'create';
+    function vars() { var m = tpl.body.match(/\{\{(\d+)\}\}/g) || [], n = 0; m.forEach(function (x) { n = Math.max(n, Number(x.replace(/\D/g, ''))); }); return n; }
+    function readForm() { tpl.name = $('tName').value.trim(); tpl.lang = $('tLang').value; tpl.header = $('tHeader').value; var hv = $('tHeaderVal').value; if (tpl.header === 'image') tpl.headerImage = hv; else tpl.headerText = hv; tpl.body = $('tBody').value; tpl.footer = $('tFooter').value; }
+    function drawEx() { var n = vars(); while (tpl.examples.length < n) tpl.examples.push('Sample'); $('tEx').innerHTML = Array.from({ length: n }, function (_, i) { return '<div class="st-field"><label>{{' + (i + 1) + '}}</label><input type="text" data-ex="' + i + '" value="' + esc(tpl.examples[i]) + '"></div>'; }).join('') || '<span style="font-size:12.5px;color:var(--muted)">No variables yet.</span>'; }
+    function drawBtns() { $('tBtns').innerHTML = tpl.buttons.map(function (b, i) { return '<div class="st-row2" style="margin-bottom:8px"><div class="st-field"><label>' + (b.type === 'url' ? 'Website button text' : b.type === 'call' ? 'Call button text' : 'Quick reply text') + '</label><input type="text" data-bt="' + i + '" value="' + esc(b.text) + '" maxlength="25"></div>' + (b.type === 'url' ? '<div class="st-field"><label>Link</label><input type="text" data-bu="' + i + '" value="' + esc(b.url) + '"></div>' : b.type === 'call' ? '<div class="st-field"><label>Phone</label><input type="text" data-bp="' + i + '" value="' + esc(b.phone) + '"></div>' : '<div></div>') + '<div><button type="button" class="st-btn ghost sm" data-brm="' + i + '">Remove</button></div></div>'; }).join(''); }
+    function fillVars(s) { return s.replace(/\{\{(\d+)\}\}/g, function (_, n) { return tpl.examples[Number(n) - 1] || 'Sample'; }); }
+    function warns() {
+      var w = [], n = vars();
+      if (!/^[a-z0-9_]{1,512}$/.test(tpl.name)) w.push('Template name may only use lowercase letters, numbers and underscores.');
+      if (tpl.body.length > 1024) w.push('Message is over 1024 characters.');
+      if (/^\s*\{\{|\{\{\d+\}\}\s*$/.test(tpl.body)) w.push('Meta does not allow a variable at the very start or end of the message.');
+      for (var i = 1; i <= n; i++) if (tpl.body.indexOf('{{' + i + '}}') < 0) w.push('Variables must run in order: {{' + i + '}} is missing.');
+      if (tpl.header === 'text' && tpl.headerText.length > 60) w.push('Header text is over 60 characters.');
+      var urls = tpl.buttons.filter(function (b) { return b.type === 'url'; }).length, calls = tpl.buttons.filter(function (b) { return b.type === 'call'; }).length;
+      if (urls > 2) w.push('WhatsApp allows at most 2 website buttons.');
+      if (calls > 1) w.push('WhatsApp allows only 1 call button.');
+      if (tpl.buttons.length > 10) w.push('WhatsApp allows at most 10 buttons.');
+      $('tWarn').innerHTML = w.length ? '<div class="st-warn">' + w.map(esc).join('<br>') + '</div>' : '<div class="st-progress" style="color:#15803d">Looks ready for Meta review.</div>';
+    }
+    function drawPrev() {
+      var h = tpl.header === 'image' ? '<img src="' + esc(tpl.headerImage) + '" alt="">' : tpl.header === 'text' ? '<div class="pad"><b>' + esc(fillVars(tpl.headerText)) + '</b></div>' : '';
+      $('tPrev').innerHTML = h + '<div class="pad">' + esc(fillVars(tpl.body)) + '</div>' + (tpl.footer ? '<div class="foot">' + esc(tpl.footer) + '</div>' : '') + tpl.buttons.map(function (b) { return '<div class="wabtn">' + esc(b.text || 'Button') + '</div>'; }).join('');
+    }
+    function components(forCreate) {
+      var c = [], n = vars();
+      if (tpl.header === 'text' && tpl.headerText) c.push({ type: 'HEADER', format: 'TEXT', text: tpl.headerText });
+      if (tpl.header === 'image') c.push({ type: 'HEADER', format: 'IMAGE', example: { header_handle: [tpl.headerImage] } });
+      var body = { type: 'BODY', text: tpl.body }; if (n) body.example = { body_text: [tpl.examples.slice(0, n)] }; c.push(body);
+      if (tpl.footer) c.push({ type: 'FOOTER', text: tpl.footer });
+      if (tpl.buttons.length) c.push({ type: 'BUTTONS', buttons: tpl.buttons.map(function (b) { return b.type === 'url' ? { type: 'URL', text: b.text, url: b.url } : b.type === 'call' ? { type: 'PHONE_NUMBER', text: b.text, phone_number: b.phone } : { type: 'QUICK_REPLY', text: b.text }; }) });
+      return c;
+    }
+    function sendJson() {
+      var n = vars(), comps = [];
+      if (tpl.header === 'image') comps.push({ type: 'header', parameters: [{ type: 'image', image: { link: tpl.headerImage } }] });
+      if (n) comps.push({ type: 'body', parameters: tpl.examples.slice(0, n).map(function (v) { return { type: 'text', text: v }; }) });
+      return { messaging_product: 'whatsapp', to: '91XXXXXXXXXX', type: 'template', template: { name: tpl.name, language: { code: tpl.lang }, components: comps } };
+    }
+    function drawOut() {
+      var o;
+      if (outKind === 'create') o = '// POST https://graph.facebook.com/v21.0/{WABA_ID}/message_templates\n' + JSON.stringify({ name: tpl.name, language: tpl.lang, category: 'MARKETING', components: components(true) }, null, 2);
+      else if (outKind === 'send') o = '// POST https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages\n' + JSON.stringify(sendJson(), null, 2);
+      else o = 'curl -X POST "https://graph.facebook.com/v21.0/$WABA_ID/message_templates" \\\n  -H "Authorization: Bearer $WHATSAPP_TOKEN" -H "Content-Type: application/json" \\\n  -d \'' + JSON.stringify({ name: tpl.name, language: tpl.lang, category: 'MARKETING', components: components(true) }) + '\'\n\n# after Meta approves it:\ncurl -X POST "https://graph.facebook.com/v21.0/$PHONE_NUMBER_ID/messages" \\\n  -H "Authorization: Bearer $WHATSAPP_TOKEN" -H "Content-Type: application/json" \\\n  -d \'' + JSON.stringify(sendJson()) + '\'';
+      $('tOut').textContent = o;
+    }
+    function redraw() { readForm(); drawPrev(); warns(); drawOut(); }
+    window.__tplDraw = redraw;
+    $('tLang').value = tpl.lang; drawEx(); drawBtns(); redraw();
+    $('tHeader').addEventListener('change', function () { $('tHeaderBox').style.display = this.value === 'none' ? 'none' : ''; $('tHeaderLbl').textContent = this.value === 'image' ? 'Header image link' : 'Header text'; $('tHeaderVal').value = this.value === 'image' ? tpl.headerImage : tpl.headerText; redraw(); });
+    $('tHeaderBox').style.display = tpl.header === 'none' ? 'none' : ''; $('tHeaderLbl').textContent = tpl.header === 'image' ? 'Header image link' : 'Header text';
+    var form = $('tName').closest('.st-card');
+    form.addEventListener('input', function (e) {
+      var t = e.target;
+      if (t.dataset.ex !== undefined) tpl.examples[Number(t.dataset.ex)] = t.value;
+      else if (t.dataset.bt !== undefined) tpl.buttons[Number(t.dataset.bt)].text = t.value;
+      else if (t.dataset.bu !== undefined) tpl.buttons[Number(t.dataset.bu)].url = t.value;
+      else if (t.dataset.bp !== undefined) tpl.buttons[Number(t.dataset.bp)].phone = t.value;
+      if (t.id === 'tBody') { readForm(); drawEx(); }
+      redraw();
+    });
+    form.addEventListener('click', function (e) { var r = e.target.closest('[data-brm]'); if (r) { tpl.buttons.splice(Number(r.dataset.brm), 1); drawBtns(); redraw(); } });
+    $('tAddUrl').addEventListener('click', function () { tpl.buttons.push({ type: 'url', text: 'Visit website', url: 'https://www.arambhika.com' }); drawBtns(); redraw(); });
+    $('tAddQuick').addEventListener('click', function () { tpl.buttons.push({ type: 'quick', text: 'Get a quote' }); drawBtns(); redraw(); });
+    $('tAddCall').addEventListener('click', function () { tpl.buttons.push({ type: 'call', text: 'Call us', phone: '+919315545821' }); drawBtns(); redraw(); });
+    $('tTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-out]'); if (!b) return; outKind = b.dataset.out; Array.prototype.forEach.call($('tTabs').children, function (x) { x.classList.toggle('active', x === b); }); drawOut(); });
+    $('tCopy').addEventListener('click', function () { copy($('tOut').textContent, 'Copied'); });
+  }
+
+  /* ---------------- tabs ---------------- */
+  function showTab(name) {
+    ['create', 'plan', 'library'].forEach(function (n) { $('pt-' + n).hidden = n !== name; });
+    Array.prototype.forEach.call($('pageTabs').children, function (b) { b.classList.toggle('active', b.dataset.pt === name); });
+    if (name === 'library') loadLibrary();
+    window.scrollTo({ top: 0 });
+  }
+  $('pageTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-pt]'); if (b) showTab(b.dataset.pt); });
+
+  /* ---------------- website sync status ---------------- */
+  var lastSync = null;
+  function ago(ts) {
+    var m = Math.round((Date.now() - ts) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago';
+  }
+  function drawSync() {
+    $('syncWhen').textContent = lastSync ? ago(lastSync) + ' (' + new Date(lastSync).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '), ' + products.length + ' products with photos' : 'not refreshed yet';
+  }
+  function loadSyncStatus() { return fetch('/api/sync-status').then(function (r) { return r.json(); }).then(function (j) { lastSync = j.lastSync; drawSync(); }).catch(function () {}); }
+  $('syncNow').addEventListener('click', function () {
+    var b = this; b.disabled = true; b.textContent = 'Refreshing...';
+    post('/api/products/import-website', {}).then(function (j) { lastSync = j.lastSync || Date.now(); return fetch('/api/products').then(function (r) { return r.json(); }); })
+      .then(function (r) { products = (r.data || []).filter(function (p) { return firstImage(p); }); selected = selected.filter(function (s) { return products.some(function (p) { return p.id === s.id; }); }); drawChips(); drawSync(); toast('Products refreshed from the website'); })
+      .catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; b.textContent = 'Refresh now'; });
+  });
+  setInterval(drawSync, 60000);
+
+  /* ---------------- library ---------------- */
+  var libCat = '';
+  function saveToLibrary(extra) {
+    var R = resultsState; if (R.saved) return Promise.resolve();
+    var imgs = (R.items || []).map(function (it) { return it.data; }).filter(Boolean);
+    if (!imgs.length && !extra) return Promise.resolve();
+    R.saved = true;
+    var cat = (selected[0] && selected[0].category) || (R.ctx && R.ctx.products[0] && R.ctx.products[0].category) || 'General';
+    return post('/api/creatives', { channel: R.kind, template: R.tplId || '', category: cat, title: (R.title || 'Post') + (selected[0] ? ' - ' + selected[0].name : ''), caption: R.caption || R.message || '', images: imgs, products: selected.map(function (p) { return p.name; }) })
+      .then(function () { toast('Saved to Library: ' + cat); }).catch(function (e) { R.saved = false; toast('Could not save to the library: ' + e.message); });
+  }
+  function loadLibrary() {
+    var url = '/api/creatives' + (libCat || $('libChannel').value ? '?' + (libCat ? 'category=' + encodeURIComponent(libCat) + '&' : '') + ($('libChannel').value ? 'channel=' + encodeURIComponent($('libChannel').value) : '') : '');
+    Promise.all([fetch('/api/creatives').then(function (r) { return r.json(); }), fetch(url).then(function (r) { return r.json(); })]).then(function (r) {
+      var cats = {}; r[0].data.forEach(function (c) { cats[c.category] = (cats[c.category] || 0) + 1; });
+      $('libCats').innerHTML = '<button type="button" class="st-tab ' + (libCat ? '' : 'active') + '" data-lc="">All (' + r[0].data.length + ')</button>' + Object.keys(cats).sort().map(function (k) { return '<button type="button" class="st-tab ' + (libCat === k ? 'active' : '') + '" data-lc="' + esc(k) + '">' + esc(k) + ' (' + cats[k] + ')</button>'; }).join('');
+      var groups = {}; r[1].data.forEach(function (c) { (groups[c.category] = groups[c.category] || []).push(c); });
+      var keys = Object.keys(groups).sort();
+      $('libList').innerHTML = keys.length ? keys.map(function (k) { return '<div class="st-lib-group"><h5>' + esc(k) + ' <small>' + groups[k].length + ' item' + (groups[k].length === 1 ? '' : 's') + '</small></h5><div class="st-lib-grid">' + groups[k].map(libCard).join('') + '</div></div>'; }).join('') : '<div class="st-empty">Nothing saved yet. Generate an image in the Create tab and it appears here automatically.</div>';
+    }).catch(function (e) { $('libList').innerHTML = '<div class="st-err">' + esc(e.message) + '</div>'; });
+  }
+  function libCard(c) {
+    var th = c.images.length ? '<div class="st-lib-thumbs" style="grid-template-columns:repeat(' + Math.min(c.images.length, 3) + ',1fr)">' + c.images.slice(0, 3).map(function (n, i) { return '<img src="/uploads/' + esc(n) + '" alt="" loading="lazy" data-view="' + esc(n) + '">'; }).join('') + '</div>' : '';
+    return '<div class="st-lib-card">' + th + '<div class="st-lib-body"><b>' + esc(c.title) + '</b><div class="st-lib-meta"><span class="st-pill">' + esc(CHANNEL_LABEL[c.channel] || c.channel) + '</span><span>' + esc(new Date(String(c.created_at).replace(' ', 'T') + 'Z').toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })) + '</span></div>' + (c.caption ? '<div class="st-lib-cap">' + esc(c.caption) + '</div>' : '') + '<div class="st-res-actions">' + c.images.map(function (n, i) { return '<a class="st-btn sm" href="/uploads/' + esc(n) + '" download="' + esc(n) + '">Download' + (c.images.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join('') + (c.caption ? '<button type="button" class="st-btn ghost sm" data-lcap="' + c.id + '">Copy text</button>' : '') + '<button type="button" class="st-btn ghost sm" data-ldel="' + c.id + '">Delete</button></div></div></div>';
+  }
+  var libData = {};
+  $('libCats').addEventListener('click', function (e) { var b = e.target.closest('[data-lc]'); if (b) { libCat = b.dataset.lc; loadLibrary(); } });
+  $('libChannel').addEventListener('change', loadLibrary);
+  $('libList').addEventListener('click', function (e) {
+    var d = e.target.closest('[data-ldel]');
+    if (d) { if (d.dataset.armed !== '1') { d.dataset.armed = '1'; d.textContent = 'Tap again to delete'; setTimeout(function () { d.dataset.armed = ''; d.textContent = 'Delete'; }, 3000); return; } fetch('/api/creatives/' + d.dataset.ldel, { method: 'DELETE' }).then(function () { toast('Deleted'); loadLibrary(); }); return; }
+    var cp = e.target.closest('[data-lcap]');
+    if (cp) { var card = cp.closest('.st-lib-card').querySelector('.st-lib-cap'); copy(card ? card.textContent : '', 'Copied'); return; }
+    var v = e.target.closest('[data-view]'); if (v) window.open('/uploads/' + v.dataset.view, '_blank');
+  });
+
+  /* ---------------- start ---------------- */
+  drawWeek(); drawChips(); drawTpls(); chooseTemplate('spotlight');
+  loadProducts().then(function () { drawChips(); return loadSyncStatus(); });
+})();
+</script>
+</body>
+</html>

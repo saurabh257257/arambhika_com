@@ -9,7 +9,7 @@ import { fetchStorefrontCatalog, fetchImage, fetchCategoryImage } from './lib/zo
 import { buildCatalog } from './lib/catalog.js'
 import * as zohoAuth from './lib/zoho-oauth.js'
 import { placeOrder, estimateOrder, CheckoutError } from './lib/zoho-checkout.js'
-import { listSalesOrdersByEmail, getSalesOrderItems, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
+import { listSalesOrdersByEmail, getSalesOrderItems, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice, fetchBooksPdf, findShipmentsForSalesOrder } from './lib/zoho-admin.js'
 import * as testStore from './lib/customer-store.js'
 import * as otp from './lib/otp.js'
 import { signSession, readSession, SESSION_COOKIE, SESSION_DAYS } from './lib/session.js'
@@ -19,6 +19,7 @@ import { selectableStates, findState, isValidPostalCode, isValidEmail } from './
 import { profileStatus } from './lib/profile-status.js'
 import { renderProductPage, renderProductSitemap } from './lib/product-pages.js'
 import { renderCategoryPage, renderBrowseList, listCategories } from './lib/category-pages.js'
+import { renderLlmsTxt, indexNowKey, pingIndexNow } from './lib/discovery.js'
 
 try { process.loadEnvFile() } catch {}
 
@@ -29,49 +30,27 @@ dns.setDefaultResultOrder('ipv4first')
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC_DIR = path.join(ROOT, 'public')
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data')
-const SNAPSHOT_FILE = path.join(DATA_DIR, 'snapshot.json')
-const IMAGE_DIR = path.join(DATA_DIR, 'images')
 const PORT = Number(process.env.PORT) || 3000
 const REFRESH_EVERY = (Number(process.env.CATALOG_CACHE_SECONDS) || 30) * 1000
 const PARTIAL_REFRESHES_ALLOWED = 5
 
-// How the catalog is served:
-//  - Visitors are always answered instantly from `current`, never by waiting on Zoho.
-//  - A background loop refreshes from Zoho. Only a good result replaces `current`, and it is
-//    saved to disk, so a Zoho outage or a server restart still shows the last good catalog.
-//  - Product photos are also kept on disk, so they keep showing when Zoho is unreachable.
-const localCatalog = (() => {
-  try { return JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'products.local.json'), 'utf8')) } catch { return { categories: [] } }
-})()
-
-function readSnapshot() {
-  try {
-    const snap = JSON.parse(fs.readFileSync(SNAPSHOT_FILE, 'utf8'))
-    if (snap?.data?.categories?.length) return snap
-  } catch {}
-  return null
+// Nothing about products is kept on this server: no product file, no saved copy of the catalogue, no
+// saved photos. Everything lives in Zoho Commerce. The server only holds the latest copy in memory
+// (refreshed from Zoho every 30 seconds) so visitors are answered instantly, and it is gone on restart.
+// Files an older version left in the data folder are removed at start-up.
+for (const leftover of ['snapshot.json', 'snapshot.json.tmp', 'products.local.json', 'images', 'indexnow-sent.json']) {
+  try { fs.rmSync(path.join(DATA_DIR, leftover), { recursive: true, force: true }) } catch {}
 }
-
-function writeSnapshot(snap) {
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
-    const tmp = `${SNAPSHOT_FILE}.tmp`
-    fs.writeFileSync(tmp, JSON.stringify(snap))
-    fs.renameSync(tmp, SNAPSHOT_FILE) // atomic: a crash mid-write never leaves a broken snapshot
-  } catch (err) {
-    console.error('[snapshot] write failed:', err.message)
-  }
+let current = { data: { categories: [] }, at: 0, source: 'loading' }
+if (process.env.DISABLE_CATALOG_REFRESH && process.env.CATALOG_FIXTURE) { // tests only: a fixed catalogue instead of Zoho
+  try { current = { data: JSON.parse(fs.readFileSync(process.env.CATALOG_FIXTURE, 'utf8')), at: Date.now(), source: 'test-fixture' } } catch {}
 }
-
-const saved = readSnapshot()
-let current = saved
-  ? { data: saved.data, at: saved.at, source: 'snapshot' }
-  : { data: localCatalog, at: 0, source: 'local-fallback' }
 
 let refreshing = false
 let partialInARow = 0
 let lastError = ''
 
+const indexNowSent = new Set() // pages already announced since this server started (memory only)
 const countProducts = (data) => data.categories.reduce((n, c) => n + c.products.length, 0)
 
 async function refreshCatalog() {
@@ -79,19 +58,19 @@ async function refreshCatalog() {
   refreshing = true
   try {
     const zoho = await fetchStorefrontCatalog()
-    const data = buildCatalog(zoho, localCatalog)
+    const data = buildCatalog(zoho)
 
     // Never replace a good catalog with an empty or half-fetched one.
-    if (!countProducts(data)) throw new Error('Zoho returned no products; keeping the last snapshot')
-    if (zoho.detailFailures && current.source !== 'local-fallback' && ++partialInARow <= PARTIAL_REFRESHES_ALLOWED) {
-      throw new Error(`${zoho.detailFailures} product photo lists could not be fetched; keeping the last snapshot`)
+    if (!countProducts(data)) throw new Error('Zoho returned no products; keeping the last catalogue')
+    if (zoho.detailFailures && current.source === 'zoho' && ++partialInARow <= PARTIAL_REFRESHES_ALLOWED) {
+      throw new Error(`${zoho.detailFailures} product photo lists could not be fetched; keeping the last catalogue`)
     }
     partialInARow = 0
 
     current = { data, at: Date.now(), source: 'zoho' }
-    writeSnapshot({ at: current.at, data })
     lastError = ''
-    prefetchImages(data).catch(() => {})
+    // Only the real site tells search engines about its pages.
+    if (IS_PRODUCTION && !process.env.DISABLE_CATALOG_REFRESH) pingIndexNow(data, indexNowSent).catch(() => {})
   } catch (err) {
     if (err.message !== lastError) console.error('[catalog] refresh failed:', err.message)
     lastError = err.message
@@ -100,38 +79,17 @@ async function refreshCatalog() {
   }
 }
 
-// ---- Product photos: memory -> disk -> Zoho ----
+// ---- Product photos: kept in memory only, fetched from Zoho on demand ----
 const imageCache = new Map()
 const IMAGE_CACHE_MAX = 400
-
-const imagePaths = (key) => ({ body: path.join(IMAGE_DIR, key), meta: path.join(IMAGE_DIR, `${key}.type`) })
-
-function readImageFromDisk(docId) {
-  const { body, meta } = imagePaths(docId)
-  try {
-    return { buffer: fs.readFileSync(body), type: fs.readFileSync(meta, 'utf8').trim() || 'image/jpeg' }
-  } catch { return null }
-}
-
-function writeImageToDisk(docId, img) {
-  try {
-    fs.mkdirSync(IMAGE_DIR, { recursive: true })
-    const { body, meta } = imagePaths(docId)
-    fs.writeFileSync(body, img.buffer)
-    fs.writeFileSync(meta, img.type)
-  } catch (err) {
-    console.error('[image] disk write failed:', err.message)
-  }
-}
 
 // size: undefined = the full photo; 200, 400 or 800 = a smaller copy for cards, tiles and thumbnails
 async function getImage(docId, file, size) {
   const key = size ? `${docId}_${size}` : docId
   const memKey = `${key}/${file}`
-  let img = imageCache.get(memKey) || readImageFromDisk(key)
+  let img = imageCache.get(memKey)
   if (!img) {
     try { img = await fetchImage(docId, file, size ? `${size}x${size}` : undefined) } catch (err) { console.error('[image] fetch failed:', err.message) }
-    if (img) writeImageToDisk(key, img)
   }
   if (img) {
     if (imageCache.size >= IMAGE_CACHE_MAX) imageCache.delete(imageCache.keys().next().value)
@@ -140,51 +98,17 @@ async function getImage(docId, file, size) {
   return img
 }
 
-// After each good refresh, pull any photos we have not saved yet so the snapshot is complete.
-async function prefetchImages(data) {
-  const wanted = new Map()
-  for (const cat of data.categories) {
-    for (const p of cat.products) {
-      for (const link of p.Image_Link || []) {
-        const m = /^\/zimg\/(\d+)\/(.+)$/.exec(link)
-        if (m && !fs.existsSync(imagePaths(m[1]).body)) wanted.set(m[1], decodeURIComponent(m[2]))
-      }
-    }
-  }
-  const queue = [...wanted]
-  const worker = async () => {
-    while (queue.length) {
-      const [docId, file] = queue.shift()
-      await getImage(docId, file)
-    }
-  }
-  await Promise.all(Array.from({ length: 3 }, worker))
-  pruneImages(data)
-}
-
-// Keep exactly one snapshot: drop saved photos that the current catalog no longer uses.
-function pruneImages(data) {
-  const inUse = new Set()
-  for (const cat of data.categories) {
-    for (const p of cat.products) {
-      for (const link of p.Image_Link || []) {
-        const m = /^\/zimg\/(\d+)\//.exec(link)
-        if (m) inUse.add(m[1])
-      }
-    }
-  }
-  try {
-    for (const name of fs.readdirSync(IMAGE_DIR)) {
-      if (!inUse.has(name.replace(/\.type$/, '').replace(/_\d+$/, ''))) fs.rmSync(path.join(IMAGE_DIR, name), { force: true })
-    }
-  } catch {}
-}
-
 const app = express()
 app.use(compression())
 // Anything that is not production must never be indexed (this runs before every route, including pages built on the server).
 app.use((req, res, next) => {
   if ((process.env.APP_ENV || 'production') !== 'production') res.set('X-Robots-Tag', 'noindex, nofollow')
+  next()
+})
+app.use((req, res, next) => {
+  if (current.source === 'loading' && req.method === 'GET' && (req.path === '/' || req.path === '/products.json' || req.path === '/llms.txt' || /^\/(product|category)\//.test(req.path) || req.path === '/product-sitemap.xml')) {
+    return res.status(503).set('Retry-After', '5').type('text/plain').send('The catalogue is loading from Zoho. Please try again in a few seconds.')
+  }
   next()
 })
 app.set('trust proxy', 1) // behind nginx: req.ip must be the visitor's IP, not nginx's, for OTP rate limits
@@ -478,6 +402,23 @@ app.post('/api/test-account', express.json(), testSessionRequired, async (req, r
   res.json({ ok: true, profile: saved, status: profileStatus(saved), zoho })
 })
 
+// Favourites: saved against the logged-in mobile number, so every device shows the same hearts.
+app.get('/api/wishlist', testSessionRequired, (req, res) => {
+  res.json({ items: testStore.getWishlist(req.mobile) })
+})
+
+app.post('/api/wishlist', express.json(), testSessionRequired, (req, res) => {
+  const name = String(req.body?.name ?? '').replace(/\s+/g, ' ').trim()
+  const variantId = String(req.body?.variantId ?? '').trim()
+  if (!name || name.length > 200) return res.status(400).json({ error: 'Which product?' })
+  if (variantId && !/^\d{1,30}$/.test(variantId)) return res.status(400).json({ error: 'Invalid product' })
+  try {
+    res.json({ items: testStore.setWishlistItem(req.mobile, { name, variantId }, req.body?.saved !== false) })
+  } catch (err) {
+    res.status(400).json({ error: err.message })
+  }
+})
+
 app.get('/api/test-cart', testSessionRequired, (req, res) => {
   res.json({ cart: testStore.getCart(req.mobile) })
 })
@@ -518,7 +459,7 @@ app.post('/api/checkout/estimate-preview', express.json(), async (req, res) => {
   if (!items.length || items.some((it) => !it.variantId || !/^\d+$/.test(String(it.variantId)))) return res.status(400).json({ error: 'Nothing to estimate.' })
   const now = Date.now()
   const recent = (publicEstimateHits.get(req.ip) || []).filter((t) => t > now - 10 * 60 * 1000)
-  if (recent.length >= 30) return res.status(429).json({ error: 'Please try again in a few minutes.' })
+  if (recent.length >= 60) return res.status(429).json({ error: 'Please try again in a few minutes.' })
   recent.push(now); publicEstimateHits.set(req.ip, recent)
   const key = 'preview:' + JSON.stringify(items.map((i) => [i.variantId, i.qty]))
   const hit = estimateCache.get(key)
@@ -667,6 +608,39 @@ app.get('/api/test-orders/:id/invoice', testSessionRequired, async (req, res) =>
   }
 })
 
+// The paper that matches where the order is: the sales order until it ships, then the shipment,
+// then the invoice once delivered. The PDFs are streamed through here so Zoho links never reach the browser.
+app.get('/api/test-orders/:id/document', testSessionRequired, async (req, res) => {
+  const order = testStore.getOrders(req.mobile).find((o) => o.id === req.params.id)
+  if (!order?.zohoSalesOrderId) return res.status(404).json({ error: 'Order not found' })
+  try {
+    let pdf, name
+    if (req.query.type === 'invoice') {
+      const invoice = await findInvoiceForSalesOrder(order.zohoSalesOrderNumber, process.env.ZOHO_BOOKS_ORG_ID)
+      if (!invoice) return res.status(404).json({ error: 'No invoice has been raised for this order yet.' })
+      pdf = await fetchBooksPdf('invoices', invoice.invoice_id, process.env.ZOHO_BOOKS_ORG_ID)
+      name = invoice.invoice_number || 'invoice'
+    } else {
+      pdf = await fetchBooksPdf('salesorders', order.zohoSalesOrderId, process.env.ZOHO_BOOKS_ORG_ID)
+      name = order.zohoSalesOrderNumber || 'sales-order'
+    }
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${String(name).replace(/[^\w.-]/g, '_')}.pdf"`, 'Cache-Control': 'private, no-store' })
+    res.send(pdf)
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
+app.get('/api/test-orders/:id/shipment', testSessionRequired, async (req, res) => {
+  const order = testStore.getOrders(req.mobile).find((o) => o.id === req.params.id)
+  if (!order?.zohoSalesOrderId) return res.status(404).json({ error: 'Order not found' })
+  try {
+    res.json({ shipments: await findShipmentsForSalesOrder(order.zohoSalesOrderId, process.env.ZOHO_INVENTORY_ORG_ID) })
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
 app.get('/admin/zoho-orders', adminRequired, (req, res) => {
   res.json({ orders: testStore.getAllOrders() })
 })
@@ -712,6 +686,13 @@ function sendNotFound(req, res) {
       <p class="cp-intro"><a href="/">Back to the store</a> &middot; <a href="/blog/">Read the guides</a> &middot; <a href="/faq.html">FAQs</a> &middot; <a href="https://wa.me/919315545821" target="_blank" rel="noopener">Ask us on WhatsApp</a></p>`
   res.status(404).set('X-Robots-Tag', 'noindex').type('html').send(template.replace('<!--SEO_HEAD-->', () => '<title>Page not found | Arambhika</title>\n  <meta name="robots" content="noindex" />').replace('<!--PAGE_MAIN-->', () => main))
 }
+
+app.get('/llms.txt', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=900').type('text/plain; charset=utf-8').send(renderLlmsTxt(current.data))
+})
+
+// Proves to IndexNow that this site is ours.
+app.get(`/${indexNowKey()}.txt`, (req, res) => res.type('text/plain').send(indexNowKey()))
 
 app.get('/product-sitemap.xml', (req, res) => {
   res.set('Cache-Control', 'public, max-age=900').type('application/xml').send(renderProductSitemap(current.data))

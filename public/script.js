@@ -114,9 +114,38 @@ let cachedSiteConfig = {};
 let pendingProductCode = getRequestedProductCode();
 let highlightResetTimer = null;
 
+// After choosing a category, bring its first row into view just below the pinned header and category row.
+// Measured from the real heights at that moment, then re-checked once the page has settled, so the
+// first row never ends up tucked under the pinned bar.
+const scrollToProducts = () => {
+  const go = (behavior) => {
+    const target = [...document.querySelectorAll("#catalogGrid .cat-block")].find((b) => b.style.display !== "none") || document.querySelector("#catalogGrid");
+    if (!target) return;
+    const header = document.querySelector(".site-header")?.getBoundingClientRect().height || 0;
+    const bar = document.querySelector(".cat-bar");
+    const pinnedBar = bar && getComputedStyle(bar).display !== "contents" ? bar : document.querySelector("#catScroller");
+    const barH = pinnedBar ? pinnedBar.getBoundingClientRect().height : 0;
+    const top = target.getBoundingClientRect().top + window.scrollY - header - barH - 14;
+    window.scrollTo({ top: Math.max(0, top), behavior });
+  };
+  requestAnimationFrame(() => go("smooth"));
+  setTimeout(() => go("auto"), 800);
+};
+
 const renderFilters = (categories) => {
   if (!categoryFilters) return;
   categoryFilters.innerHTML = "";
+  {
+    const total = categories.reduce((n, c) => n + (c.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1).length, 0);
+    const all = document.createElement("button");
+    all.type = "button";
+    all.className = "cat-tile filter-btn cat-tile-all";
+    all.dataset.filter = "all";
+    all.innerHTML = `
+      <span class="cat-tile-img"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+      <span class="cat-tile-text"><b>All${total ? " (" + total + ")" : ""}</b></span>`;
+    categoryFilters.appendChild(all);
+  }
   categories.forEach((cat) => {
     // same rule the grid uses: placeholder products with a one-character code are not shown
     const products = (cat.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1);
@@ -141,8 +170,7 @@ const renderFilters = (categories) => {
       currentCategoryFilter = currentCategoryFilter === btn.dataset.filter ? "all" : btn.dataset.filter;
       setFilterButtonState(currentCategoryFilter);
       filterCatalog();
-      const grid = document.querySelector("#catalogGrid");
-      if (grid) grid.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollToProducts();
     });
   });
   setFilterButtonState(currentCategoryFilter);
@@ -489,7 +517,7 @@ const addToOrder = (product, qty, { silent = false } = {}) => {
   const order = getOrder();
   const name = product.ProductCode || "";
   const unit = product.Unit || "KG";
-  order[name] = { id: name, name, qty, unit };
+  order[name] = { id: name, name, qty, unit, variantId: product.ZohoVariantId || "" };
   setOrder(order);
   renderOrderList();
   if (!silent) document.dispatchEvent(new CustomEvent("cart:added", { detail: { name } }));
@@ -785,6 +813,7 @@ const createCard = (product, categoryName) => {
     <div class="prod-price">${priceNumber ? `₹${priceNumber.toLocaleString("en-IN")}` : "Price on request"} <small>/ ${unit} · MOQ ${minQty}</small></div>
     <div class="prod-action"></div>`;
 
+  card.insertAdjacentHTML("afterbegin", `<button type="button" class="wish-btn" data-name="${name.replace(/"/g, "&quot;")}" data-variant="${product.ZohoVariantId || ""}" aria-label="Save ${name.replace(/"/g, "&quot;")} to favourites" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>`);
   card.dataset.search = [name, sku, categoryName, product.Product_Dimensions || "", detailsList.join(" ")].filter(Boolean).join(" ");
 
   // ADD turns into a stepper; once the item is in the cart every tap changes the cart straight away.
@@ -1384,4 +1413,54 @@ document.addEventListener("keydown", (event) => {
   window.addEventListener("resize", () => { clearTimeout(timer); timer = setTimeout(apply, 150); });
   apply();
   window.addEventListener("load", apply);
+})();
+
+// The pinned category row hides what is directly under it, so tell the CSS how tall it is. Scrolling to a
+// category (or a search) then stops below it, with the first row of products fully visible.
+(() => {
+  if (!window.ResizeObserver) return;
+  const pinned = () => {
+    const bar = document.querySelector(".cat-bar");
+    if (bar && getComputedStyle(bar).display !== "contents") return bar;
+    return document.querySelector("#catScroller");
+  };
+  const set = () => {
+    const el = pinned();
+    if (el) document.documentElement.style.setProperty("--bar-h", el.getBoundingClientRect().height + "px");
+  };
+  const watch = () => { const el = pinned(); if (el) new ResizeObserver(set).observe(el); set(); };
+  document.addEventListener("DOMContentLoaded", watch);
+  window.addEventListener("load", watch);
+  window.addEventListener("resize", set);
+})();
+
+// Left and right arrows for the category row (the scrollbar is hidden): they appear only where there is more to see.
+(() => {
+  const scroller = document.getElementById("catScroller");
+  const row = document.getElementById("categoryFilters");
+  if (!scroller || !row) return;
+  const mk = (dir) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cat-arrow cat-arrow-" + (dir < 0 ? "prev" : "next");
+    b.setAttribute("aria-label", dir < 0 ? "Show earlier categories" : "Show more categories");
+    b.innerHTML = dir < 0 ? "&lsaquo;" : "&rsaquo;";
+    b.addEventListener("click", () => row.scrollBy({ left: dir * Math.max(160, row.clientWidth * 0.75), behavior: "smooth" }));
+    scroller.appendChild(b);
+    return b;
+  };
+  const prev = mk(-1), next = mk(1);
+  const update = () => {
+    const max = row.scrollWidth - row.clientWidth;
+    prev.hidden = row.scrollLeft < 4;
+    next.hidden = max < 4 || row.scrollLeft > max - 4;
+  };
+  row.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update);
+  new MutationObserver(update).observe(row, { childList: true });
+  if (window.ResizeObserver) new ResizeObserver(update).observe(row);
+  window.addEventListener("load", update);
+  update();
+  // the selected category scrolls into view inside the row
+  row.addEventListener("click", () => setTimeout(() => row.querySelector(".cat-tile.active")?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }), 50));
 })();

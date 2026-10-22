@@ -48,6 +48,32 @@
   }
   const subtotal = () => cartLines().reduce((s, l) => s + l.total, 0);
 
+  // A basket saved earlier can hold a product that was renamed or removed in Zoho. Renamed ones are matched by
+  // their Zoho id; ones that are gone are taken out, with a note, instead of blocking payment.
+  function reconcileCart() {
+    const cart = readCart();
+    const removed = [];
+    let changed = false;
+    for (const [key, item] of Object.entries(cart)) {
+      let p = productFor(item.name);
+      if (!p && item.variantId) p = state.products.find((x) => x.ZohoVariantId === item.variantId);
+      if (!p) { delete cart[key]; removed.push(item.name); changed = true; continue; }
+      if (p.ProductCode !== item.name || item.variantId !== p.ZohoVariantId) {
+        delete cart[key];
+        cart[p.ProductCode] = { ...item, id: p.ProductCode, name: p.ProductCode, variantId: p.ZohoVariantId || "" };
+        changed = true;
+      }
+    }
+    if (changed) { writeCart(cart); post("/api/test-cart", { cart }); }
+    if (removed.length) {
+      const note = document.createElement("div");
+      note.className = "ck-banner";
+      note.setAttribute("role", "status");
+      note.textContent = removed.map((n) => `${n}`).join(", ") + (removed.length === 1 ? " is no longer available and was" : " are no longer available and were") + " removed from your cart.";
+      $("ckLayout").before(note);
+    }
+  }
+
   async function loadAccount() {
     const me = await json("/api/test-auth/me");
     state.session = me.data?.loggedIn ? me.data : { loggedIn: false, mobile: "" };
@@ -237,6 +263,9 @@
   // ---- payment -----------------------------------------------------------------------------
   let payWindow = null;
   let pollTimer = null;
+  const PENDING_KEY = "ckPending";
+  const readPending = () => { try { const p = JSON.parse(localStorage.getItem(PENDING_KEY) || "null"); return p && Date.now() - p.at < 3 * 3600 * 1000 ? p : null; } catch { return null; } };
+  const clearPending = () => { try { localStorage.removeItem(PENDING_KEY); } catch {} };
 
   async function pay() {
     const err = $("ckPayError");
@@ -269,19 +298,40 @@
       return;
     }
     state.paying = true;
-    payWindow = window.open(r.data.paymentUrl, "_blank");
-    showWaiting(r.data);
-    poll(r.data.orderId);
+    // Same tab, not a pop-up: phones block or mishandle pop-ups, which left customers on a spinner.
+    // The order is remembered so this page can confirm the payment when they come back.
+    try { localStorage.setItem(PENDING_KEY, JSON.stringify({ orderId: r.data.orderId, paymentUrl: r.data.paymentUrl, total: r.data.total, at: Date.now() })); } catch {}
+    showRedirecting(r.data);
+    setTimeout(() => location.assign(r.data.paymentUrl), 700);
   }
 
+  function showRedirecting({ paymentUrl, total }) {
+    $("ckPayBody").innerHTML = `
+      <div class="ck-waiting" aria-live="polite">
+        <div class="ck-spinner" aria-hidden="true"></div>
+        <h3>Taking you to the secure payment page</h3>
+        <p class="ck-muted">You will pay ${total ? money(total) : "your order"} on Zoho's payment page (UPI, cards or net banking). Please do not close this page.</p>
+        <a class="ck-btn ck-btn-primary" href="${esc(paymentUrl)}">Continue to payment</a>
+        <p class="ck-fine">Not redirected in a few seconds? Tap the button above.</p>
+      </div>`;
+  }
+
+  // Shown when the customer comes back from the payment page: we check with Zoho until the payment is confirmed.
   function showWaiting({ paymentUrl, total }) {
     $("ckPayBody").innerHTML = `
       <div class="ck-waiting" aria-live="polite">
         <div class="ck-spinner" aria-hidden="true"></div>
-        <h3>Waiting for your payment</h3>
-        <p class="ck-muted">Complete the payment in the tab that just opened${total ? ` (${money(total)})` : ""}. This page confirms your order automatically.</p>
-        <a class="ck-btn ck-btn-ghost" href="${esc(paymentUrl)}" target="_blank" rel="noopener">Reopen payment page</a>
+        <h3>Confirming your payment</h3>
+        <p class="ck-muted">If you have paid${total ? ` (${money(total)})` : ""}, this page confirms your order automatically in a few seconds.</p>
+        <a class="ck-btn ck-btn-primary" href="${esc(paymentUrl)}">Go to the payment page</a>
+        <button type="button" class="ck-link" id="ckCancelPay">Cancel and start again</button>
       </div>`;
+    $("ckCancelPay").addEventListener("click", () => {
+      clearInterval(pollTimer);
+      clearPending();
+      state.paying = false;
+      renderPay();
+    });
   }
 
   function poll(orderId) {
@@ -291,7 +341,7 @@
       const r = await post(`/api/test-orders/${orderId}/confirm-payment`);
       if (r.data?.ok) {
         clearInterval(pollTimer);
-        try { if (payWindow && !payWindow.closed) payWindow.close(); } catch {}
+        clearPending();
         done(r.data.salesOrderNumber);
       } else if (++tries >= 120) {
         clearInterval(pollTimer);
@@ -302,13 +352,17 @@
     };
     pollTimer = setInterval(check, 5000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+    check();
   }
 
   async function done(orderNumber) {
+    clearInterval(pollTimer);
+    clearPending();
     sessionStorage.removeItem(CART_KEY);
     post("/api/test-cart", { cart: {} });
     document.dispatchEvent(new CustomEvent("cart:changed"));
     $("ckLayout").hidden = true;
+    $("ckEmpty").hidden = true;
     const el = $("ckDone");
     el.hidden = false;
     el.innerHTML = `
@@ -343,6 +397,21 @@
     }
     await Promise.all([loadCatalog(), loadAccount()]);
     // a basket that only lives on the server (new device) may have just arrived
+    reconcileCart();
     renderAll();
+    // coming back from the payment page: confirm the payment instead of showing the checkout again
+    const pending = readPending();
+    if (pending && state.session.loggedIn) {
+      if (cartLines().length) {
+        state.paying = true;
+        showWaiting(pending);
+      } else {
+        $("ckEmpty").hidden = true;
+        const el = $("ckDone");
+        el.hidden = false;
+        el.innerHTML = '<div class="ck-waiting" aria-live="polite"><div class="ck-spinner" aria-hidden="true"></div><h3>Confirming your payment</h3><p class="ck-muted">This takes a few seconds. You can also check <a href="account.html?tab=orders">My Orders</a>.</p></div>';
+      }
+      poll(pending.orderId);
+    }
   })();
 })();

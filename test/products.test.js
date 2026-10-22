@@ -3,6 +3,7 @@
 import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { startApp } from '../test-helpers/server.js'
@@ -322,5 +323,195 @@ describe('shipping at checkout', () => {
     assert.match(js, /Shipping is added in the final invoice/)
     assert.match(js, /totalBeforeShipping/)
     assert.doesNotMatch(js, /<span>Shipping<\/span><span>/, 'no shipping amount row')
+  })
+})
+
+describe('the cart shows the tax breakup before checkout', () => {
+  test('the cart drawer asks for GST and the total, and no longer says taxes come later', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/cart-drawer.js'), 'utf8')
+    assert.match(js, /estimate-preview/)
+    assert.match(js, /Total \(estimate\)/)
+    assert.doesNotMatch(js, /Shipping and taxes are shown on the payment page/)
+  })
+})
+
+describe('photo zoom on the product page', () => {
+  test('each photo has a zoom button that opens a full-screen pop-up with zoom, navigation and close', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/product.js'), 'utf8')
+    assert.match(js, /id="ppZoom"/)
+    for (const id of ['zmIn', 'zmOut', 'zmReset', 'zmClose', 'zmPrev', 'zmNext']) assert.match(js, new RegExp(`id="${id}"`), id)
+    assert.match(js, /e\.key === "Escape"/)
+    assert.match(js, /role", "dialog"/)
+  })
+})
+
+describe('payment hand-off, category row and phone fields', () => {
+  const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8')
+  test('checkout goes to Zoho in the same tab and resumes when the customer comes back', () => {
+    const js = read('public/checkout.js')
+    assert.match(js, /location\.assign\(r\.data\.paymentUrl\)/)
+    assert.doesNotMatch(js, /window\.open\(r\.data\.paymentUrl/)
+    assert.match(js, /ckPending/)
+    assert.match(js, /Confirming your payment/)
+    assert.match(js, /Continue to payment/)
+  })
+  test('the category row starts with an All tile', () => {
+    assert.match(read('public/script.js'), /cat-tile-all/)
+  })
+  test('the mobile number box is large and 16px or more so phones do not zoom', () => {
+    const css = read('public/_theme_overrides.css')
+    assert.match(css, /\[data-otp-mobile\], \.otp-code-input \{[^}]*height: 52px[^}]*font-size: 17px/)
+  })
+  test('category circles share one top edge', () => {
+    assert.match(read('public/_theme_overrides.css'), /justify-content: flex-start !important; align-self: flex-start/)
+  })
+})
+
+describe('choosing a category', () => {
+  test('scrolls from measured heights so the first row is never under the pinned bar', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8')
+    assert.match(js, /const scrollToProducts = /)
+    assert.match(js, /scrollToProducts\(\);/)
+    assert.match(js, /setTimeout\(\(\) => go\("auto"\), 800\)/)
+  })
+})
+
+describe('dashboard', () => {
+  test('has a welcome banner, quick actions and recent orders, and still only three stat tiles', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'public/account.html'), 'utf8')
+    assert.match(html, /acct-hero-banner/)
+    assert.match(html, /id="acctRecent"/)
+    assert.equal((html.match(/acct-quick-card/g) || []).length, 4)
+    assert.ok((html.match(/class=["'][^"']*acct-stat-card/g) || []).length <= 3)
+  })
+})
+
+describe('category row arrows', () => {
+  test('the row has left and right arrows and no visible scrollbar', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8')
+    assert.match(js, /cat-arrow-/)
+    assert.match(js, /Show earlier categories/)
+    assert.match(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'), /id="catScroller"/)
+    const css = fs.readFileSync(path.join(ROOT, 'public/_theme_overrides.css'), 'utf8')
+    assert.match(css, /\.cat-tiles::-webkit-scrollbar \{ display: none !important; \}/)
+  })
+})
+
+describe('product photos from Zoho', () => {
+  test('photos listed under images (not documents) are used, and placeholders are ignored', async () => {
+    const { photosFrom } = await import('../lib/zoho.js')
+    const withImage = { documents: [], images: [{ id: '4027527000001101033', is_placeholder_image: false, url: '/product-images/JBD1.jpg/4027527000001101033', order: 1 }] }
+    assert.deepEqual(photosFrom(withImage), [{ document_id: '4027527000001101033', name: 'JBD1.jpg', attachment_order: 1 }])
+    const placeholder = { documents: [], images: [{ id: '-1', is_placeholder_image: true, url: '/zs-common/images/no-preview-image.jpg' }] }
+    assert.deepEqual(photosFrom(placeholder), [])
+    const docs = { documents: [{ document_id: '1', name: 'a.jpg' }], images: [] }
+    assert.equal(photosFrom(docs).length, 1, 'documents still win when present')
+  })
+})
+
+describe('a basket with a renamed or removed product', () => {
+  test('checkout and the cart drawer tidy it instead of blocking payment', () => {
+    const co = fs.readFileSync(path.join(ROOT, 'public/checkout.js'), 'utf8')
+    assert.match(co, /function reconcileCart\(\)/)
+    assert.match(co, /reconcileCart\(\);\n\s*renderAll\(\);/)
+    assert.match(co, /removed from your cart/)
+    const cd = fs.readFileSync(path.join(ROOT, 'public/cart-drawer.js'), 'utf8')
+    assert.match(cd, /function tidyCart\(\)/)
+    assert.match(cd, /catalogue not loaded yet/)
+    assert.match(fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8'), /variantId: product\.ZohoVariantId/)
+  })
+})
+
+describe('checkout talks to Zoho on the store host', () => {
+  test('so the customer is returned to the store after paying', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'lib/zoho-checkout.js'), 'utf8')
+    assert.ok(src.includes('const BASE = () => `https://${domain()}`'))
+    assert.ok(!src.includes('commerce.zoho.'))
+  })
+})
+
+describe('the checkout confirmation screen', () => {
+  test('hides the payment step once the order is confirmed', () => {
+    const css = fs.readFileSync(path.join(ROOT, 'public/_theme_overrides.css'), 'utf8')
+    assert.ok(css.includes('.ck-layout[hidden]'))
+    const js = fs.readFileSync(path.join(ROOT, 'public/checkout.js'), 'utf8')
+    assert.match(js, /async function done\(orderNumber\) \{\s*clearInterval\(pollTimer\);/)
+  })
+})
+
+describe('order status and documents follow the real stage', () => {
+  test('badge says what happened, and the paper matches the stage', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/account.js'), 'utf8')
+    assert.ok(js.includes('label: "Payment received"'))
+    assert.ok(js.includes('doc: "salesorder"') && js.includes('doc: "shipment"') && js.includes('doc: "invoice"'))
+    assert.ok(js.includes('Sales order ${o.zohoSalesOrderNumber} generated'))
+    const srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8')
+    assert.ok(srv.includes("/api/test-orders/:id/document") && srv.includes("/api/test-orders/:id/shipment"))
+  })
+})
+
+describe('removing a favourite', () => {
+  test('is a real removal using the saved name, not a toggle on the current product name', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/wishlist.js'), 'utf8')
+    assert.ok(js.includes('async function unsave(name, variantId)'))
+    assert.ok(js.includes('unsave(remove.dataset.wlRemove'))
+    assert.ok(js.includes('data-wl-remove="${esc(it.name)}"'))
+  })
+})
+
+describe('favourites list', () => {
+  test('each item has its own cross button to remove it', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/wishlist.js'), 'utf8')
+    assert.ok(js.includes('const CROSS ='))
+    assert.equal(js.split('title="Remove">${CROSS}').length - 1, 2)
+  })
+})
+
+describe('discovery files for search engines and AI assistants', () => {
+  test('llms.txt lists the company, categories and products; IndexNow key is served', async () => {
+    const { renderLlmsTxt, indexNowKey, pingIndexNow } = await import('../lib/discovery.js')
+    const catalog = { categories: [{ name: 'Nickel Strip Pure', Handle: 'nickel-strip-pure', products: [{ ProductCode: 'Nickel Strip Pure 1P 6x0.15 mm', Price: '3250', Unit: 'KG' }] }] }
+    const txt = renderLlmsTxt(catalog)
+    assert.match(txt, /^# Arambhika/)
+    assert.ok(txt.includes('/category/nickel-strip-pure'))
+    assert.ok(txt.includes('/product/nickel-strip-pure-1p-6x0-15-mm'))
+    assert.ok(txt.includes('+91 93155 45821'))
+    assert.match(indexNowKey(), /^[a-f0-9]{32}$/)
+    const sent = new Set()
+    const calls = []
+    const fake = async (url, opts) => { calls.push(JSON.parse(opts.body)); return { status: 200 } }
+    assert.equal((await pingIndexNow(catalog, sent, { fetchImpl: fake })).sent, 2)
+    assert.equal((await pingIndexNow(catalog, sent, { fetchImpl: fake })).sent, 0, 'nothing new, nothing sent')
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0].keyLocation, 'https://www.arambhika.com/' + indexNowKey() + '.txt')
+    const down = async () => ({ status: 500 })
+    assert.equal((await pingIndexNow(catalog, new Set(), { fetchImpl: down })).sent, 0)
+  })
+})
+
+describe('nothing about products is stored on the server', () => {
+  test('no local product file, saved catalogue or saved photos', () => {
+    const srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8')
+    for (const gone of ['writeSnapshot', 'readSnapshot', 'localCatalog', 'writeImageToDisk', 'readImageFromDisk', 'IMAGE_DIR']) {
+      assert.ok(!srv.includes(gone), gone + ' is still in server.js')
+    }
+    assert.ok(srv.includes("'snapshot.json'") && srv.includes("'products.local.json'"), 'old files are cleaned up at start')
+    assert.ok(!fs.existsSync(path.join(ROOT, 'data', 'products.local.json')))
+    assert.ok(!fs.existsSync(path.join(ROOT, 'public', 'assets', 'catalog.pdf')))
+    const cat = fs.readFileSync(path.join(ROOT, 'lib', 'catalog.js'), 'utf8')
+    assert.ok(!cat.includes('localImages'))
+  })
+})
+
+describe('before the first copy arrives from Zoho', () => {
+  test('product pages ask crawlers to retry instead of showing an empty store', async () => {
+    const app = await startApp({ env: { CATALOG_FIXTURE: '' } })
+    try {
+      const c = app.newClient()
+      const r = await c.get('/products.json')
+      assert.equal(r.status, 503)
+      assert.equal((await c.get('/product/anything')).status, 503)
+      assert.equal((await c.get('/healthz')).status, 200, 'the server itself is up')
+    } finally { await app.stop() }
   })
 })

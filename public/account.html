@@ -20,6 +20,7 @@
         <p class="brand-tag" id="brandTag">Lithium Ion Battery B2B Component Manufacturer and Supplier</p>
       </div>
       <div class="nav-right">
+        <button type="button" class="nav-wish-btn" id="headerWish" aria-label="Open favourites"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span class="nav-label">Favourites</span><span class="nav-wish-badge" id="headerWishBadge" hidden>0</span></button>
         <nav class="nav-links">
           <a href="index.html#catalog" id="navCatalog"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg><span class="nav-label">Store</span></a>
           <a href="/account.html" class="nav-login-btn" id="testAcctBtn" aria-label="Account" title="Account" aria-current="page">
@@ -61,6 +62,10 @@
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                 Profile
               </button>
+              <button type="button" class="acct-tab-btn" data-tab="saved">
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                Saved
+              </button>
               <button type="button" class="acct-tab-btn" data-tab="orders">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
                 Orders
@@ -76,9 +81,16 @@
 
           <div class="acct-content">
               <section class="acct-panel is-active" id="acctPanelDashboard">
-                <div class="acct-dash-hero">
-                  <h1 id="acctDashGreeting">Dashboard</h1>
-                  <p class="form-note">Tap a tile to see the details.</p>
+                <div class="acct-dash-hero acct-hero-banner">
+                  <div class="acct-hero-text">
+                    <p class="acct-hero-eyebrow">Welcome back</p>
+                    <h1 id="acctDashGreeting">Dashboard</h1>
+                    <p class="acct-hero-sub">Track your orders, find invoices and keep your favourite products in one place.</p>
+                  </div>
+                  <div class="acct-hero-actions">
+                    <a class="acct-hero-btn" href="index.html#catalog">Shop products</a>
+                    <a class="acct-hero-btn is-ghost" href="checkout.html">View cart <span id="acctHeroCartCount"></span></a>
+                  </div>
                 </div>
                 <a class="acct-cart-banner" id="acctCartBanner" href="checkout.html" hidden>
                   <span id="acctCartBannerText">You have items in your cart</span>
@@ -106,6 +118,33 @@
                     <span class="acct-stat-label">Invoices</span>
                   </button>
                 </div>
+
+                <div class="acct-quick">
+                  <button type="button" class="acct-quick-card q-red" data-goto="saved">
+                    <span class="acct-quick-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span>
+                    <span class="acct-quick-text"><b>Saved products</b><small id="quickSaved">Your favourites</small></span>
+                  </button>
+                  <a class="acct-quick-card q-blue" href="checkout.html">
+                    <span class="acct-quick-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg></span>
+                    <span class="acct-quick-text"><b>Your cart</b><small id="quickCart">Nothing yet</small></span>
+                  </a>
+                  <a class="acct-quick-card q-teal" href="index.html#catalog">
+                    <span class="acct-quick-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M4 9l1.5-5h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5 12v8h14v-8"/></svg></span>
+                    <span class="acct-quick-text"><b>Browse the store</b><small>Strips, busbars and cells</small></span>
+                  </a>
+                  <a class="acct-quick-card q-green" href="https://wa.me/919315545821" target="_blank" rel="noopener">
+                    <span class="acct-quick-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-5.2A8.5 8.5 0 1 1 21 11.5z"/></svg></span>
+                    <span class="acct-quick-text"><b>Need help?</b><small>Chat with us on WhatsApp</small></span>
+                  </a>
+                </div>
+
+                <div class="acct-card acct-recent">
+                  <div class="acct-card-head">
+                    <h2>Recent orders</h2>
+                    <button class="button ghost tiny" type="button" data-goto="orders">View all</button>
+                  </div>
+                  <div id="acctRecent" class="acct-recent-list"><p class="form-note">Loading&hellip;</p></div>
+                </div>
               </section>
 
               <section class="acct-panel" id="acctPanelProfile" hidden>
@@ -132,6 +171,16 @@
                     <button type="button" class="acct-chip" data-filter="failed">Failed</button>
                   </div>
                   <div id="acctOrdersList" class="acct-orders-list2"><p class="form-note">Loading&hellip;</p></div>
+                </div>
+              </section>
+
+              <section class="acct-panel" id="acctPanelSaved" hidden>
+                <div class="acct-card">
+                  <div class="acct-card-head">
+                    <h2>Saved products</h2>
+                  </div>
+                  <p class="form-note">Products you tapped the heart on. Add them to your cart from here.</p>
+                  <div id="acctSavedList" class="wl-list"></div>
                 </div>
               </section>
 
@@ -208,5 +257,7 @@
   <script src="otp-login.js"></script>
   <script src="profile-wizard.js"></script>
   <script src="account.js"></script>
+  <script src="/request-modal.js"></script>
+  <script src="/wishlist.js"></script>
 </body>
 </html>

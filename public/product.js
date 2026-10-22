@@ -69,17 +69,18 @@
     <nav class="pp-crumbs" aria-label="Breadcrumb"><a href="/">Store</a> &rsaquo; <a href="/?category=${encodeURIComponent(P.category)}#catalog">${esc(P.category)}</a> &rsaquo; <span>${esc(P.name)}</span></nav>
     <div class="pp-grid">
       <div class="pp-gallery">
-        <div class="pp-main-img">${imgs.length ? `<img id="ppImg" src="${esc(imgs[0])}" alt="${esc(P.name)}" />` : `<div class="pp-noimg">Photo coming soon</div>`}
+        <div class="pp-main-img">${imgs.length ? `<img id="ppImg" src="${esc(imgs[0])}" alt="${esc(P.name)}" /><button type="button" class="pp-zoom" id="ppZoom" aria-label="Zoom photo (full screen)" title="Zoom"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg></button>` : `<div class="pp-noimg">Photo coming soon</div>`}
           ${imgs.length > 1 ? `<button class="pp-nav pp-prev" type="button" aria-label="Previous photo">&lsaquo;</button><button class="pp-nav pp-next" type="button" aria-label="Next photo">&rsaquo;</button>` : ""}
         </div>
         ${imgs.length > 1 ? `<div class="pp-thumbs" id="ppThumbs">${imgs.map((s, i) => `<button type="button" class="${i ? "" : "is-on"}" data-i="${i}" aria-label="Photo ${i + 1}"><img src="${esc(s)}" alt="" /></button>`).join("")}</div>` : ""}
       </div>
       <div class="pp-info">
+        <button type="button" class="wish-btn wish-lg" data-name="${esc(P.name)}" data-variant="${esc(P.variantId || "")}" aria-label="Save ${esc(P.name)} to favourites" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
         <div class="pp-cat">${esc(P.category)}</div>
         <h1 class="pp-title">${esc(P.name)}</h1>
         ${P.sku ? `<div class="pp-sku">SKU ${esc(P.sku)}</div>` : ""}
         <div class="pp-price">${P.price ? `${money(P.price)} <small>per ${esc(P.unit)}</small>` : "Price on request"}</div>
-        <div class="pp-note">Minimum order ${P.min} ${esc(P.unit)}. Shipping and tax are shown before you pay.</div>
+        <div class="pp-note">Minimum order ${P.min} ${esc(P.unit)}. GST is added at checkout, and shown in your cart before you pay. Shipping is added in the final invoice.</div>
         <div class="pp-tags">${tags.map((t) => `<span>${esc(t)}</span>`).join("")}</div>
         <div class="pp-buy" id="ppBuy"></div>
         <div class="pp-assure">
@@ -115,6 +116,101 @@
     if (e.key === "ArrowLeft") show(gi - 1);
     if (e.key === "ArrowRight") show(gi + 1);
   });
+
+  // ---- full-screen zoom: a pop-up with every photo, zoom in and out, drag to look around ------------
+  let zoomEl = null;
+  function openZoom(start) {
+    if (zoomEl || !imgs.length) return;
+    let idx = (start + imgs.length) % imgs.length;
+    let scale = 1, tx = 0, ty = 0, drag = null;
+    zoomEl = document.createElement("div");
+    zoomEl.className = "zm-overlay";
+    zoomEl.setAttribute("role", "dialog");
+    zoomEl.setAttribute("aria-modal", "true");
+    zoomEl.setAttribute("aria-label", "Zoomed photo of " + P.name);
+    zoomEl.innerHTML = `
+      <div class="zm-bar">
+        <span class="zm-title">${esc(P.name)}</span>
+        <span class="zm-count" id="zmCount"></span>
+        <button type="button" class="zm-btn" id="zmOut" aria-label="Zoom out">&minus;</button>
+        <button type="button" class="zm-btn" id="zmIn" aria-label="Zoom in">+</button>
+        <button type="button" class="zm-btn" id="zmReset" aria-label="Reset zoom">Fit</button>
+        <button type="button" class="zm-btn zm-close" id="zmClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="zm-stage" id="zmStage"><img class="zm-img" id="zmImg" alt="${esc(P.name)}" draggable="false" /></div>
+      ${imgs.length > 1 ? `<button type="button" class="zm-nav zm-prev" id="zmPrev" aria-label="Previous photo">&lsaquo;</button><button type="button" class="zm-nav zm-next" id="zmNext" aria-label="Next photo">&rsaquo;</button>` : ""}
+      <div class="zm-hint">Scroll or pinch to zoom. Drag to move. Esc to close.</div>`;
+    document.body.appendChild(zoomEl);
+    document.body.classList.add("zm-open");
+    const img = zoomEl.querySelector("#zmImg");
+    const stage = zoomEl.querySelector("#zmStage");
+    const paint = () => { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; stage.classList.toggle("is-zoomed", scale > 1); };
+    const clamp = () => {
+      const w = img.clientWidth * scale, h = img.clientHeight * scale;
+      const mx = Math.max(0, (w - stage.clientWidth) / 2), my = Math.max(0, (h - stage.clientHeight) / 2);
+      tx = Math.min(mx, Math.max(-mx, tx)); ty = Math.min(my, Math.max(-my, ty));
+    };
+    const setScale = (s) => { scale = Math.min(5, Math.max(1, s)); if (scale === 1) { tx = 0; ty = 0; } clamp(); paint(); };
+    const go = (i) => {
+      idx = (i + imgs.length) % imgs.length;
+      img.src = imgs[idx];
+      zoomEl.querySelector("#zmCount").textContent = imgs.length > 1 ? `${idx + 1} / ${imgs.length}` : "";
+      scale = 1; tx = 0; ty = 0; paint();
+    };
+    go(idx);
+
+    zoomEl.querySelector("#zmIn").addEventListener("click", () => setScale(scale * 1.5));
+    zoomEl.querySelector("#zmOut").addEventListener("click", () => setScale(scale / 1.5));
+    zoomEl.querySelector("#zmReset").addEventListener("click", () => setScale(1));
+    zoomEl.querySelector("#zmClose").addEventListener("click", closeZoom);
+    zoomEl.querySelector("#zmPrev")?.addEventListener("click", () => go(idx - 1));
+    zoomEl.querySelector("#zmNext")?.addEventListener("click", () => go(idx + 1));
+    stage.addEventListener("click", (e) => { if (e.target === stage) closeZoom(); });
+    img.addEventListener("dblclick", () => setScale(scale > 1 ? 1 : 2.5));
+    stage.addEventListener("wheel", (e) => { e.preventDefault(); setScale(scale * (e.deltaY < 0 ? 1.2 : 1 / 1.2)); }, { passive: false });
+
+    // drag to move; two fingers to pinch
+    const pts = new Map(); let pinch = 0;
+    stage.addEventListener("pointerdown", (e) => {
+      stage.setPointerCapture?.(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      drag = { x: e.clientX - tx, y: e.clientY - ty };
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
+    });
+    stage.addEventListener("pointermove", (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        const [a, b] = [...pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinch) setScale(scale * (d / pinch)); pinch = d; return;
+      }
+      if (scale > 1 && drag) { tx = e.clientX - drag.x; ty = e.clientY - drag.y; clamp(); paint(); }
+    });
+    const up = (e) => { pts.delete(e.pointerId); pinch = 0; drag = null; };
+    stage.addEventListener("pointerup", up);
+    stage.addEventListener("pointercancel", up);
+
+    zoomEl.__key = (e) => {
+      if (e.key === "Escape") closeZoom();
+      else if (e.key === "ArrowLeft") go(idx - 1);
+      else if (e.key === "ArrowRight") go(idx + 1);
+      else if (e.key === "+" || e.key === "=") setScale(scale * 1.5);
+      else if (e.key === "-") setScale(scale / 1.5);
+      else return;
+      e.preventDefault(); e.stopPropagation();
+    };
+    document.addEventListener("keydown", zoomEl.__key, true);
+    zoomEl.querySelector("#zmClose").focus();
+  }
+  function closeZoom() {
+    if (!zoomEl) return;
+    document.removeEventListener("keydown", zoomEl.__key, true);
+    zoomEl.remove(); zoomEl = null;
+    document.body.classList.remove("zm-open");
+    document.getElementById("ppZoom")?.focus({ preventScroll: true });
+  }
+  document.getElementById("ppZoom")?.addEventListener("click", (e) => { e.stopPropagation(); openZoom(gi); });
+  document.getElementById("ppImg")?.addEventListener("click", () => openZoom(gi));
 
   // ---- buy box: Add once, then the quantity IS the cart (no separate update button) -------------
   const buy = document.getElementById("ppBuy");

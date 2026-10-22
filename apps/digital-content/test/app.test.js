@@ -63,7 +63,7 @@ async function start(env = {}) {
   return {
     base, dir, request, output: () => out,
     login: (pw = PASSWORD) => request('POST', '/api/auth/login', { password: pw }),
-    forget: () => { cookie = ''; },
+    forget: () => { cookie = ''; }, cookie: () => cookie,
     stop: async () => { child.kill(); await new Promise((r) => child.once('exit', r)); fs.rmSync(dir, { recursive: true, force: true }); },
   };
 }
@@ -93,7 +93,7 @@ describe('login is enforced on the server', () => {
   });
 
   test('pages send a signed-out visitor to the login page', async () => {
-    for (const p of ['/', '/image-generator.html']) {
+    for (const p of ['/', '/image-generator.html', '/studio.html']) {
       const r = await app.request('GET', p);
       assert.equal(r.status, 302, p);
       assert.equal(r.headers.get('location'), '/login.html');
@@ -301,14 +301,12 @@ describe('website catalogue in the Products page', () => {
     assert.equal((await app.request('GET', '/api/products')).json.data.length, 2);
   });
 
-  test('removed products stay removed until restored', async () => {
+  test('a product removed here comes straight back on the next refresh: the tool always mirrors the website', async () => {
     const list = (await app.request('GET', '/api/products')).json.data;
     const id = list.find((p) => p.sku === 'NS1').id;
     const del = await app.request('POST', '/api/products/bulk-delete', { ids: [id] });
     assert.equal(del.json.removed, 1);
     await app.request('POST', '/api/products/import-website', {});
-    assert.equal((await app.request('GET', '/api/products')).json.data.some((p) => p.sku === 'NS1'), false);
-    await app.request('POST', '/api/products/import-website', { restore: true });
     assert.equal((await app.request('GET', '/api/products')).json.data.some((p) => p.sku === 'NS1'), true);
   });
 
@@ -316,5 +314,154 @@ describe('website catalogue in the Products page', () => {
     app.forget();
     assert.equal((await app.request('POST', '/api/products/import-website', {})).status, 401);
     assert.equal((await app.request('POST', '/api/products/bulk-delete', { ids: [1] })).status, 401);
+  });
+});
+
+describe('collections and automatic refresh', () => {
+  let app, stub
+  before(async () => {
+    const http = require('node:http');
+    const catalog = {
+      categories: [{ name: 'Cells', products: [
+        { SKU: 'C1', ProductCode: 'Cell 18650 A', Price: 100, Unit: 'PCS', Image_Link: [] },
+        { SKU: 'C2', ProductCode: 'Cell 21700 B', Price: 120, Unit: 'PCS', Image_Link: [] },
+      ] }],
+      collections: [{ name: '18650', products: ['Cell 18650 A'] }, { name: '21700', products: ['Cell 21700 B'] }],
+    };
+    stub = http.createServer((req, res) => {
+      if (req.url === '/products.json') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(catalog)); }
+      res.statusCode = 404; res.end();
+    });
+    await new Promise((r) => stub.listen(0, '127.0.0.1', r));
+    app = await start({ WEBSITE_URL: `http://127.0.0.1:${stub.address().port}` });
+    await app.login();
+  });
+  after(async () => { await app.stop(); stub.close(); });
+
+  test('products keep the Zoho collections they belong to', async () => {
+    await app.request('POST', '/api/products/import-website', {});
+    const list = (await app.request('GET', '/api/products')).json.data;
+    assert.deepEqual(JSON.parse(list.find((p) => p.sku === 'C1').collections), ['18650']);
+    assert.deepEqual(JSON.parse(list.find((p) => p.sku === 'C2').collections), ['21700']);
+  });
+
+  test('the list refreshes every time the generator opens (not more than every 30 seconds)', async () => {
+    const first = await app.request('POST', '/api/products/sync-if-stale', {});
+    assert.equal(first.json.synced, false, 'just imported, so not stale');
+    assert.equal((await app.request('POST', '/api/products/sync-if-stale')).status, 200);
+  });
+
+  test('the generator offers a collection filter', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'image-generator.html'), 'utf8');
+    assert.match(page, /id="refCollection"/);
+    assert.match(page, /sync-if-stale/);
+  });
+});
+
+describe('the tool mirrors the website', () => {
+  let app, stub, catalog;
+  before(async () => {
+    const http = require('node:http');
+    catalog = { categories: [{ name: 'Cells', products: [{ SKU: 'M1', ProductCode: 'One', Price: 1, Unit: 'PCS', Image_Link: [] }, { SKU: 'M2', ProductCode: 'Two', Price: 2, Unit: 'PCS', Image_Link: [] }] }] };
+    stub = http.createServer((req, res) => { if (req.url === '/products.json') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(catalog)); } res.statusCode = 404; res.end(); });
+    await new Promise((r) => stub.listen(0, '127.0.0.1', r));
+    app = await start({ WEBSITE_URL: `http://127.0.0.1:${stub.address().port}` });
+    await app.login();
+  });
+  after(async () => { await app.stop(); stub.close(); });
+
+  test('a product that leaves the website leaves the tool on the next refresh', async () => {
+    await app.request('POST', '/api/products/import-website', {});
+    assert.equal((await app.request('GET', '/api/products')).json.data.length, 2);
+    catalog.categories[0].products.pop();
+    const r = await app.request('POST', '/api/products/import-website', {});
+    assert.equal(r.json.removed, 1);
+    assert.deepEqual((await app.request('GET', '/api/products')).json.data.map((p) => p.sku), ['M1']);
+  });
+});
+
+describe('daily marketing studio', () => {
+  let app;
+  before(async () => { app = await start(); });
+  after(async () => { await app.stop(); });
+
+  test('the studio, uploads and the WhatsApp writer need a login', async () => {
+    assert.equal((await app.request('GET', '/studio.html')).status, 302);
+    assert.equal((await app.request('POST', '/api/uploads')).status, 401);
+    assert.equal((await app.request('POST', '/api/anthropic/generate-whatsapp', { brief: 'x' })).status, 401);
+  });
+
+  test('after login the landing page is the studio', async () => {
+    await app.login();
+    const r = await app.request('GET', '/');
+    assert.equal(r.status, 302);
+    assert.equal(r.headers.get('location'), '/studio.html');
+    const page = await app.request('GET', '/studio.html');
+    assert.equal(page.status, 200);
+    assert.match(page.text, /Daily Marketing Studio/);
+  });
+
+  test('an image can be uploaded, and a non-image is refused', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    const good = new FormData();
+    good.append('file', new Blob([png], { type: 'image/png' }), 'photo.png');
+    const ok = await fetch(app.base + '/api/uploads', { method: 'POST', body: good, headers: { Cookie: app.cookie() } });
+    assert.equal(ok.status, 200);
+    const body = await ok.json();
+    assert.match(body.url, /^\/uploads\/.*photo\.png$/);
+    assert.ok(fs.existsSync(path.join(app.dir, 'uploads', body.filename)));
+    const bad = new FormData();
+    bad.append('file', new Blob(['not an image'], { type: 'text/plain' }), 'notes.txt');
+    const no = await fetch(app.base + '/api/uploads', { method: 'POST', body: bad, headers: { Cookie: app.cookie() } });
+    assert.equal(no.status, 400);
+  });
+
+  test('the studio has templates for every channel, brand details and an upload box', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['data-ch="ig-image"', 'data-ch="ig-carousel"', 'data-ch="wa-message"', 'data-ch="wa-template"', 'id="brWa"', 'id="brWeb"', 'id="brLoc"', 'id="brLogoIn"', 'id="drop"', 'message_templates', "category: 'MARKETING'", 'noLogo: true']) {
+      assert.ok(page.includes(needle), needle + ' is missing');
+    }
+  });
+});
+
+describe('library and refresh status', () => {
+  let app;
+  before(async () => { app = await start(); await app.login(); });
+  after(async () => { await app.stop(); });
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+  test('a generated post is stored with its picture, grouped by category', async () => {
+    const r = await app.request('POST', '/api/creatives', { channel: 'ig-image', template: 'spotlight', category: 'BMS', title: 'Product spotlight', caption: 'Hello', images: [png], products: ['JBD 24S'] });
+    assert.equal(r.status, 200);
+    await app.request('POST', '/api/creatives', { channel: 'wa-message', category: 'Nickel Strip Plated', title: 'Daily offer', caption: 'Message', images: [] });
+    const all = (await app.request('GET', '/api/creatives')).json.data;
+    assert.equal(all.length, 2);
+    const bms = (await app.request('GET', '/api/creatives?category=BMS')).json.data;
+    assert.equal(bms.length, 1);
+    assert.equal(bms[0].images.length, 1);
+    assert.ok(fs.existsSync(path.join(app.dir, 'uploads', bms[0].images[0])));
+    const wa = (await app.request('GET', '/api/creatives?channel=wa-message')).json.data;
+    assert.equal(wa[0].category, 'Nickel Strip Plated');
+  });
+
+  test('bad images are refused and deleting removes the file', async () => {
+    assert.equal((await app.request('POST', '/api/creatives', { images: ['data:text/html;base64,AAAA'] })).status, 400);
+    const bms = (await app.request('GET', '/api/creatives?category=BMS')).json.data[0];
+    const file = path.join(app.dir, 'uploads', bms.images[0]);
+    assert.equal((await app.request('DELETE', '/api/creatives/' + bms.id)).status, 200);
+    assert.equal(fs.existsSync(file), false);
+    assert.equal((await app.request('GET', '/api/creatives?category=BMS')).json.data.length, 0);
+  });
+
+  test('the library and refresh status need a login', async () => {
+    app.forget();
+    assert.equal((await app.request('GET', '/api/creatives')).status, 401);
+    assert.equal((await app.request('GET', '/api/sync-status')).status, 401);
+    await app.login();
+  });
+
+  test('the studio has the three tabs, the description option and the refresh line', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['data-pt="create"', 'data-pt="plan"', 'data-pt="library"', 'id="incDesc"', 'id="syncWhen"', 'sync-status', '/api/creatives']) assert.ok(page.includes(needle), needle);
   });
 });
