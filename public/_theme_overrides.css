@@ -2582,9 +2582,9 @@ body.wl-open { overflow: hidden; }
 .wl-btn-primary { background: #0e8f7e; color: #fff; }
 .wl-btn-primary:hover { background: #0b6f62; }
 .wl-btn-ghost { background: #fff; border-color: #2f6fd1; color: #2f6fd1; }
-.wl-remove { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: #fff1f2; cursor: pointer; display: grid; place-items: center; }
-.wl-remove svg { width: 18px; height: 18px; fill: #e11d48; stroke: #e11d48; stroke-width: 2; }
-.wl-remove:hover { background: #ffe4e6; }
+.wl-remove { width: 32px; height: 32px; padding: 0; border: 1px solid #d5dde3; border-radius: 50%; background: #fff; color: #64748b; cursor: pointer; display: grid; place-items: center; }
+.wl-remove svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; }
+.wl-remove:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
 .wl-empty { text-align: center; padding: 36px 12px; color: #5b6b7a; display: grid; gap: 8px; justify-items: center; }
 .wl-empty b { color: #12263f; }
 .wl-list .wl-row { grid-template-columns: 76px minmax(0, 1fr) 34px; }

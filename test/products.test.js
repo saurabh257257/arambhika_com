@@ -457,3 +457,11 @@ describe('removing a favourite', () => {
     assert.ok(js.includes('data-wl-remove="${esc(it.name)}"'))
   })
 })
+
+describe('favourites list', () => {
+  test('each item has its own cross button to remove it', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/wishlist.js'), 'utf8')
+    assert.ok(js.includes('const CROSS ='))
+    assert.equal(js.split('title="Remove">${CROSS}').length - 1, 2)
+  })
+})

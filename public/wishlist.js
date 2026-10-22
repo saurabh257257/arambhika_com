@@ -10,6 +10,7 @@
   const money = (n) => `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const slugify = (v) => String(v || "").toLowerCase().trim().replace(/\s+/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const CROSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke-linecap="round"/></svg>';
   const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
 
   const state = { loggedIn: false, loaded: false, items: new Map(), catalog: null };
@@ -148,7 +149,7 @@
     el.innerHTML = rows.map((it) => {
       const p = products.find((x) => x.ProductCode === it.name) || products.find((x) => it.variantId && x.ZohoVariantId === it.variantId);
       if (!p) {
-        return `<article class="wl-row is-gone"><div class="wl-info"><div class="wl-name">${esc(it.name)}</div><div class="wl-meta">No longer in the store</div></div><button type="button" class="wl-remove" data-wl-remove="${esc(it.name)}" data-variant="${esc(it.variantId || "")}" aria-label="Remove ${esc(it.name)}">${HEART}</button></article>`;
+        return `<article class="wl-row is-gone"><div class="wl-info"><div class="wl-name">${esc(it.name)}</div><div class="wl-meta">No longer in the store</div></div><button type="button" class="wl-remove" data-wl-remove="${esc(it.name)}" data-variant="${esc(it.variantId || "")}" aria-label="Remove ${esc(it.name)}" title="Remove">${CROSS}</button></article>`;
       }
       const img = (Array.isArray(p.Image_Link) ? p.Image_Link[0] : p.Image_Link) || "";
       const thumb = /^\/zimg\//.test(img) ? `${img}?w=200` : img;
@@ -166,7 +167,7 @@
               : `<button type="button" class="wl-btn wl-btn-ghost" data-wl-request="${esc(p.ProductCode)}">Request now</button>`}
           </div>
         </div>
-        <button type="button" class="wl-remove" data-wl-remove="${esc(it.name)}" data-variant="${esc(it.variantId || p.ZohoVariantId || "")}" aria-label="Remove ${esc(p.ProductCode)} from favourites" title="Remove">${HEART}</button>
+        <button type="button" class="wl-remove" data-wl-remove="${esc(it.name)}" data-variant="${esc(it.variantId || p.ZohoVariantId || "")}" aria-label="Remove ${esc(p.ProductCode)} from favourites" title="Remove">${CROSS}</button>
       </article>`;
     }).join("");
   }
