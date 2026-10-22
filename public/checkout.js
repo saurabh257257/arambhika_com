@@ -356,11 +356,13 @@
   }
 
   async function done(orderNumber) {
+    clearInterval(pollTimer);
     clearPending();
     sessionStorage.removeItem(CART_KEY);
     post("/api/test-cart", { cart: {} });
     document.dispatchEvent(new CustomEvent("cart:changed"));
     $("ckLayout").hidden = true;
+    $("ckEmpty").hidden = true;
     const el = $("ckDone");
     el.hidden = false;
     el.innerHTML = `

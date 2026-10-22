@@ -428,3 +428,12 @@ describe('checkout talks to Zoho on the store host', () => {
     assert.ok(!src.includes('commerce.zoho.'))
   })
 })
+
+describe('the checkout confirmation screen', () => {
+  test('hides the payment step once the order is confirmed', () => {
+    const css = fs.readFileSync(path.join(ROOT, 'public/_theme_overrides.css'), 'utf8')
+    assert.ok(css.includes('.ck-layout[hidden]'))
+    const js = fs.readFileSync(path.join(ROOT, 'public/checkout.js'), 'utf8')
+    assert.match(js, /async function done\(orderNumber\) \{\s*clearInterval\(pollTimer\);/)
+  })
+})

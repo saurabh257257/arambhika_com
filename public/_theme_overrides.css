@@ -1569,6 +1569,7 @@ body.cd-lock { overflow: hidden; }
 .ck-main { padding: 28px 0 56px; background: #f6faf9; min-height: 70vh; }
 .ck-h1 { font-family: "Poppins", sans-serif; font-size: 1.6rem; margin: 0 0 18px; color: var(--navy, #1f2937); }
 .ck-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; align-items: start; }
+.ck-layout[hidden], .ck-empty[hidden], .ck-done[hidden] { display: none; } /* a class display rule beats [hidden]: without this the old payment step stayed visible under "Payment received" */
 .ck-steps { display: grid; gap: 14px; }
 .ck-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; transition: opacity 0.2s, box-shadow 0.2s; }
 .ck-card[data-state="locked"] { opacity: 0.55; }
