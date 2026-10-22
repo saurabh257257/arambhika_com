@@ -365,3 +365,12 @@ describe('payment hand-off, category row and phone fields', () => {
     assert.match(read('public/_theme_overrides.css'), /justify-content: flex-start !important; align-self: flex-start/)
   })
 })
+
+describe('choosing a category', () => {
+  test('scrolls from measured heights so the first row is never under the pinned bar', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8')
+    assert.match(js, /const scrollToProducts = /)
+    assert.match(js, /scrollToProducts\(\);/)
+    assert.match(js, /setTimeout\(\(\) => go\("auto"\), 800\)/)
+  })
+})

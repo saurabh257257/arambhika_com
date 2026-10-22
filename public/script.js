@@ -114,6 +114,24 @@ let cachedSiteConfig = {};
 let pendingProductCode = getRequestedProductCode();
 let highlightResetTimer = null;
 
+// After choosing a category, bring its first row into view just below the pinned header and category row.
+// Measured from the real heights at that moment, then re-checked once the page has settled, so the
+// first row never ends up tucked under the pinned bar.
+const scrollToProducts = () => {
+  const go = (behavior) => {
+    const target = [...document.querySelectorAll("#catalogGrid .cat-block")].find((b) => b.style.display !== "none") || document.querySelector("#catalogGrid");
+    if (!target) return;
+    const header = document.querySelector(".site-header")?.getBoundingClientRect().height || 0;
+    const bar = document.querySelector(".cat-bar");
+    const pinnedBar = bar && getComputedStyle(bar).display !== "contents" ? bar : document.querySelector("#categoryFilters");
+    const barH = pinnedBar ? pinnedBar.getBoundingClientRect().height : 0;
+    const top = target.getBoundingClientRect().top + window.scrollY - header - barH - 14;
+    window.scrollTo({ top: Math.max(0, top), behavior });
+  };
+  requestAnimationFrame(() => go("smooth"));
+  setTimeout(() => go("auto"), 800);
+};
+
 const renderFilters = (categories) => {
   if (!categoryFilters) return;
   categoryFilters.innerHTML = "";
@@ -152,8 +170,7 @@ const renderFilters = (categories) => {
       currentCategoryFilter = currentCategoryFilter === btn.dataset.filter ? "all" : btn.dataset.filter;
       setFilterButtonState(currentCategoryFilter);
       filterCatalog();
-      const grid = document.querySelector("#catalogGrid");
-      if (grid) grid.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollToProducts();
     });
   });
   setFilterButtonState(currentCategoryFilter);
