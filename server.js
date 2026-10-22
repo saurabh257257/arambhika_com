@@ -9,7 +9,7 @@ import { fetchStorefrontCatalog, fetchImage, fetchCategoryImage } from './lib/zo
 import { buildCatalog } from './lib/catalog.js'
 import * as zohoAuth from './lib/zoho-oauth.js'
 import { placeOrder, estimateOrder, CheckoutError } from './lib/zoho-checkout.js'
-import { listSalesOrdersByEmail, getSalesOrderItems, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice } from './lib/zoho-admin.js'
+import { listSalesOrdersByEmail, getSalesOrderItems, getSalesOrderStatus, findInvoiceForSalesOrder, findEwayBillForInvoice, fetchBooksPdf, findShipmentsForSalesOrder } from './lib/zoho-admin.js'
 import * as testStore from './lib/customer-store.js'
 import * as otp from './lib/otp.js'
 import { signSession, readSession, SESSION_COOKIE, SESSION_DAYS } from './lib/session.js'
@@ -679,6 +679,39 @@ app.get('/api/test-orders/:id/invoice', testSessionRequired, async (req, res) =>
     let ewaybill = null
     try { ewaybill = await findEwayBillForInvoice(invoice.invoice_id, process.env.ZOHO_INVENTORY_ORG_ID) } catch {}
     res.json({ invoice, ewaybill })
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
+// The paper that matches where the order is: the sales order until it ships, then the shipment,
+// then the invoice once delivered. The PDFs are streamed through here so Zoho links never reach the browser.
+app.get('/api/test-orders/:id/document', testSessionRequired, async (req, res) => {
+  const order = testStore.getOrders(req.mobile).find((o) => o.id === req.params.id)
+  if (!order?.zohoSalesOrderId) return res.status(404).json({ error: 'Order not found' })
+  try {
+    let pdf, name
+    if (req.query.type === 'invoice') {
+      const invoice = await findInvoiceForSalesOrder(order.zohoSalesOrderNumber, process.env.ZOHO_BOOKS_ORG_ID)
+      if (!invoice) return res.status(404).json({ error: 'No invoice has been raised for this order yet.' })
+      pdf = await fetchBooksPdf('invoices', invoice.invoice_id, process.env.ZOHO_BOOKS_ORG_ID)
+      name = invoice.invoice_number || 'invoice'
+    } else {
+      pdf = await fetchBooksPdf('salesorders', order.zohoSalesOrderId, process.env.ZOHO_BOOKS_ORG_ID)
+      name = order.zohoSalesOrderNumber || 'sales-order'
+    }
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${String(name).replace(/[^\w.-]/g, '_')}.pdf"`, 'Cache-Control': 'private, no-store' })
+    res.send(pdf)
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
+app.get('/api/test-orders/:id/shipment', testSessionRequired, async (req, res) => {
+  const order = testStore.getOrders(req.mobile).find((o) => o.id === req.params.id)
+  if (!order?.zohoSalesOrderId) return res.status(404).json({ error: 'Order not found' })
+  try {
+    res.json({ shipments: await findShipmentsForSalesOrder(order.zohoSalesOrderId, process.env.ZOHO_INVENTORY_ORG_ID) })
   } catch (err) {
     res.status(502).json({ error: err.message })
   }

@@ -195,6 +195,16 @@
     showGuest();
   });
 
+  // Where the order really is, from Zoho's own sales-order fields.
+  function orderStage(o) {
+    if (o.status === "failed") return { key: "failed", label: "Failed", doc: "" };
+    if (!o.zohoSalesOrderNumber) return { key: "awaiting_payment", label: "Awaiting payment", doc: "" };
+    const live = o.live || {};
+    const shipped = String(live.shippedStatus || "").toLowerCase();
+    if (["delivered", "fulfilled"].includes(shipped)) return { key: "delivered", label: "Delivered", doc: "invoice" };
+    if (["shipped", "partially_shipped"].includes(shipped)) return { key: "shipped", label: "Shipped", doc: "shipment" };
+    return { key: "confirmed", label: "Payment received", doc: "salesorder" };
+  }
   const fmtMoney = (n) => `₹${Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const fmtDate = (d) => {
     try { return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); }
@@ -253,7 +263,7 @@
       const count = (o.items || []).reduce((s, it) => s + (Number(it.qty) || 0), 0);
       return `<button type="button" class="acct-recent-row" data-goto-order="${o.id}">
         <span class="acct-recent-main"><b>${o.zohoSalesOrderNumber || o.id}</b><small>${fmtDate(o.placedAt)} &middot; ${count} item${count === 1 ? "" : "s"}${o.total ? ` &middot; ${fmtMoney(o.total)}` : ""}</small></span>
-        <span class="acct-order-status is-${o.status}">${String((o.live && o.live.status) || o.status).replace(/_/g, " ")}</span>
+        <span class="acct-order-status is-${orderStage(o).key}">${orderStage(o).label}</span>
       </button>`;
     }).join("");
     box.querySelectorAll("[data-goto-order]").forEach((b) => b.addEventListener("click", () => switchTab("orders")));
@@ -384,7 +394,7 @@
     const shipped = String(o.live?.shippedStatus || "").toLowerCase();
     const steps = [
       { label: "Order Placed", done: true },
-      { label: "Confirmed", done: o.status === "confirmed" },
+      { label: "Confirmed", done: o.status === "confirmed" || Boolean(o.zohoSalesOrderNumber) },
       { label: "Shipped", done: ["shipped", "fulfilled", "delivered"].includes(shipped) },
       { label: "Delivered", done: shipped === "delivered" },
     ];
@@ -408,7 +418,7 @@
     card.className = "acct-order-card2";
     card.dataset.orderId = o.id;
     const live = o.live;
-    const statusLabel = live?.status || o.status;
+    const stage = orderStage(o);
     const itemCount = (o.items || []).reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
     const itemLines = (o.items || []).map((it) => `<div class="acct-order-item">${it.label || it.variantId} &times; ${it.qty}</div>`).join("");
 
@@ -421,7 +431,7 @@
         <div class="acct-order-date">${fmtDate(o.placedAt)} &middot; ${itemCount} item${itemCount === 1 ? "" : "s"}${o.total ? ` &middot; ${fmtMoney(o.total)}` : ""}</div>
       </div>
       <div class="acct-order-head-right">
-        <span class="acct-order-status is-${o.status}">${statusLabel}</span>
+        <span class="acct-order-status is-${stage.key}">${stage.label}</span>
         <svg class="acct-order-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </div>
     `;
@@ -432,7 +442,7 @@
     body.innerHTML = `
       ${buildOrderStepper(o)}
       <div class="acct-order-items">${itemLines}</div>
-      ${live ? `<div class="acct-order-note">Shipped: ${live.shippedStatus || "-"} &middot; Invoiced: ${live.invoicedStatus || "-"}${live.total ? ` &middot; Total: ${fmtMoney(live.total)}` : ""}</div>` : ""}
+      ${o.zohoSalesOrderNumber ? `<div class="acct-order-note">Payment received &middot; Sales order ${o.zohoSalesOrderNumber} generated${stage.key === "shipped" ? " &middot; Shipped" : ""}${stage.key === "delivered" ? " &middot; Delivered &middot; Invoice issued" : ""}${(live && live.total) || o.total ? ` &middot; Total: ${fmtMoney((live && live.total) || o.total)}` : ""}</div>` : ""}
       ${o.note ? `<div class="acct-order-note">${o.note}</div>` : ""}
     `;
 
@@ -444,43 +454,82 @@
     card.appendChild(head);
     card.appendChild(body);
 
-    if (o.zohoSalesOrderNumber) {
+    if (stage.doc) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "acct-link-btn";
-      btn.textContent = "View Invoice";
-      const invoiceArea = document.createElement("div");
-      invoiceArea.className = "acct-invoice-area";
+      const names = { salesorder: "Sales Order", shipment: "Shipment", invoice: "Invoice" };
+      const name = names[stage.doc];
+      btn.textContent = "View " + name;
+      const docArea = document.createElement("div");
+      docArea.className = "acct-invoice-area";
       let loaded = false;
       btn.addEventListener("click", async () => {
         if (loaded) {
-          const isOpen = invoiceArea.classList.toggle("is-open");
-          btn.textContent = isOpen ? "Hide Invoice" : "View Invoice";
+          const isOpen = docArea.classList.toggle("is-open");
+          btn.textContent = (isOpen ? "Hide " : "View ") + name;
           return;
         }
         btn.textContent = "Loading…";
         try {
-          const res = await fetch(`/api/test-orders/${o.id}/invoice`);
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Could not load invoice");
-          invoiceArea.appendChild(renderInvoiceBlock(data));
-          invoiceArea.classList.add("is-open");
+          if (stage.doc === "shipment") {
+            const res = await fetch("/api/test-orders/" + o.id + "/shipment");
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Could not load shipment");
+            docArea.appendChild(renderShipmentBlock(data.shipments || []));
+          } else if (stage.doc === "invoice") {
+            const res = await fetch("/api/test-orders/" + o.id + "/invoice");
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Could not load invoice");
+            docArea.appendChild(renderInvoiceBlock(data, o.id));
+          } else {
+            docArea.appendChild(renderSalesOrderBlock(o));
+          }
+          docArea.classList.add("is-open");
           loaded = true;
-          btn.textContent = "Hide Invoice";
+          btn.textContent = "Hide " + name;
         } catch (err) {
-          invoiceArea.innerHTML = `<p class="acct-error">${err.message}</p>`;
-          invoiceArea.classList.add("is-open");
+          docArea.innerHTML = '<p class="acct-error">' + err.message + "</p>";
+          docArea.classList.add("is-open");
           loaded = true;
-          btn.textContent = "View Invoice";
+          btn.textContent = "View " + name;
         }
       });
       body.appendChild(btn);
-      body.appendChild(invoiceArea);
+      body.appendChild(docArea);
     }
     return card;
   }
 
-  function renderInvoiceBlock(data) {
+  function renderSalesOrderBlock(o) {
+    const wrap = document.createElement("div");
+    wrap.className = "acct-invoice-block";
+    wrap.innerHTML = `
+      <div class="acct-invoice-row"><span>Sales Order</span><strong>${o.zohoSalesOrderNumber}</strong></div>
+      <div class="acct-invoice-row"><span>Date</span><strong>${fmtDate(o.placedAt)}</strong></div>
+      <div class="acct-invoice-row"><span>Payment</span><strong>Received</strong></div>
+      <div class="acct-invoice-row"><span>Total</span><strong>${o.total != null ? fmtMoney(o.total) : "-"}</strong></div>
+      <a class="acct-invoice-download" href="/api/test-orders/${o.id}/document?type=salesorder" target="_blank" rel="noopener">Open / Download Sales Order &rarr;</a>`;
+    return wrap;
+  }
+
+  function renderShipmentBlock(list) {
+    const wrap = document.createElement("div");
+    wrap.className = "acct-invoice-block";
+    if (!list.length) {
+      wrap.innerHTML = '<p class="form-note">Your order has shipped. Shipment details will appear here shortly.</p>';
+      return wrap;
+    }
+    wrap.innerHTML = list.map((s) => `
+      <div class="acct-invoice-row"><span>Shipment</span><strong>${s.number || "-"}</strong></div>
+      ${s.date ? `<div class="acct-invoice-row"><span>Date</span><strong>${fmtDate(s.date)}</strong></div>` : ""}
+      ${s.carrier ? `<div class="acct-invoice-row"><span>Carrier</span><strong>${s.carrier}</strong></div>` : ""}
+      ${s.tracking ? `<div class="acct-invoice-row"><span>Tracking No.</span><strong>${s.trackingUrl ? `<a href="${s.trackingUrl}" target="_blank" rel="noopener">${s.tracking}</a>` : s.tracking}</strong></div>` : ""}
+      ${s.status ? `<div class="acct-invoice-row"><span>Status</span><strong>${s.status}</strong></div>` : ""}`).join("");
+    return wrap;
+  }
+
+  function renderInvoiceBlock(data, orderId) {
     const wrap = document.createElement("div");
     wrap.className = "acct-invoice-block";
     if (!data.invoice) {
@@ -495,7 +544,8 @@
       <div class="acct-invoice-row"><span>Status</span><strong>${inv.status || "-"}</strong></div>
       <div class="acct-invoice-row"><span>Total</span><strong>${inv.total != null ? fmtMoney(inv.total) : "-"}</strong></div>
       <div class="acct-invoice-row"><span>Balance Due</span><strong>${inv.balance != null ? fmtMoney(inv.balance) : "-"}</strong></div>
-      ${inv.invoice_url ? `<a class="acct-invoice-download" href="${String(inv.invoice_url).trim()}" target="_blank" rel="noopener">Open / Download Invoice &rarr;</a>` : ""}
+      ${orderId ? `<a class="acct-invoice-download" href="/api/test-orders/${orderId}/document?type=invoice" target="_blank" rel="noopener">Open / Download Invoice (PDF) &rarr;</a>` : ""}
+      ${inv.invoice_url && !orderId ? `<a class="acct-invoice-download" href="${String(inv.invoice_url).trim()}" target="_blank" rel="noopener">Open / Download Invoice &rarr;</a>` : ""}
       ${ew
         ? `<div class="acct-invoice-row"><span>E-Way Bill No.</span><strong>${ew.ewaybill_number || "-"}</strong></div>
            <div class="acct-invoice-row"><span>E-Way Bill Status</span><strong>${ew.status || "-"}</strong></div>`

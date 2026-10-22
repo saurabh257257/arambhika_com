@@ -437,3 +437,14 @@ describe('the checkout confirmation screen', () => {
     assert.match(js, /async function done\(orderNumber\) \{\s*clearInterval\(pollTimer\);/)
   })
 })
+
+describe('order status and documents follow the real stage', () => {
+  test('badge says what happened, and the paper matches the stage', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/account.js'), 'utf8')
+    assert.ok(js.includes('label: "Payment received"'))
+    assert.ok(js.includes('doc: "salesorder"') && js.includes('doc: "shipment"') && js.includes('doc: "invoice"'))
+    assert.ok(js.includes('Sales order ${o.zohoSalesOrderNumber} generated'))
+    const srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8')
+    assert.ok(srv.includes("/api/test-orders/:id/document") && srv.includes("/api/test-orders/:id/shipment"))
+  })
+})

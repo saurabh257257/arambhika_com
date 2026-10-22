@@ -657,6 +657,9 @@ body {
   text-transform: uppercase;
 }
 .acct-order-status.is-confirmed { background: #e6f4ea; color: var(--ok); }
+.acct-order-status.is-shipped { background: #e0f0ff; color: #1d5fa8; }
+.acct-order-status.is-delivered { background: #d7f5e4; color: #0d6b3a; }
+.acct-order-status.is-awaiting_payment { background: #fff4d6; color: #8a6100; }
 .acct-order-status.is-failed,
 .acct-order-status.is-unconfirmed { background: #fdecea; color: #c0392b; }
 .acct-order-status.is-placing { background: #f0f2f2; color: var(--muted); }
