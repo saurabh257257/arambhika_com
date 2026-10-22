@@ -83,6 +83,19 @@
     toast(saved ? "Saved to favourites" : "Removed from favourites");
   }
 
+  // Removing is always a removal, never a toggle: a product renamed in Zoho is listed under its new name
+  // but saved under its old one, and toggling by the new name would have saved it again instead.
+  async function unsave(name, variantId) {
+    if (!name || !state.loggedIn) return;
+    const before = new Map(state.items);
+    state.items.delete(name);
+    changed();
+    const r = await send({ name, variantId, saved: false });
+    if (r.ok) setItems(r.data.items); else { state.items = before; }
+    changed();
+    toast(r.ok ? "Removed from favourites" : "Could not remove it. Please try again.");
+  }
+
   function signIn(title, hint, onSuccess) {
     if (typeof window.openSignIn === "function") {
       window.openSignIn({ title, hint, onSuccess: async () => { state.loggedIn = true; await onSuccess(); } });
@@ -153,7 +166,7 @@
               : `<button type="button" class="wl-btn wl-btn-ghost" data-wl-request="${esc(p.ProductCode)}">Request now</button>`}
           </div>
         </div>
-        <button type="button" class="wl-remove" data-wl-remove="${esc(p.ProductCode)}" data-variant="${esc(p.ZohoVariantId || "")}" aria-label="Remove ${esc(p.ProductCode)} from favourites" title="Remove">${HEART}</button>
+        <button type="button" class="wl-remove" data-wl-remove="${esc(it.name)}" data-variant="${esc(it.variantId || p.ZohoVariantId || "")}" aria-label="Remove ${esc(p.ProductCode)} from favourites" title="Remove">${HEART}</button>
       </article>`;
     }).join("");
   }
@@ -169,7 +182,7 @@
     const heart = e.target.closest?.(".wish-btn[data-name]");
     if (heart) { e.preventDefault(); e.stopPropagation(); toggle(heart.dataset.name, heart.dataset.variant); return; }
     const remove = e.target.closest?.("[data-wl-remove]");
-    if (remove) { toggle(remove.dataset.wlRemove, remove.dataset.variant); return; }
+    if (remove) { unsave(remove.dataset.wlRemove, remove.dataset.variant); return; }
     const add = e.target.closest?.("[data-wl-add]");
     if (add) {
       const p = (await catalog()).find((x) => x.ProductCode === add.dataset.wlAdd);

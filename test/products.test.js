@@ -448,3 +448,12 @@ describe('order status and documents follow the real stage', () => {
     assert.ok(srv.includes("/api/test-orders/:id/document") && srv.includes("/api/test-orders/:id/shipment"))
   })
 })
+
+describe('removing a favourite', () => {
+  test('is a real removal using the saved name, not a toggle on the current product name', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/wishlist.js'), 'utf8')
+    assert.ok(js.includes('async function unsave(name, variantId)'))
+    assert.ok(js.includes('unsave(remove.dataset.wlRemove'))
+    assert.ok(js.includes('data-wl-remove="${esc(it.name)}"'))
+  })
+})
