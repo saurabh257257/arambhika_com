@@ -395,3 +395,15 @@ describe('category row arrows', () => {
     assert.match(css, /\.cat-tiles::-webkit-scrollbar \{ display: none !important; \}/)
   })
 })
+
+describe('product photos from Zoho', () => {
+  test('photos listed under images (not documents) are used, and placeholders are ignored', async () => {
+    const { photosFrom } = await import('../lib/zoho.js')
+    const withImage = { documents: [], images: [{ id: '4027527000001101033', is_placeholder_image: false, url: '/product-images/JBD1.jpg/4027527000001101033', order: 1 }] }
+    assert.deepEqual(photosFrom(withImage), [{ document_id: '4027527000001101033', name: 'JBD1.jpg', attachment_order: 1 }])
+    const placeholder = { documents: [], images: [{ id: '-1', is_placeholder_image: true, url: '/zs-common/images/no-preview-image.jpg' }] }
+    assert.deepEqual(photosFrom(placeholder), [])
+    const docs = { documents: [{ document_id: '1', name: 'a.jpg' }], images: [] }
+    assert.equal(photosFrom(docs).length, 1, 'documents still win when present')
+  })
+})
