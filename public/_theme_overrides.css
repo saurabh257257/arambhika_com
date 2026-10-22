@@ -2724,3 +2724,22 @@ body.acct-fixed-layout .acct-toolbar .acct-avatar { background: #fff; color: #0b
 body.acct-fixed-layout .acct-content { background: linear-gradient(180deg, #eaf5f2 0%, #e9eff9 100%); }
 .acct-tab-btn[data-tab="saved"] svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
 .acct-recent-row .acct-order-status { text-transform: capitalize; }
+
+/* category row: arrows instead of a scrollbar */
+.cat-scroller { position: relative; min-width: 0; }
+.cat-tiles, .cat-tiles:not(#x) { scrollbar-width: none !important; scroll-behavior: smooth; }
+.cat-tiles::-webkit-scrollbar { display: none !important; }
+.cat-arrow { position: absolute; top: 20px; z-index: 6; width: 34px; height: 34px; padding: 0 0 3px; border-radius: 50%; border: 1px solid rgba(18, 38, 63, 0.16); background: #fff; color: #0b6f62; font-size: 1.5rem; line-height: 1; cursor: pointer; display: grid; place-items: center; box-shadow: 0 3px 10px rgba(18, 38, 63, 0.22); }
+.cat-arrow:hover { background: #0e8f7e; color: #fff; border-color: #0e8f7e; }
+.cat-arrow:focus-visible { outline: 2px solid #0e8f7e; outline-offset: 2px; }
+.cat-arrow[hidden] { display: none; }
+.cat-arrow-prev { left: 2px; } .cat-arrow-next { right: 2px; }
+.cat-scroller::before, .cat-scroller::after { content: ""; position: absolute; top: 0; bottom: 0; width: 34px; pointer-events: none; z-index: 5; }
+.cat-scroller::before { left: 0; background: linear-gradient(90deg, rgba(228, 241, 238, 0.95), transparent); }
+.cat-scroller::after { right: 0; background: linear-gradient(270deg, rgba(228, 241, 238, 0.95), transparent); }
+@media (max-width: 1180px) {
+  .cat-scroller { position: sticky; top: var(--hdr-h, 90px); z-index: 15; margin: 0 -12px; background: rgba(228, 241, 238, 0.94); backdrop-filter: blur(6px); box-shadow: 0 6px 12px -8px rgba(18, 38, 63, 0.35); }
+  .cat-tiles { position: static !important; margin: 0 !important; box-shadow: none !important; background: transparent !important; backdrop-filter: none !important; }
+}
+@media (max-width: 640px) { .cat-arrow { width: 30px; height: 30px; top: 16px; font-size: 1.3rem; } }
+.cat-tiles, .cat-tiles:not(#x) { scroll-snap-type: none !important; }

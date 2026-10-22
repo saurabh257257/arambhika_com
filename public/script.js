@@ -123,7 +123,7 @@ const scrollToProducts = () => {
     if (!target) return;
     const header = document.querySelector(".site-header")?.getBoundingClientRect().height || 0;
     const bar = document.querySelector(".cat-bar");
-    const pinnedBar = bar && getComputedStyle(bar).display !== "contents" ? bar : document.querySelector("#categoryFilters");
+    const pinnedBar = bar && getComputedStyle(bar).display !== "contents" ? bar : document.querySelector("#catScroller");
     const barH = pinnedBar ? pinnedBar.getBoundingClientRect().height : 0;
     const top = target.getBoundingClientRect().top + window.scrollY - header - barH - 14;
     window.scrollTo({ top: Math.max(0, top), behavior });
@@ -1422,7 +1422,7 @@ document.addEventListener("keydown", (event) => {
   const pinned = () => {
     const bar = document.querySelector(".cat-bar");
     if (bar && getComputedStyle(bar).display !== "contents") return bar;
-    return document.querySelector("#categoryFilters");
+    return document.querySelector("#catScroller");
   };
   const set = () => {
     const el = pinned();
@@ -1432,4 +1432,35 @@ document.addEventListener("keydown", (event) => {
   document.addEventListener("DOMContentLoaded", watch);
   window.addEventListener("load", watch);
   window.addEventListener("resize", set);
+})();
+
+// Left and right arrows for the category row (the scrollbar is hidden): they appear only where there is more to see.
+(() => {
+  const scroller = document.getElementById("catScroller");
+  const row = document.getElementById("categoryFilters");
+  if (!scroller || !row) return;
+  const mk = (dir) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cat-arrow cat-arrow-" + (dir < 0 ? "prev" : "next");
+    b.setAttribute("aria-label", dir < 0 ? "Show earlier categories" : "Show more categories");
+    b.innerHTML = dir < 0 ? "&lsaquo;" : "&rsaquo;";
+    b.addEventListener("click", () => row.scrollBy({ left: dir * Math.max(160, row.clientWidth * 0.75), behavior: "smooth" }));
+    scroller.appendChild(b);
+    return b;
+  };
+  const prev = mk(-1), next = mk(1);
+  const update = () => {
+    const max = row.scrollWidth - row.clientWidth;
+    prev.hidden = row.scrollLeft < 4;
+    next.hidden = max < 4 || row.scrollLeft > max - 4;
+  };
+  row.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update);
+  new MutationObserver(update).observe(row, { childList: true });
+  if (window.ResizeObserver) new ResizeObserver(update).observe(row);
+  window.addEventListener("load", update);
+  update();
+  // the selected category scrolls into view inside the row
+  row.addEventListener("click", () => setTimeout(() => row.querySelector(".cat-tile.active")?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }), 50));
 })();

@@ -384,3 +384,14 @@ describe('dashboard', () => {
     assert.ok((html.match(/class=["'][^"']*acct-stat-card/g) || []).length <= 3)
   })
 })
+
+describe('category row arrows', () => {
+  test('the row has left and right arrows and no visible scrollbar', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8')
+    assert.match(js, /cat-arrow-/)
+    assert.match(js, /Show earlier categories/)
+    assert.match(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'), /id="catScroller"/)
+    const css = fs.readFileSync(path.join(ROOT, 'public/_theme_overrides.css'), 'utf8')
+    assert.match(css, /\.cat-tiles::-webkit-scrollbar \{ display: none !important; \}/)
+  })
+})
