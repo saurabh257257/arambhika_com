@@ -49,10 +49,8 @@ async function loadCatalog() {
   try {
     const r = await fetch(base + '/products.json', { signal: AbortSignal.timeout(20000) })
     if (r.ok) return await r.json()
-  } catch { /* fall back to the saved snapshot below */ }
-  const snap = path.join(ROOT, '..', 'data', 'snapshot.json')
-  if (fs.existsSync(snap)) return JSON.parse(fs.readFileSync(snap, 'utf8')).data
-  throw new Error('Cannot load the product catalogue (live site and data/snapshot.json both unavailable)')
+  } catch { /* reported below */ }
+  throw new Error('Cannot load the product catalogue from ' + base)
 }
 const catalog = await loadCatalog()
 const norm = (v) => String(v || '').toLowerCase().replace(/\u00d7/g, 'x').replace(/[^a-z0-9.]+/g, ' ').trim()

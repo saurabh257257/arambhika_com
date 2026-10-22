@@ -58,12 +58,12 @@ export async function startApp({ env = {}, msg91 = null } = {}) {
   const port = await freePort()
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'arambhika-test-'))
   // a small, known catalog so product pages and the sitemap can be tested without Zoho
-  fs.copyFileSync(path.join(ROOT, 'test', 'fixtures', 'products.local.json'), path.join(dataDir, 'products.local.json'))
   const fullEnv = {
     ...process.env,
     PORT: String(port),
     DATA_DIR: dataDir,
     DISABLE_CATALOG_REFRESH: '1',
+    CATALOG_FIXTURE: path.join(ROOT, 'test', 'fixtures', 'products.local.json'),
     ZOHO_REFRESH_TOKEN: '',
     ZOHO_STOREFRONT_DOMAIN: 'example.invalid',
     ALLOWED_TEST_MOBILE: '8886772827',

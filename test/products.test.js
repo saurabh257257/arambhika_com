@@ -477,15 +477,41 @@ describe('discovery files for search engines and AI assistants', () => {
     assert.ok(txt.includes('/product/nickel-strip-pure-1p-6x0-15-mm'))
     assert.ok(txt.includes('+91 93155 45821'))
     assert.match(indexNowKey(), /^[a-f0-9]{32}$/)
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'indexnow-'))
+    const sent = new Set()
     const calls = []
     const fake = async (url, opts) => { calls.push(JSON.parse(opts.body)); return { status: 200 } }
-    assert.equal((await pingIndexNow(catalog, dir, { fetchImpl: fake })).sent, 2)
-    assert.equal((await pingIndexNow(catalog, dir, { fetchImpl: fake })).sent, 0, 'nothing new, nothing sent')
+    assert.equal((await pingIndexNow(catalog, sent, { fetchImpl: fake })).sent, 2)
+    assert.equal((await pingIndexNow(catalog, sent, { fetchImpl: fake })).sent, 0, 'nothing new, nothing sent')
     assert.equal(calls.length, 1)
     assert.equal(calls[0].keyLocation, 'https://www.arambhika.com/' + indexNowKey() + '.txt')
     const down = async () => ({ status: 500 })
-    const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'indexnow-'))
-    assert.equal((await pingIndexNow(catalog, dir2, { fetchImpl: down })).sent, 0)
+    assert.equal((await pingIndexNow(catalog, new Set(), { fetchImpl: down })).sent, 0)
+  })
+})
+
+describe('nothing about products is stored on the server', () => {
+  test('no local product file, saved catalogue or saved photos', () => {
+    const srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8')
+    for (const gone of ['writeSnapshot', 'readSnapshot', 'localCatalog', 'writeImageToDisk', 'readImageFromDisk', 'IMAGE_DIR']) {
+      assert.ok(!srv.includes(gone), gone + ' is still in server.js')
+    }
+    assert.ok(srv.includes("'snapshot.json'") && srv.includes("'products.local.json'"), 'old files are cleaned up at start')
+    assert.ok(!fs.existsSync(path.join(ROOT, 'data', 'products.local.json')))
+    assert.ok(!fs.existsSync(path.join(ROOT, 'public', 'assets', 'catalog.pdf')))
+    const cat = fs.readFileSync(path.join(ROOT, 'lib', 'catalog.js'), 'utf8')
+    assert.ok(!cat.includes('localImages'))
+  })
+})
+
+describe('before the first copy arrives from Zoho', () => {
+  test('product pages ask crawlers to retry instead of showing an empty store', async () => {
+    const app = await startApp({ env: { CATALOG_FIXTURE: '' } })
+    try {
+      const c = app.newClient()
+      const r = await c.get('/products.json')
+      assert.equal(r.status, 503)
+      assert.equal((await c.get('/product/anything')).status, 503)
+      assert.equal((await c.get('/healthz')).status, 200, 'the server itself is up')
+    } finally { await app.stop() }
   })
 })

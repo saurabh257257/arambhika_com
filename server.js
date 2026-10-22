@@ -30,49 +30,27 @@ dns.setDefaultResultOrder('ipv4first')
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC_DIR = path.join(ROOT, 'public')
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data')
-const SNAPSHOT_FILE = path.join(DATA_DIR, 'snapshot.json')
-const IMAGE_DIR = path.join(DATA_DIR, 'images')
 const PORT = Number(process.env.PORT) || 3000
 const REFRESH_EVERY = (Number(process.env.CATALOG_CACHE_SECONDS) || 30) * 1000
 const PARTIAL_REFRESHES_ALLOWED = 5
 
-// How the catalog is served:
-//  - Visitors are always answered instantly from `current`, never by waiting on Zoho.
-//  - A background loop refreshes from Zoho. Only a good result replaces `current`, and it is
-//    saved to disk, so a Zoho outage or a server restart still shows the last good catalog.
-//  - Product photos are also kept on disk, so they keep showing when Zoho is unreachable.
-const localCatalog = (() => {
-  try { return JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'products.local.json'), 'utf8')) } catch { return { categories: [] } }
-})()
-
-function readSnapshot() {
-  try {
-    const snap = JSON.parse(fs.readFileSync(SNAPSHOT_FILE, 'utf8'))
-    if (snap?.data?.categories?.length) return snap
-  } catch {}
-  return null
+// Nothing about products is kept on this server: no product file, no saved copy of the catalogue, no
+// saved photos. Everything lives in Zoho Commerce. The server only holds the latest copy in memory
+// (refreshed from Zoho every 30 seconds) so visitors are answered instantly, and it is gone on restart.
+// Files an older version left in the data folder are removed at start-up.
+for (const leftover of ['snapshot.json', 'snapshot.json.tmp', 'products.local.json', 'images', 'indexnow-sent.json']) {
+  try { fs.rmSync(path.join(DATA_DIR, leftover), { recursive: true, force: true }) } catch {}
 }
-
-function writeSnapshot(snap) {
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
-    const tmp = `${SNAPSHOT_FILE}.tmp`
-    fs.writeFileSync(tmp, JSON.stringify(snap))
-    fs.renameSync(tmp, SNAPSHOT_FILE) // atomic: a crash mid-write never leaves a broken snapshot
-  } catch (err) {
-    console.error('[snapshot] write failed:', err.message)
-  }
+let current = { data: { categories: [] }, at: 0, source: 'loading' }
+if (process.env.DISABLE_CATALOG_REFRESH && process.env.CATALOG_FIXTURE) { // tests only: a fixed catalogue instead of Zoho
+  try { current = { data: JSON.parse(fs.readFileSync(process.env.CATALOG_FIXTURE, 'utf8')), at: Date.now(), source: 'test-fixture' } } catch {}
 }
-
-const saved = readSnapshot()
-let current = saved
-  ? { data: saved.data, at: saved.at, source: 'snapshot' }
-  : { data: localCatalog, at: 0, source: 'local-fallback' }
 
 let refreshing = false
 let partialInARow = 0
 let lastError = ''
 
+const indexNowSent = new Set() // pages already announced since this server started (memory only)
 const countProducts = (data) => data.categories.reduce((n, c) => n + c.products.length, 0)
 
 async function refreshCatalog() {
@@ -80,21 +58,19 @@ async function refreshCatalog() {
   refreshing = true
   try {
     const zoho = await fetchStorefrontCatalog()
-    const data = buildCatalog(zoho, localCatalog)
+    const data = buildCatalog(zoho)
 
     // Never replace a good catalog with an empty or half-fetched one.
-    if (!countProducts(data)) throw new Error('Zoho returned no products; keeping the last snapshot')
-    if (zoho.detailFailures && current.source !== 'local-fallback' && ++partialInARow <= PARTIAL_REFRESHES_ALLOWED) {
-      throw new Error(`${zoho.detailFailures} product photo lists could not be fetched; keeping the last snapshot`)
+    if (!countProducts(data)) throw new Error('Zoho returned no products; keeping the last catalogue')
+    if (zoho.detailFailures && current.source === 'zoho' && ++partialInARow <= PARTIAL_REFRESHES_ALLOWED) {
+      throw new Error(`${zoho.detailFailures} product photo lists could not be fetched; keeping the last catalogue`)
     }
     partialInARow = 0
 
     current = { data, at: Date.now(), source: 'zoho' }
-    writeSnapshot({ at: current.at, data })
     lastError = ''
-    prefetchImages(data).catch(() => {})
     // Only the real site tells search engines about its pages.
-    if (IS_PRODUCTION && !process.env.DISABLE_CATALOG_REFRESH) pingIndexNow(data, DATA_DIR).catch(() => {})
+    if (IS_PRODUCTION && !process.env.DISABLE_CATALOG_REFRESH) pingIndexNow(data, indexNowSent).catch(() => {})
   } catch (err) {
     if (err.message !== lastError) console.error('[catalog] refresh failed:', err.message)
     lastError = err.message
@@ -103,38 +79,17 @@ async function refreshCatalog() {
   }
 }
 
-// ---- Product photos: memory -> disk -> Zoho ----
+// ---- Product photos: kept in memory only, fetched from Zoho on demand ----
 const imageCache = new Map()
 const IMAGE_CACHE_MAX = 400
-
-const imagePaths = (key) => ({ body: path.join(IMAGE_DIR, key), meta: path.join(IMAGE_DIR, `${key}.type`) })
-
-function readImageFromDisk(docId) {
-  const { body, meta } = imagePaths(docId)
-  try {
-    return { buffer: fs.readFileSync(body), type: fs.readFileSync(meta, 'utf8').trim() || 'image/jpeg' }
-  } catch { return null }
-}
-
-function writeImageToDisk(docId, img) {
-  try {
-    fs.mkdirSync(IMAGE_DIR, { recursive: true })
-    const { body, meta } = imagePaths(docId)
-    fs.writeFileSync(body, img.buffer)
-    fs.writeFileSync(meta, img.type)
-  } catch (err) {
-    console.error('[image] disk write failed:', err.message)
-  }
-}
 
 // size: undefined = the full photo; 200, 400 or 800 = a smaller copy for cards, tiles and thumbnails
 async function getImage(docId, file, size) {
   const key = size ? `${docId}_${size}` : docId
   const memKey = `${key}/${file}`
-  let img = imageCache.get(memKey) || readImageFromDisk(key)
+  let img = imageCache.get(memKey)
   if (!img) {
     try { img = await fetchImage(docId, file, size ? `${size}x${size}` : undefined) } catch (err) { console.error('[image] fetch failed:', err.message) }
-    if (img) writeImageToDisk(key, img)
   }
   if (img) {
     if (imageCache.size >= IMAGE_CACHE_MAX) imageCache.delete(imageCache.keys().next().value)
@@ -143,51 +98,17 @@ async function getImage(docId, file, size) {
   return img
 }
 
-// After each good refresh, pull any photos we have not saved yet so the snapshot is complete.
-async function prefetchImages(data) {
-  const wanted = new Map()
-  for (const cat of data.categories) {
-    for (const p of cat.products) {
-      for (const link of p.Image_Link || []) {
-        const m = /^\/zimg\/(\d+)\/(.+)$/.exec(link)
-        if (m && !fs.existsSync(imagePaths(m[1]).body)) wanted.set(m[1], decodeURIComponent(m[2]))
-      }
-    }
-  }
-  const queue = [...wanted]
-  const worker = async () => {
-    while (queue.length) {
-      const [docId, file] = queue.shift()
-      await getImage(docId, file)
-    }
-  }
-  await Promise.all(Array.from({ length: 3 }, worker))
-  pruneImages(data)
-}
-
-// Keep exactly one snapshot: drop saved photos that the current catalog no longer uses.
-function pruneImages(data) {
-  const inUse = new Set()
-  for (const cat of data.categories) {
-    for (const p of cat.products) {
-      for (const link of p.Image_Link || []) {
-        const m = /^\/zimg\/(\d+)\//.exec(link)
-        if (m) inUse.add(m[1])
-      }
-    }
-  }
-  try {
-    for (const name of fs.readdirSync(IMAGE_DIR)) {
-      if (!inUse.has(name.replace(/\.type$/, '').replace(/_\d+$/, ''))) fs.rmSync(path.join(IMAGE_DIR, name), { force: true })
-    }
-  } catch {}
-}
-
 const app = express()
 app.use(compression())
 // Anything that is not production must never be indexed (this runs before every route, including pages built on the server).
 app.use((req, res, next) => {
   if ((process.env.APP_ENV || 'production') !== 'production') res.set('X-Robots-Tag', 'noindex, nofollow')
+  next()
+})
+app.use((req, res, next) => {
+  if (current.source === 'loading' && req.method === 'GET' && (req.path === '/' || req.path === '/products.json' || req.path === '/llms.txt' || /^\/(product|category)\//.test(req.path) || req.path === '/product-sitemap.xml')) {
+    return res.status(503).set('Retry-After', '5').type('text/plain').send('The catalogue is loading from Zoho. Please try again in a few seconds.')
+  }
   next()
 })
 app.set('trust proxy', 1) // behind nginx: req.ip must be the visitor's IP, not nginx's, for OTP rate limits
