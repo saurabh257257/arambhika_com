@@ -142,7 +142,7 @@ app.get('/api/products', (req, res) => {
   if (category) { conds.push('category = ?'); params.push(category); }
   if (search) { conds.push('(name LIKE ? OR sku LIKE ? OR category LIKE ? OR details LIKE ?)'); params.push(...Array(4).fill(`%${search}%`)); }
   if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
-  sql += ' ORDER BY category, CAST(sku AS INTEGER)';
+  sql += ' ORDER BY cat_order, category, CAST(sku AS INTEGER)'; // same category order as the website
   res.json({ data: db.prepare(sql).all(...params) });
 });
 
@@ -214,20 +214,35 @@ app.delete('/api/products/:id', (req, res) => {
 // Removing a product only removes it from this tool; the website and Zoho are never touched.
 try { db.exec("ALTER TABLE products ADD COLUMN source TEXT DEFAULT ''"); } catch (e) {}
 db.exec('CREATE TABLE IF NOT EXISTS website_removed (sku TEXT PRIMARY KEY)');
+try { db.exec("ALTER TABLE products ADD COLUMN collections TEXT DEFAULT '[]'"); } catch (e) {}
+try { db.exec('ALTER TABLE products ADD COLUMN cat_order INTEGER DEFAULT 999'); } catch (e) {}
+db.exec('CREATE TABLE IF NOT EXISTS sync_meta (k TEXT PRIMARY KEY, v TEXT)');
 const WEBSITE_URL = (process.env.WEBSITE_URL || 'https://www.arambhika.com').replace(/[/]+$/, '');
 
 async function importWebsiteCatalog({ restore = false } = {}) {
   const res = await fetch(WEBSITE_URL + '/products.json', { signal: AbortSignal.timeout(20000) });
   if (!res.ok) throw new Error('Website catalogue returned ' + res.status);
   const body = await res.json();
-  if (restore) db.exec('DELETE FROM website_removed');
+  db.exec('DELETE FROM website_removed'); // the tool always mirrors the whole website catalogue
   const removed = new Set(db.prepare('SELECT sku FROM website_removed').all().map((r) => r.sku));
-  const result = { added: 0, updated: 0, skipped: 0, images: 0 };
+  // collections as set up in Zoho Commerce (18650, 21700, 32650 ...): product name -> collection names
+  const collectionsByProduct = new Map();
+  for (const col of body.collections || []) {
+    for (const code of col.products || []) {
+      if (!collectionsByProduct.has(code)) collectionsByProduct.set(code, []);
+      collectionsByProduct.get(code).push(col.name);
+    }
+  }
+  const result = { added: 0, updated: 0, skipped: 0, images: 0, removed: 0 };
+  const seen = new Set();
+  let catIndex = 0;
   for (const cat of body.categories || []) {
+    catIndex += 1;
     for (const item of cat.products || []) {
       const sku = String(item.SKU || item.ProductCode || '').trim();
       const name = String(item.ProductCode || '').trim();
       if (!sku || !name || name === 'T') continue;
+      seen.add(sku);
       if (removed.has(sku)) { result.skipped += 1; continue; }
       const price = item.Price == null ? '' : String(item.Price);
       const details = Array.isArray(item.Additional_Details) ? item.Additional_Details.filter(Boolean).join('\n') : '';
@@ -258,12 +273,30 @@ async function importWebsiteCatalog({ restore = false } = {}) {
           images.push(file); result.images += 1;
         } catch (e) { console.error('Image import failed:', e.message); }
       }
-      db.prepare('UPDATE products SET images=? WHERE id=?').run(JSON.stringify(images), id);
+      db.prepare('UPDATE products SET flag_reference_image=1, cat_order=? WHERE id=?').run(catIndex, id);
+      db.prepare('UPDATE products SET images=?, collections=? WHERE id=?').run(JSON.stringify(images), JSON.stringify(collectionsByProduct.get(name) || []), id);
       syncAvailabilityFlags(id);
     }
   }
+  // products that are no longer on the website are removed here too
+  for (const row of db.prepare("SELECT id, sku, images FROM products WHERE source = 'website'").all()) {
+    if (seen.has(row.sku)) continue;
+    JSON.parse(row.images || '[]').forEach((f) => { try { fs.unlinkSync(path.join(uploadsDir, path.basename(f))); } catch (e) {} });
+    db.prepare('DELETE FROM products WHERE id=?').run(row.id);
+    result.removed += 1;
+  }
+  db.prepare("INSERT INTO sync_meta (k, v) VALUES ('last_sync', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").run(String(Date.now()));
   return result;
 }
+
+// The generator calls this every time it opens: the product list is refreshed from the website (Zoho Commerce).
+app.post('/api/products/sync-if-stale', async (req, res) => {
+  const row = db.prepare("SELECT v FROM sync_meta WHERE k = 'last_sync'").get();
+  const age = row ? Date.now() - Number(row.v) : Infinity;
+  if (age < 30 * 1000) return res.json({ success: true, synced: false }); // a refresh every time the generator opens, at most every 30 seconds
+  try { res.json({ success: true, synced: true, ...(await importWebsiteCatalog({})) }); }
+  catch (e) { res.json({ success: false, synced: false, error: e.message }); }
+});
 
 app.post('/api/products/import-website', async (req, res) => {
   try { res.json({ success: true, ...(await importWebsiteCatalog({ restore: !!(req.body && req.body.restore) })) }); }
