@@ -420,3 +420,11 @@ describe('a basket with a renamed or removed product', () => {
     assert.match(fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8'), /variantId: product\.ZohoVariantId/)
   })
 })
+
+describe('checkout talks to Zoho on the store host', () => {
+  test('so the customer is returned to the store after paying', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'lib/zoho-checkout.js'), 'utf8')
+    assert.ok(src.includes('const BASE = () => `https://${domain()}`'))
+    assert.ok(!src.includes('commerce.zoho.'))
+  })
+})
