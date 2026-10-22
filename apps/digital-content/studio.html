@@ -25,7 +25,7 @@
 .st-grid { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 18px; align-items: start; }
 .st-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: grid; gap: 14px; }
 .st-card h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--teal-dark); }
-.st-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-tabs { display: flex; flex-wrap: wrap; gap: 6px; scrollbar-width: none; } .st-tabs::-webkit-scrollbar { display: none; }
 .st-tab { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .st-tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
 .st-tpls { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -71,7 +71,39 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 .st-pick-item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #f1f5f9; } .st-pick-item span { display: block; padding: 5px 7px; font-size: 11px; line-height: 1.3; }
 .st-pick-item.sel { border-color: var(--teal); } .st-pick-item.sel::after { content: "\2713"; position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 13px; }
 .st-toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; z-index: 400; opacity: 0; transition: opacity .2s; pointer-events: none; } .st-toast.show { opacity: 1; }
+.st-tabbar { display: flex; gap: 4px; padding: 0 24px; background: #fff; border-bottom: 1px solid var(--border); overflow-x: auto; position: sticky; top: 0; z-index: 20; }
+.st-pt { padding: 13px 16px; border: 0; border-bottom: 3px solid transparent; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.st-pt.active { color: var(--teal-dark); border-bottom-color: var(--teal); }
+.st-sync { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12.5px; color: var(--muted); padding: 8px 12px; border-radius: 10px; background: #f1f7f6; }
+.st-sync b { color: var(--navy); } .st-sync .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
+.st-plan { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.st-plan-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.st-plan-card.is-today { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(14, 143, 126, .18); }
+.st-plan-card small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; } .st-plan-card h5 { font-size: 15px; } .st-plan-card p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.st-lib-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.st-lib-group { display: grid; gap: 10px; } .st-lib-group > h5 { font-size: 15px; display: flex; align-items: baseline; gap: 8px; } .st-lib-group > h5 small { color: var(--muted); font-weight: 500; font-size: 12px; }
+.st-lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.st-lib-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; display: grid; }
+.st-lib-thumbs { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 2px; background: #f1f5f9; } .st-lib-thumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; cursor: zoom-in; }
+.st-lib-body { padding: 10px 12px; display: grid; gap: 6px; } .st-lib-body b { font-size: 13.5px; } .st-lib-meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.st-lib-cap { font-size: 12.5px; color: #334155; max-height: 64px; overflow: hidden; white-space: pre-wrap; }
+.st-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eef2ff; font-size: 11px; font-weight: 600; color: #4338ca; }
 @media (max-width: 1100px) { .st-grid { grid-template-columns: minmax(0, 1fr); } .st-week { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .st-tabbar { padding: 0 8px; } .st-pt { padding: 12px 12px; font-size: 13px; }
+  .st-today { padding: 14px 16px; } .st-today h3 { font-size: 17px; } .st-today .st-btn { width: 100%; }
+  .st-card { padding: 14px; border-radius: 12px; }
+  .st-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; } .st-tab { white-space: nowrap; flex: 0 0 auto; }
+  .st-tpls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .st-field input[type=text], .st-field input[type=number], .st-field select, .st-field textarea, .st-modal-head input, .st-modal-head select { font-size: 16px; }
+  #generate { position: sticky; bottom: 10px; z-index: 15; box-shadow: 0 8px 20px rgba(18, 38, 63, .3); }
+  .st-modal { padding: 0; align-items: end; } .st-modal-card { width: 100%; max-height: 92vh; border-radius: 16px 16px 0 0; }
+  .st-modal-head .st-row2 { grid-template-columns: 1fr !important; }
+  .st-slides { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .st-res-actions .st-btn { flex: 1 1 auto; } .st-phone { max-width: 100%; }
+  .st-toast { left: 12px; right: 12px; bottom: 76px; text-align: center; }
+  .st-lib-grid, .st-plan { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 640px) { .st-wrap { padding: 14px 12px 50px; } .st-row2, .st-brand-grid { grid-template-columns: 1fr; } .st-week { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 </head>
@@ -91,13 +123,17 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
     <button class="btn btn-sm" onclick="fetch('/api/auth/logout',{method:'POST'}).finally(function(){location.replace('login.html')});" title="Sign out">&#9211; Logout</button>
   </div>
 
-  <div class="st-wrap">
+  <div class="st-tabbar" id="pageTabs" role="tablist">
+    <button type="button" class="st-pt active" data-pt="create" role="tab">Create</button>
+    <button type="button" class="st-pt" data-pt="plan" role="tab">Weekly plan</button>
+    <button type="button" class="st-pt" data-pt="library" role="tab">Library</button>
+  </div>
+
+  <div class="st-wrap" id="pt-create">
     <section class="st-today" aria-label="Today's idea">
       <div><small id="todayDay">Today</small><h3 id="todayTitle">Today's post</h3><p id="todayText"></p></div>
       <button type="button" class="st-btn light" id="useToday">Use today's idea</button>
     </section>
-
-    <section aria-label="This week"><div class="st-week" id="week"></div></section>
 
     <div class="st-grid">
       <div class="st-card" id="builder">
@@ -113,6 +149,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
         <div class="st-tpls" id="tpls"></div>
 
         <div id="creativeInputs" style="display:grid;gap:14px">
+          <div class="st-sync" id="syncBar"><span class="dot"></span><span>Products from the website: <b id="syncWhen">checking...</b></span><button type="button" class="st-btn ghost sm" id="syncNow">Refresh now</button></div>
           <h4>3 &middot; Products and photos</h4>
           <div>
             <div class="st-chips" id="selChips"></div>
@@ -136,6 +173,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
             <div class="st-field" id="festBox" style="display:none"><label for="festival">Festival or occasion</label><input type="text" id="festival" value="Diwali" maxlength="40"></div>
           </div>
           <label class="st-check"><input type="checkbox" id="aiText" checked> Let the image carry the headline text</label>
+          <label class="st-check"><input type="checkbox" id="incDesc" checked> Include the product description (specs) in the image brief, caption and message</label>
         </div>
 
         <details class="st-fold" id="brandFold" open>
@@ -165,6 +203,20 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
         <div class="st-empty" id="empty">Pick a template, choose a product and press <b>Generate</b>.<br>Your image, caption and WhatsApp message appear here, ready to download or copy.</div>
       </div>
     </div>
+  </div>
+  <div class="st-wrap" id="pt-plan" hidden>
+    <div class="st-card"><h4>This week's plan</h4><p style="font-size:13px;color:var(--muted)">One idea for each day, so there is always something ready to post. Tap "Use" to set it up in the Create tab.</p></div>
+    <div class="st-plan" id="week"></div>
+  </div>
+
+  <div class="st-wrap" id="pt-library" hidden>
+    <div class="st-card">
+      <h4>Library</h4>
+      <p style="font-size:13px;color:var(--muted)">Every image you generate is saved here automatically, sorted by product category.</p>
+      <div class="st-lib-filters" id="libCats"></div>
+      <div class="st-field" style="max-width:240px"><label for="libChannel">Channel</label><select id="libChannel"><option value="">All channels</option><option value="ig-image">Instagram image</option><option value="ig-carousel">Instagram carousel</option><option value="wa-message">WhatsApp message</option></select></div>
+    </div>
+    <div id="libList"></div>
   </div>
 </div>
 <div class="st-toast" id="toast" role="status"></div>
@@ -278,7 +330,8 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
   function facts(ctx) {
     if (!ctx.products.length) return '';
     return ctx.products.map(function (p) {
-      var bits = [p.name]; if (p.category) bits.push('category ' + p.category); if (p.price) bits.push('price Rs ' + p.price + ' per ' + (p.unit || 'unit')); if (p.min_quantity > 1) bits.push('minimum order ' + p.min_quantity); if (p.dimensions) bits.push(p.dimensions);
+      var bits = [p.name]; if (p.category) bits.push('category ' + p.category); if (p.price) bits.push('price Rs ' + p.price + ' per ' + (p.unit || 'unit')); if (p.min_quantity > 1) bits.push('minimum order ' + p.min_quantity);
+      if (ctx.incDesc !== false) { if (p.dimensions) bits.push(p.dimensions); var d = String(p.details || '').replace(/\s+/g, ' ').trim(); if (d) bits.push('description: ' + d.slice(0, 220)); }
       return bits.join(', ');
     }).join('; ');
   }
@@ -317,11 +370,11 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 
   function drawWeek() {
     var today = new Date().getDay();
-    $('week').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(function (d) { var p = PLAN[d]; return '<button type="button" class="st-day ' + (d === today ? 'is-today' : '') + '" data-day="' + d + '"><b>' + DAYS[d].slice(0, 3) + (d === today ? ' &middot; today' : '') + '</b><span>' + esc(p[2]) + '</span></button>'; }).join('');
+    $('week').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(function (d) { var p = PLAN[d]; return '<div class="st-plan-card ' + (d === today ? 'is-today' : '') + '"><small>' + DAYS[d] + (d === today ? ' &middot; today' : '') + '</small><h5>' + esc(p[2]) + '</h5><p>' + esc(p[3]) + '</p><span class="st-pill">' + esc(CHANNEL_LABEL[p[1]]) + '</span><button type="button" class="st-btn sm" data-day="' + d + '">Use</button></div>'; }).join('');
     var tp = PLAN[today];
     $('todayDay').textContent = DAYS[today] + "'s idea"; $('todayTitle').textContent = tp[2]; $('todayText').textContent = tp[3] + ' One click sets everything up; add a product and press Generate.';
   }
-  function applyPlan(d) { var p = PLAN[d]; setChannel(p[1]); chooseTemplate(p[0]); window.scrollTo({ top: $('builder').offsetTop - 70, behavior: 'smooth' }); }
+  function applyPlan(d) { var p = PLAN[d]; showTab('create'); setChannel(p[1]); chooseTemplate(p[0]); window.scrollTo({ top: $('builder').offsetTop - 70, behavior: 'smooth' }); }
   $('week').addEventListener('click', function (e) { var b = e.target.closest('[data-day]'); if (b) applyPlan(Number(b.dataset.day)); });
   $('useToday').addEventListener('click', function () { applyPlan(new Date().getDay()); });
 
@@ -348,7 +401,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 
   /* ---------------- generation ---------------- */
   function ctx() {
-    return { products: selected, headline: $('headline').value.trim(), extra: $('extra').value.trim(), tone: $('tone').value, lang: $('lang').value, festival: $('festival').value.trim(), aiText: $('aiText').checked, refs: selected.length + uploads.length };
+    return { products: selected, headline: $('headline').value.trim(), extra: $('extra').value.trim(), tone: $('tone').value, lang: $('lang').value, festival: $('festival').value.trim(), aiText: $('aiText').checked, incDesc: $('incDesc').checked, refs: selected.length + uploads.length };
   }
   function refFiles() { var r = selected.slice(0, 4).map(firstImage); uploads.forEach(function (u) { r.push(u.filename); }); return r.slice(0, 6); }
   function post(url, body) { return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Request failed'); return j; }); }); }
@@ -399,14 +452,15 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
     setProg('Writing the caption...');
     captionFor(t, c).catch(function (e) { return 'Caption could not be written: ' + e.message; }).then(function (cap) {
       $('generate').disabled = false;
-      resultsState = { items: urls.map(function (u) { return { src: u }; }), caption: cap, kind: channel, title: t.name };
+      resultsState = { items: urls.map(function (u) { return { src: u }; }), caption: cap, kind: channel, title: t.name, tplId: t.id, ctx: c };
       renderResults();
+      Promise.all(resultsState.items.map(function (it) { return it.ready; })).then(function () { return saveToLibrary(); });
     });
   }
   function runWhatsApp(t, c) {
     var base = t.text(c);
     $('generate').disabled = false;
-    resultsState = { kind: 'wa-message', message: base, items: [], title: t.name, tpl: t, ctx: c };
+    resultsState = { kind: 'wa-message', message: base, items: [], title: t.name, tpl: t, tplId: t.id, ctx: c };
     renderResults();
   }
 
@@ -441,7 +495,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
   function paintImages() {
     resultsState.items.forEach(function (it, i) {
       var el = document.querySelector('[data-final="' + i + '"]'); if (!el) return;
-      compose(it.src).then(function (d) { it.data = d; el.src = d; }).catch(function (e) { el.alt = e.message; });
+      it.ready = compose(it.src).then(function (d) { it.data = d; el.src = d; }).catch(function (e) { el.alt = e.message; });
     });
   }
 
@@ -450,7 +504,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
   function renderResults() {
     var R = resultsState, html = '';
     if (R.kind === 'wa-message') {
-      html += '<div class="st-res"><div class="st-res-body"><h4 style="color:var(--teal-dark);font-size:13px;text-transform:uppercase;letter-spacing:.08em">WhatsApp message</h4><div class="st-phone"><div class="st-bubble"><div class="pad" id="waPrev"></div></div></div><textarea class="st-caption" id="waText" aria-label="WhatsApp message">' + esc(R.message) + '</textarea><div class="st-res-actions"><button type="button" class="st-btn sm" id="waAI">Improve with AI</button><button type="button" class="st-btn ghost sm" id="waCopy">Copy message</button><a class="st-btn wa sm" id="waOpen" target="_blank" rel="noopener">Open in WhatsApp</a><button type="button" class="st-btn ghost sm" id="waImg">Add a matching image</button></div><div class="st-warn">Sending to many customers at once needs the WhatsApp Business API with an approved template and the customer&rsquo;s opt-in. Use the <b>WhatsApp template (API)</b> tab to design one.</div></div></div><div id="waImgBox"></div>';
+      html += '<div class="st-res"><div class="st-res-body"><h4 style="color:var(--teal-dark);font-size:13px;text-transform:uppercase;letter-spacing:.08em">WhatsApp message</h4><div class="st-phone"><div class="st-bubble"><div class="pad" id="waPrev"></div></div></div><textarea class="st-caption" id="waText" aria-label="WhatsApp message">' + esc(R.message) + '</textarea><div class="st-res-actions"><button type="button" class="st-btn sm" id="waAI">Improve with AI</button><button type="button" class="st-btn ghost sm" id="waCopy">Copy message</button><a class="st-btn wa sm" id="waOpen" target="_blank" rel="noopener">Open in WhatsApp</a><button type="button" class="st-btn ghost sm" id="waImg">Add a matching image</button><button type="button" class="st-btn ghost sm" id="waSave">Save to Library</button></div><div class="st-warn">Sending to many customers at once needs the WhatsApp Business API with an approved template and the customer&rsquo;s opt-in. Use the <b>WhatsApp template (API)</b> tab to design one.</div></div></div><div id="waImgBox"></div>';
     } else {
       var slides = R.items.length > 1;
       html += '<div class="' + (slides ? 'st-slides' : '') + '">' + R.items.map(function (it, i) { return '<div class="st-res"><img class="st-final" data-final="' + i + '" alt="Generated image ' + (i + 1) + '"><div class="st-res-body"><div class="st-res-actions"><button type="button" class="st-btn sm" data-dl="' + i + '">Download' + (slides ? ' ' + (i + 1) : '') + '</button></div></div></div>'; }).join('') + '</div>';
@@ -473,6 +527,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
     function prev() { var t = $('waText').value; $('waPrev').textContent = t; $('waOpen').href = 'https://wa.me/?text=' + encodeURIComponent(t); }
     prev(); $('waText').addEventListener('input', prev);
     $('waCopy').onclick = function () { copy($('waText').value, 'Message copied'); };
+    $('waSave').onclick = function () { resultsState.message = $('waText').value; resultsState.saved = false; saveToLibrary(true); };
     $('waAI').onclick = function () { var b = this; b.disabled = true; b.textContent = 'Writing...'; whatsappFor(R.tpl, R.ctx).then(function (m) { $('waText').value = m; prev(); }).catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; b.textContent = 'Improve with AI'; }); };
     $('waImg').onclick = function () {
       var b = this, c = R.ctx; b.disabled = true; b.textContent = 'Creating image...';
@@ -555,9 +610,72 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
     $('tCopy').addEventListener('click', function () { copy($('tOut').textContent, 'Copied'); });
   }
 
+  /* ---------------- tabs ---------------- */
+  function showTab(name) {
+    ['create', 'plan', 'library'].forEach(function (n) { $('pt-' + n).hidden = n !== name; });
+    Array.prototype.forEach.call($('pageTabs').children, function (b) { b.classList.toggle('active', b.dataset.pt === name); });
+    if (name === 'library') loadLibrary();
+    window.scrollTo({ top: 0 });
+  }
+  $('pageTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-pt]'); if (b) showTab(b.dataset.pt); });
+
+  /* ---------------- website sync status ---------------- */
+  var lastSync = null;
+  function ago(ts) {
+    var m = Math.round((Date.now() - ts) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago';
+  }
+  function drawSync() {
+    $('syncWhen').textContent = lastSync ? ago(lastSync) + ' (' + new Date(lastSync).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '), ' + products.length + ' products with photos' : 'not refreshed yet';
+  }
+  function loadSyncStatus() { return fetch('/api/sync-status').then(function (r) { return r.json(); }).then(function (j) { lastSync = j.lastSync; drawSync(); }).catch(function () {}); }
+  $('syncNow').addEventListener('click', function () {
+    var b = this; b.disabled = true; b.textContent = 'Refreshing...';
+    post('/api/products/import-website', {}).then(function (j) { lastSync = j.lastSync || Date.now(); return fetch('/api/products').then(function (r) { return r.json(); }); })
+      .then(function (r) { products = (r.data || []).filter(function (p) { return firstImage(p); }); selected = selected.filter(function (s) { return products.some(function (p) { return p.id === s.id; }); }); drawChips(); drawSync(); toast('Products refreshed from the website'); })
+      .catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; b.textContent = 'Refresh now'; });
+  });
+  setInterval(drawSync, 60000);
+
+  /* ---------------- library ---------------- */
+  var libCat = '';
+  function saveToLibrary(extra) {
+    var R = resultsState; if (R.saved) return Promise.resolve();
+    var imgs = (R.items || []).map(function (it) { return it.data; }).filter(Boolean);
+    if (!imgs.length && !extra) return Promise.resolve();
+    R.saved = true;
+    var cat = (selected[0] && selected[0].category) || (R.ctx && R.ctx.products[0] && R.ctx.products[0].category) || 'General';
+    return post('/api/creatives', { channel: R.kind, template: R.tplId || '', category: cat, title: (R.title || 'Post') + (selected[0] ? ' - ' + selected[0].name : ''), caption: R.caption || R.message || '', images: imgs, products: selected.map(function (p) { return p.name; }) })
+      .then(function () { toast('Saved to Library: ' + cat); }).catch(function (e) { R.saved = false; toast('Could not save to the library: ' + e.message); });
+  }
+  function loadLibrary() {
+    var url = '/api/creatives' + (libCat || $('libChannel').value ? '?' + (libCat ? 'category=' + encodeURIComponent(libCat) + '&' : '') + ($('libChannel').value ? 'channel=' + encodeURIComponent($('libChannel').value) : '') : '');
+    Promise.all([fetch('/api/creatives').then(function (r) { return r.json(); }), fetch(url).then(function (r) { return r.json(); })]).then(function (r) {
+      var cats = {}; r[0].data.forEach(function (c) { cats[c.category] = (cats[c.category] || 0) + 1; });
+      $('libCats').innerHTML = '<button type="button" class="st-tab ' + (libCat ? '' : 'active') + '" data-lc="">All (' + r[0].data.length + ')</button>' + Object.keys(cats).sort().map(function (k) { return '<button type="button" class="st-tab ' + (libCat === k ? 'active' : '') + '" data-lc="' + esc(k) + '">' + esc(k) + ' (' + cats[k] + ')</button>'; }).join('');
+      var groups = {}; r[1].data.forEach(function (c) { (groups[c.category] = groups[c.category] || []).push(c); });
+      var keys = Object.keys(groups).sort();
+      $('libList').innerHTML = keys.length ? keys.map(function (k) { return '<div class="st-lib-group"><h5>' + esc(k) + ' <small>' + groups[k].length + ' item' + (groups[k].length === 1 ? '' : 's') + '</small></h5><div class="st-lib-grid">' + groups[k].map(libCard).join('') + '</div></div>'; }).join('') : '<div class="st-empty">Nothing saved yet. Generate an image in the Create tab and it appears here automatically.</div>';
+    }).catch(function (e) { $('libList').innerHTML = '<div class="st-err">' + esc(e.message) + '</div>'; });
+  }
+  function libCard(c) {
+    var th = c.images.length ? '<div class="st-lib-thumbs" style="grid-template-columns:repeat(' + Math.min(c.images.length, 3) + ',1fr)">' + c.images.slice(0, 3).map(function (n, i) { return '<img src="/uploads/' + esc(n) + '" alt="" loading="lazy" data-view="' + esc(n) + '">'; }).join('') + '</div>' : '';
+    return '<div class="st-lib-card">' + th + '<div class="st-lib-body"><b>' + esc(c.title) + '</b><div class="st-lib-meta"><span class="st-pill">' + esc(CHANNEL_LABEL[c.channel] || c.channel) + '</span><span>' + esc(new Date(String(c.created_at).replace(' ', 'T') + 'Z').toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })) + '</span></div>' + (c.caption ? '<div class="st-lib-cap">' + esc(c.caption) + '</div>' : '') + '<div class="st-res-actions">' + c.images.map(function (n, i) { return '<a class="st-btn sm" href="/uploads/' + esc(n) + '" download="' + esc(n) + '">Download' + (c.images.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join('') + (c.caption ? '<button type="button" class="st-btn ghost sm" data-lcap="' + c.id + '">Copy text</button>' : '') + '<button type="button" class="st-btn ghost sm" data-ldel="' + c.id + '">Delete</button></div></div></div>';
+  }
+  var libData = {};
+  $('libCats').addEventListener('click', function (e) { var b = e.target.closest('[data-lc]'); if (b) { libCat = b.dataset.lc; loadLibrary(); } });
+  $('libChannel').addEventListener('change', loadLibrary);
+  $('libList').addEventListener('click', function (e) {
+    var d = e.target.closest('[data-ldel]');
+    if (d) { if (d.dataset.armed !== '1') { d.dataset.armed = '1'; d.textContent = 'Tap again to delete'; setTimeout(function () { d.dataset.armed = ''; d.textContent = 'Delete'; }, 3000); return; } fetch('/api/creatives/' + d.dataset.ldel, { method: 'DELETE' }).then(function () { toast('Deleted'); loadLibrary(); }); return; }
+    var cp = e.target.closest('[data-lcap]');
+    if (cp) { var card = cp.closest('.st-lib-card').querySelector('.st-lib-cap'); copy(card ? card.textContent : '', 'Copied'); return; }
+    var v = e.target.closest('[data-view]'); if (v) window.open('/uploads/' + v.dataset.view, '_blank');
+  });
+
   /* ---------------- start ---------------- */
   drawWeek(); drawChips(); drawTpls(); chooseTemplate('spotlight');
-  loadProducts().then(drawChips);
+  loadProducts().then(function () { drawChips(); return loadSyncStatus(); });
 })();
 </script>
 </body>

@@ -423,3 +423,45 @@ describe('daily marketing studio', () => {
     }
   });
 });
+
+describe('library and refresh status', () => {
+  let app;
+  before(async () => { app = await start(); await app.login(); });
+  after(async () => { await app.stop(); });
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+  test('a generated post is stored with its picture, grouped by category', async () => {
+    const r = await app.request('POST', '/api/creatives', { channel: 'ig-image', template: 'spotlight', category: 'BMS', title: 'Product spotlight', caption: 'Hello', images: [png], products: ['JBD 24S'] });
+    assert.equal(r.status, 200);
+    await app.request('POST', '/api/creatives', { channel: 'wa-message', category: 'Nickel Strip Plated', title: 'Daily offer', caption: 'Message', images: [] });
+    const all = (await app.request('GET', '/api/creatives')).json.data;
+    assert.equal(all.length, 2);
+    const bms = (await app.request('GET', '/api/creatives?category=BMS')).json.data;
+    assert.equal(bms.length, 1);
+    assert.equal(bms[0].images.length, 1);
+    assert.ok(fs.existsSync(path.join(app.dir, 'uploads', bms[0].images[0])));
+    const wa = (await app.request('GET', '/api/creatives?channel=wa-message')).json.data;
+    assert.equal(wa[0].category, 'Nickel Strip Plated');
+  });
+
+  test('bad images are refused and deleting removes the file', async () => {
+    assert.equal((await app.request('POST', '/api/creatives', { images: ['data:text/html;base64,AAAA'] })).status, 400);
+    const bms = (await app.request('GET', '/api/creatives?category=BMS')).json.data[0];
+    const file = path.join(app.dir, 'uploads', bms.images[0]);
+    assert.equal((await app.request('DELETE', '/api/creatives/' + bms.id)).status, 200);
+    assert.equal(fs.existsSync(file), false);
+    assert.equal((await app.request('GET', '/api/creatives?category=BMS')).json.data.length, 0);
+  });
+
+  test('the library and refresh status need a login', async () => {
+    app.forget();
+    assert.equal((await app.request('GET', '/api/creatives')).status, 401);
+    assert.equal((await app.request('GET', '/api/sync-status')).status, 401);
+    await app.login();
+  });
+
+  test('the studio has the three tabs, the description option and the refresh line', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['data-pt="create"', 'data-pt="plan"', 'data-pt="library"', 'id="incDesc"', 'id="syncWhen"', 'sync-status', '/api/creatives']) assert.ok(page.includes(needle), needle);
+  });
+});

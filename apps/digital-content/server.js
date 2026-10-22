@@ -135,6 +135,48 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
 
+// ── Library: every generated post, kept by product category ───────────────
+const dataUrlExt = (u) => { const m = /^data:image\/(jpeg|png|webp);base64,/.exec(String(u)); return m ? (m[1] === 'jpeg' ? 'jpg' : m[1]) : null; };
+app.post('/api/creatives', (req, res) => {
+  const b = req.body || {};
+  const imgs = Array.isArray(b.images) ? b.images.slice(0, 10) : [];
+  const saved = [];
+  try {
+    for (const u of imgs) {
+      const ext = dataUrlExt(u);
+      if (!ext) throw new Error('Images must be JPEG, PNG or WebP');
+      const buf = Buffer.from(String(u).split(',')[1], 'base64');
+      if (!buf.length || buf.length > 12 * 1024 * 1024) throw new Error('Image is empty or too large');
+      const name = 'creative-' + Date.now() + '-' + crypto.randomBytes(4).toString('hex') + '.' + ext;
+      fs.writeFileSync(path.join(uploadsDir, name), buf);
+      saved.push(name);
+    }
+  } catch (e) {
+    saved.forEach((n) => { try { fs.unlinkSync(path.join(uploadsDir, n)); } catch (x) {} });
+    return res.status(400).json({ error: e.message });
+  }
+  const str = (v, n) => String(v == null ? '' : v).slice(0, n);
+  const r = db.prepare('INSERT INTO creatives (channel, template, category, title, caption, images, products) VALUES (?,?,?,?,?,?,?)')
+    .run(str(b.channel, 40), str(b.template, 80), str(b.category, 120) || 'General', str(b.title, 160), str(b.caption, 5000), JSON.stringify(saved), JSON.stringify((Array.isArray(b.products) ? b.products : []).slice(0, 20).map((x) => str(x, 160))));
+  res.json({ success: true, id: r.lastInsertRowid });
+});
+
+app.get('/api/creatives', (req, res) => {
+  const conds = [], params = [];
+  if (req.query.category) { conds.push('category = ?'); params.push(req.query.category); }
+  if (req.query.channel) { conds.push('channel = ?'); params.push(req.query.channel); }
+  const rows = db.prepare('SELECT * FROM creatives' + (conds.length ? ' WHERE ' + conds.join(' AND ') : '') + ' ORDER BY id DESC LIMIT 500').all(...params);
+  res.json({ data: rows.map((r) => ({ ...r, images: JSON.parse(r.images || '[]'), products: JSON.parse(r.products || '[]') })) });
+});
+
+app.delete('/api/creatives/:id', (req, res) => {
+  const row = db.prepare('SELECT images FROM creatives WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  JSON.parse(row.images || '[]').forEach((n) => { try { fs.unlinkSync(path.join(uploadsDir, path.basename(n))); } catch (e) {} });
+  db.prepare('DELETE FROM creatives WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
 // Upload a photo or logo to use as a reference or as the brand logo (images only).
 app.post('/api/uploads', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Choose an image to upload' });
@@ -229,6 +271,10 @@ db.exec('CREATE TABLE IF NOT EXISTS website_removed (sku TEXT PRIMARY KEY)');
 try { db.exec("ALTER TABLE products ADD COLUMN collections TEXT DEFAULT '[]'"); } catch (e) {}
 try { db.exec('ALTER TABLE products ADD COLUMN cat_order INTEGER DEFAULT 999'); } catch (e) {}
 db.exec('CREATE TABLE IF NOT EXISTS sync_meta (k TEXT PRIMARY KEY, v TEXT)');
+db.exec(`CREATE TABLE IF NOT EXISTS creatives (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT DEFAULT (datetime('now')),
+  channel TEXT, template TEXT, category TEXT, title TEXT, caption TEXT, images TEXT DEFAULT '[]', products TEXT DEFAULT '[]'
+)`);
 const WEBSITE_URL = (process.env.WEBSITE_URL || 'https://www.arambhika.com').replace(/[/]+$/, '');
 
 async function importWebsiteCatalog({ restore = false } = {}) {
@@ -301,17 +347,23 @@ async function importWebsiteCatalog({ restore = false } = {}) {
   return result;
 }
 
+// When the product list was last refreshed from the website, and from where.
+app.get('/api/sync-status', (req, res) => {
+  const row = db.prepare("SELECT v FROM sync_meta WHERE k = 'last_sync'").get();
+  res.json({ lastSync: row ? Number(row.v) : null, source: WEBSITE_URL, count: db.prepare('SELECT COUNT(*) AS n FROM products').get().n });
+});
+
 // The generator calls this every time it opens: the product list is refreshed from the website (Zoho Commerce).
 app.post('/api/products/sync-if-stale', async (req, res) => {
   const row = db.prepare("SELECT v FROM sync_meta WHERE k = 'last_sync'").get();
   const age = row ? Date.now() - Number(row.v) : Infinity;
-  if (age < 30 * 1000) return res.json({ success: true, synced: false }); // a refresh every time the generator opens, at most every 30 seconds
-  try { res.json({ success: true, synced: true, ...(await importWebsiteCatalog({})) }); }
+  if (age < 30 * 1000) return res.json({ success: true, synced: false, lastSync: Number(row.v) }); // a refresh every time the generator opens, at most every 30 seconds
+  try { const r = await importWebsiteCatalog({}); res.json({ success: true, synced: true, lastSync: Date.now(), ...r }); }
   catch (e) { res.json({ success: false, synced: false, error: e.message }); }
 });
 
 app.post('/api/products/import-website', async (req, res) => {
-  try { res.json({ success: true, ...(await importWebsiteCatalog({ restore: !!(req.body && req.body.restore) })) }); }
+  try { const r = await importWebsiteCatalog({ restore: !!(req.body && req.body.restore) }); res.json({ success: true, lastSync: Date.now(), ...r }); }
   catch (e) { res.status(502).json({ error: 'Could not load the website catalogue: ' + e.message }); }
 });
 
