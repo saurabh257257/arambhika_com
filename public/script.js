@@ -117,6 +117,17 @@ let highlightResetTimer = null;
 const renderFilters = (categories) => {
   if (!categoryFilters) return;
   categoryFilters.innerHTML = "";
+  {
+    const total = categories.reduce((n, c) => n + (c.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1).length, 0);
+    const all = document.createElement("button");
+    all.type = "button";
+    all.className = "cat-tile filter-btn cat-tile-all";
+    all.dataset.filter = "all";
+    all.innerHTML = `
+      <span class="cat-tile-img"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+      <span class="cat-tile-text"><b>All${total ? " (" + total + ")" : ""}</b></span>`;
+    categoryFilters.appendChild(all);
+  }
   categories.forEach((cat) => {
     // same rule the grid uses: placeholder products with a one-character code are not shown
     const products = (cat.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1);

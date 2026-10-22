@@ -2617,3 +2617,57 @@ body.zm-open { overflow: hidden; }
 .zm-hint { text-align: center; padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px)); font-size: 0.74rem; color: #93a4b6; }
 @media (prefers-reduced-motion: reduce) { .zm-img { transition: none; } }
 @media (max-width: 640px) { .zm-hint { display: none; } .zm-nav { width: 40px; height: 40px; } }
+
+/* mobile number and OTP boxes: big enough to see and tap (16px+ also stops iPhones zooming in) */
+label:has([data-otp-mobile]), label:has(.otp-code-input) { display: block; font-weight: 600; color: #12263f; }
+[data-otp-mobile], .otp-code-input {
+  display: block; width: 100%; height: 52px; margin-top: 8px; padding: 0 16px; box-sizing: border-box;
+  font-size: 17px; letter-spacing: 0.06em; color: #12263f; background: #fff;
+  border: 2px solid #9fb8c0; border-radius: 12px; box-shadow: inset 0 1px 2px rgba(18, 38, 63, 0.06);
+}
+[data-otp-mobile]::placeholder, .otp-code-input::placeholder { font-size: 15px; letter-spacing: 0; color: #8a98a6; }
+[data-otp-mobile]:focus, .otp-code-input:focus { outline: none; border-color: #0e8f7e; box-shadow: 0 0 0 4px rgba(14, 143, 126, 0.18); }
+.otp-wide { height: 50px; font-size: 1rem; }
+
+/* category row: every circle starts at the same height, whether its name takes one line or two */
+.cat-tiles, .cat-tiles:not(#x) { align-items: flex-start !important; }
+.cat-tile, .cat-tile:nth-child(n) { justify-content: flex-start !important; align-self: flex-start; }
+.cat-tile .cat-tile-text { min-height: 2.4em; display: flex; align-items: flex-start; justify-content: center; }
+.cat-tile-all .cat-tile-img { background: linear-gradient(135deg, #0e8f7e, #12263f); color: #fff; }
+.cat-tile-all .cat-tile-img svg { width: 22px; height: 22px; }
+.cat-tile-all.active .cat-tile-img { box-shadow: 0 0 0 2px #0e8f7e !important; }
+
+/* dashboard: more colour, less white */
+body:has(.acct-dashboard) { background: linear-gradient(180deg, #d4ece7 0%, #e1ecf6 45%, #e8e6f6 100%) fixed; }
+.acct-toolbar { background: linear-gradient(100deg, #12263f 0%, #1c3a5c 55%, #0b6f62 100%); border: 0; box-shadow: 0 8px 22px rgba(18, 38, 63, 0.22); }
+.acct-toolbar .acct-sidebar-name, .acct-toolbar .acct-sidebar-phone { color: #fff; }
+.acct-toolbar .acct-sidebar-phone { opacity: 0.8; }
+.acct-toolbar .acct-avatar { background: #fff; color: #0b6f62; }
+.acct-toolbar .acct-tab-btn { color: rgba(255, 255, 255, 0.88); }
+.acct-toolbar .acct-tab-btn:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.acct-toolbar .acct-tab-btn.is-active { background: #fff; color: #0b6f62; }
+.acct-toolbar .acct-shop-link, .acct-toolbar .acct-logout-btn { color: #fff; border-color: rgba(255, 255, 255, 0.45); }
+.acct-card { background: #fff; border: 0; border-top: 4px solid #0e8f7e; box-shadow: 0 8px 22px rgba(18, 38, 63, 0.1); }
+#acctPanelProfile .acct-card { border-top-color: #2f6fd1; }
+#acctPanelOrders .acct-card { border-top-color: #e8861a; }
+#acctPanelSaved .acct-card { border-top-color: #e11d48; }
+#acctPanelInvoices .acct-card { border-top-color: #7c4fd0; }
+.acct-stat-green { background: linear-gradient(135deg, #d8f2e4, #bfe9d0); color: #0f6a3a; }
+.acct-stat-orange { background: linear-gradient(135deg, #ffe9cc, #ffd9a6); color: #a2500a; }
+.acct-stat-teal { background: linear-gradient(135deg, #d2f0ec, #b6e6df); color: #0b6f62; }
+
+/* phones: logo, search and the heart share one row (Store, Cart and Account are in the bottom bar) */
+@media (max-width: 860px) {
+  .site-header .nav { flex-wrap: nowrap !important; gap: 8px; align-items: center; }
+  .site-header .brand-block { flex: 0 0 auto; }
+  .site-header .header-search { flex: 1 1 auto; min-width: 0; }
+  .site-header .nav-right { flex: 0 0 auto; }
+  .site-header #navCatalog, .site-header .nav-login-btn { display: none !important; }
+  .nav-wish-btn { min-width: 40px; padding: 4px; }
+  .nav-wish-btn .nav-label { display: none; }
+  .nav-wish-badge { right: 0; top: -2px; }
+}
+@media (max-width: 860px) {
+  .site-header .nav { display: grid !important; grid-template-areas: "brand search navright" !important; grid-template-columns: auto minmax(0, 1fr) auto !important; grid-template-rows: auto !important; }
+  .site-header .nav-right { width: auto !important; }
+}

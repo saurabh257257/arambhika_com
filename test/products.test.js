@@ -343,3 +343,25 @@ describe('photo zoom on the product page', () => {
     assert.match(js, /role", "dialog"/)
   })
 })
+
+describe('payment hand-off, category row and phone fields', () => {
+  const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8')
+  test('checkout goes to Zoho in the same tab and resumes when the customer comes back', () => {
+    const js = read('public/checkout.js')
+    assert.match(js, /location\.assign\(r\.data\.paymentUrl\)/)
+    assert.doesNotMatch(js, /window\.open\(r\.data\.paymentUrl/)
+    assert.match(js, /ckPending/)
+    assert.match(js, /Confirming your payment/)
+    assert.match(js, /Continue to payment/)
+  })
+  test('the category row starts with an All tile', () => {
+    assert.match(read('public/script.js'), /cat-tile-all/)
+  })
+  test('the mobile number box is large and 16px or more so phones do not zoom', () => {
+    const css = read('public/_theme_overrides.css')
+    assert.match(css, /\[data-otp-mobile\], \.otp-code-input \{[^}]*height: 52px[^}]*font-size: 17px/)
+  })
+  test('category circles share one top edge', () => {
+    assert.match(read('public/_theme_overrides.css'), /justify-content: flex-start !important; align-self: flex-start/)
+  })
+})
