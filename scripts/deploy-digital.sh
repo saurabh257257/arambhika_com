@@ -39,7 +39,9 @@ SSH_OPTS=(-i "$WORK/key" -o UserKnownHostsFile="$WORK/known_hosts" -o StrictHost
 remote() { ssh "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" "$@"; }
 
 # --- environment file, built from the environment (empty values are left out) ---
-KEYS=(ADMIN_PASSWORD BYTEPLUS_API_KEY ANTHROPIC_API_KEY PUBLIC_BASE_URL SESSION_SECRET)
+# The tool mirrors the dev store, which always carries the newest catalogue code (set WEBSITE_URL to point it elsewhere).
+export WEBSITE_URL="${WEBSITE_URL:-https://dev.arambhika.com}"
+KEYS=(ADMIN_PASSWORD BYTEPLUS_API_KEY ANTHROPIC_API_KEY PUBLIC_BASE_URL SESSION_SECRET WEBSITE_URL)
 : > "$WORK/app.env"
 {
   echo "PORT=$APP_PORT"
