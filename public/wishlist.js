@@ -114,7 +114,7 @@
   function addToCart(p) {
     const order = cartRead();
     const name = p.ProductCode;
-    order[name] = { id: name, name, qty: Math.max(minOf(p), Number(order[name]?.qty) || 0), unit: p.Unit || "KG" };
+    order[name] = { id: name, name, qty: Math.max(minOf(p), Number(order[name]?.qty) || 0), unit: p.Unit || "KG", variantId: p.ZohoVariantId || "" };
     cartWrite(order);
     toast("Added to cart");
   }

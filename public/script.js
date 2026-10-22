@@ -517,7 +517,7 @@ const addToOrder = (product, qty, { silent = false } = {}) => {
   const order = getOrder();
   const name = product.ProductCode || "";
   const unit = product.Unit || "KG";
-  order[name] = { id: name, name, qty, unit };
+  order[name] = { id: name, name, qty, unit, variantId: product.ZohoVariantId || "" };
   setOrder(order);
   renderOrderList();
   if (!silent) document.dispatchEvent(new CustomEvent("cart:added", { detail: { name } }));

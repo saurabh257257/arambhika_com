@@ -407,3 +407,16 @@ describe('product photos from Zoho', () => {
     assert.equal(photosFrom(docs).length, 1, 'documents still win when present')
   })
 })
+
+describe('a basket with a renamed or removed product', () => {
+  test('checkout and the cart drawer tidy it instead of blocking payment', () => {
+    const co = fs.readFileSync(path.join(ROOT, 'public/checkout.js'), 'utf8')
+    assert.match(co, /function reconcileCart\(\)/)
+    assert.match(co, /reconcileCart\(\);\n\s*renderAll\(\);/)
+    assert.match(co, /removed from your cart/)
+    const cd = fs.readFileSync(path.join(ROOT, 'public/cart-drawer.js'), 'utf8')
+    assert.match(cd, /function tidyCart\(\)/)
+    assert.match(cd, /catalogue not loaded yet/)
+    assert.match(fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8'), /variantId: product\.ZohoVariantId/)
+  })
+})

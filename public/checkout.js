@@ -48,6 +48,32 @@
   }
   const subtotal = () => cartLines().reduce((s, l) => s + l.total, 0);
 
+  // A basket saved earlier can hold a product that was renamed or removed in Zoho. Renamed ones are matched by
+  // their Zoho id; ones that are gone are taken out, with a note, instead of blocking payment.
+  function reconcileCart() {
+    const cart = readCart();
+    const removed = [];
+    let changed = false;
+    for (const [key, item] of Object.entries(cart)) {
+      let p = productFor(item.name);
+      if (!p && item.variantId) p = state.products.find((x) => x.ZohoVariantId === item.variantId);
+      if (!p) { delete cart[key]; removed.push(item.name); changed = true; continue; }
+      if (p.ProductCode !== item.name || item.variantId !== p.ZohoVariantId) {
+        delete cart[key];
+        cart[p.ProductCode] = { ...item, id: p.ProductCode, name: p.ProductCode, variantId: p.ZohoVariantId || "" };
+        changed = true;
+      }
+    }
+    if (changed) { writeCart(cart); post("/api/test-cart", { cart }); }
+    if (removed.length) {
+      const note = document.createElement("div");
+      note.className = "ck-banner";
+      note.setAttribute("role", "status");
+      note.textContent = removed.map((n) => `${n}`).join(", ") + (removed.length === 1 ? " is no longer available and was" : " are no longer available and were") + " removed from your cart.";
+      $("ckLayout").before(note);
+    }
+  }
+
   async function loadAccount() {
     const me = await json("/api/test-auth/me");
     state.session = me.data?.loggedIn ? me.data : { loggedIn: false, mobile: "" };
@@ -369,6 +395,7 @@
     }
     await Promise.all([loadCatalog(), loadAccount()]);
     // a basket that only lives on the server (new device) may have just arrived
+    reconcileCart();
     renderAll();
     // coming back from the payment page: confirm the payment instead of showing the checkout again
     const pending = readPending();

@@ -101,7 +101,27 @@
     if (keyFor(lines()) === key && root.classList.contains("is-open")) render();
   }
 
+  function tidyCart() {
+    const products = catalogProducts();
+    if (!products.length) return false; // catalogue not loaded yet: do not judge the basket
+    const order = cartRead();
+    let changed = false;
+    for (const [key, item] of Object.entries(order)) {
+      let p = productFor(item.name);
+      if (!p && item.variantId) p = products.find((x) => x.ZohoVariantId === item.variantId);
+      if (!p) { delete order[key]; changed = true; continue; }
+      if (p.ProductCode !== item.name || item.variantId !== p.ZohoVariantId) {
+        delete order[key];
+        order[p.ProductCode] = { ...item, id: p.ProductCode, name: p.ProductCode, variantId: p.ZohoVariantId || "" };
+        changed = true;
+      }
+    }
+    if (changed) cartWrite(order);
+    return changed;
+  }
+
   function render() {
+    if (tidyCart()) return; // cartWrite fires cart:changed, which draws again with the tidy basket
     const all = lines();
     if (all.length && !breakupFor(all)) { clearTimeout(breakupTimer); breakupTimer = setTimeout(() => loadBreakup(lines()), 400); }
     const qty = all.reduce((s, l) => s + (Number(l.item.qty) || 0), 0);
