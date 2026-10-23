@@ -464,4 +464,10 @@ describe('library and refresh status', () => {
     const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
     for (const needle of ['data-pt="create"', 'data-pt="plan"', 'data-pt="library"', 'id="incDesc"', 'id="syncWhen"', 'sync-status', '/api/creatives']) assert.ok(page.includes(needle), needle);
   });
+
+  test('the Product card tab makes the same layout every time and a hidden tab really is hidden', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['data-pt="card"', 'id="pt-card"', 'id="pcCanvas"', 'id="pcTitle"', 'id="pcSub"', 'id="pcDownload"', 'id="pcSave"', "channel: 'product-card'", "'create', 'card', 'plan', 'library'"]) assert.ok(page.includes(needle), needle);
+    assert.ok(page.includes('.st-wrap[hidden] { display: none; }'), 'the display rule must not override hidden');
+  });
 });

@@ -10,6 +10,7 @@
 <style>
 :root { --teal: #0e8f7e; --teal-dark: #0b6f62; --navy: #12263f; --wa: #25d366; --wa-dark: #128c7e; }
 .st-wrap { padding: 20px 24px 60px; display: grid; gap: 18px; max-width: 1500px; }
+.st-wrap[hidden] { display: none; } /* the display rule above would otherwise keep every tab on screen at once */
 .st-today { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 22px; border-radius: 16px; color: #fff; background: linear-gradient(120deg, #12263f, #1c3a5c 55%, #0b6f62); }
 .st-today small { text-transform: uppercase; letter-spacing: .1em; font-size: 11px; opacity: .8; font-weight: 600; }
 .st-today h3 { font-size: 20px; margin: 2px 0; } .st-today p { font-size: 13px; opacity: .9; max-width: 60ch; }
@@ -125,6 +126,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 
   <div class="st-tabbar" id="pageTabs" role="tablist">
     <button type="button" class="st-pt active" data-pt="create" role="tab">Create</button>
+    <button type="button" class="st-pt" data-pt="card" role="tab">Product card</button>
     <button type="button" class="st-pt" data-pt="plan" role="tab">Weekly plan</button>
     <button type="button" class="st-pt" data-pt="library" role="tab">Library</button>
   </div>
@@ -204,6 +206,24 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
       </div>
     </div>
   </div>
+  <div class="st-wrap" id="pt-card" hidden>
+    <div class="st-grid">
+      <div class="st-card">
+        <h4>Product card</h4>
+        <p style="font-size:13px;color:var(--muted)">Add a photo and a title. Every card comes out in the same layout: logo on top, photo in the middle, title and details at the bottom.</p>
+        <div class="st-field"><label for="pcPick">Pick a product from your website (optional)</label><select id="pcPick"><option value="">Choose a product...</option></select></div>
+        <div class="st-field"><label>Product photo</label>
+          <div class="st-logo-prev"><img id="pcImgPrev" alt="Product photo" hidden><button type="button" class="st-btn ghost sm" id="pcImgBtn">Upload photo</button><button type="button" class="st-btn ghost sm" id="pcImgClear" hidden>Remove</button><input type="file" id="pcImgIn" accept="image/*" hidden></div>
+        </div>
+        <div class="st-field"><label for="pcTitle">Title</label><input type="text" id="pcTitle" maxlength="90" placeholder="Nickel Strip Plated 2P(32650)"></div>
+        <div class="st-field"><label for="pcSub">Details (optional, smaller line under the title)</label><input type="text" id="pcSub" maxlength="140" placeholder="46.5x0.15 mm | CD 34.5 | with holder with slit"></div>
+        <div class="st-field"><label for="pcFormat">Size</label><select id="pcFormat"><option value="portrait">Portrait 4:5 (1080 x 1350)</option><option value="square">Square 1:1 (1080 x 1080)</option></select></div>
+        <div class="st-res-actions"><button type="button" class="st-btn" id="pcDownload">Download PNG</button><button type="button" class="st-btn ghost" id="pcSave">Save to Library</button></div>
+      </div>
+      <div class="st-card"><h4>Preview</h4><canvas id="pcCanvas" width="1080" height="1350" style="width:100%;max-width:440px;border:1px solid var(--border);border-radius:10px;background:#fff"></canvas></div>
+    </div>
+  </div>
+
   <div class="st-wrap" id="pt-plan" hidden>
     <div class="st-card"><h4>This week's plan</h4><p style="font-size:13px;color:var(--muted)">One idea for each day, so there is always something ready to post. Tap "Use" to set it up in the Create tab.</p></div>
     <div class="st-plan" id="week"></div>
@@ -214,7 +234,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
       <h4>Library</h4>
       <p style="font-size:13px;color:var(--muted)">Every image you generate is saved here automatically, sorted by product category.</p>
       <div class="st-lib-filters" id="libCats"></div>
-      <div class="st-field" style="max-width:240px"><label for="libChannel">Channel</label><select id="libChannel"><option value="">All channels</option><option value="ig-image">Instagram image</option><option value="ig-carousel">Instagram carousel</option><option value="wa-message">WhatsApp message</option></select></div>
+      <div class="st-field" style="max-width:240px"><label for="libChannel">Channel</label><select id="libChannel"><option value="">All channels</option><option value="ig-image">Instagram image</option><option value="ig-carousel">Instagram carousel</option><option value="product-card">Product card</option><option value="wa-message">WhatsApp message</option></select></div>
     </div>
     <div id="libList"></div>
   </div>
@@ -366,7 +386,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var PLAN = { 1: ['spotlight', 'ig-image', 'Product spotlight', 'Start the week with one hero product.'], 2: ['tip', 'ig-image', 'Tech tip', 'Teach something useful to battery pack makers.'], 3: ['usecase', 'ig-image', 'Use case', 'Show the product inside a real battery pack.'], 4: ['offer', 'ig-image', 'Bulk quote offer', 'Push an offer or a price to move stock.'], 5: ['car-choose', 'ig-carousel', 'How to choose (carousel)', 'A swipeable guide people save and share.'], 6: ['factory', 'ig-image', 'Made in India', 'Show the factory and build trust.'], 0: ['wa-catalog', 'wa-message', 'WhatsApp catalogue share', 'Weekly catalogue message for your broadcast list.'] };
   var channel = 'ig-image', tplId = 'spotlight';
-  var CHANNEL_LABEL = { 'ig-image': 'Instagram image', 'ig-carousel': 'Instagram carousel', 'wa-message': 'WhatsApp message', 'wa-template': 'WhatsApp template' };
+  var CHANNEL_LABEL = { 'ig-image': 'Instagram image', 'ig-carousel': 'Instagram carousel', 'product-card': 'Product card', 'wa-message': 'WhatsApp message', 'wa-template': 'WhatsApp template' };
 
   function drawWeek() {
     var today = new Date().getDay();
@@ -612,12 +632,92 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 
   /* ---------------- tabs ---------------- */
   function showTab(name) {
-    ['create', 'plan', 'library'].forEach(function (n) { $('pt-' + n).hidden = n !== name; });
+    ['create', 'card', 'plan', 'library'].forEach(function (n) { $('pt-' + n).hidden = n !== name; });
     Array.prototype.forEach.call($('pageTabs').children, function (b) { b.classList.toggle('active', b.dataset.pt === name); });
     if (name === 'library') loadLibrary();
+    if (name === 'card') drawProductCard();
     window.scrollTo({ top: 0 });
   }
   $('pageTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-pt]'); if (b) showTab(b.dataset.pt); });
+
+  /* ---------------- product card ---------------- */
+  // Same layout every time: logo on top, the photo in the middle, title and details at the bottom, on white.
+  var pcImg = null, pcSeq = 0;
+  var PC_FONT = '"Segoe UI", Inter, Arial, sans-serif';
+  function pcWrap(g, text, maxW, maxLines) {
+    var words = String(text || '').split(/\s+/).filter(Boolean), lines = [], line = '';
+    words.forEach(function (w) {
+      var t = line ? line + ' ' + w : w;
+      if (g.measureText(t).width <= maxW || !line) line = t; else { lines.push(line); line = w; }
+    });
+    if (line) lines.push(line);
+    if (lines.length > maxLines) { lines = lines.slice(0, maxLines); var last = lines[maxLines - 1]; while (last.length > 1 && g.measureText(last + '...').width > maxW) last = last.slice(0, -1); lines[maxLines - 1] = last + '...'; }
+    return lines;
+  }
+  function drawProductCard() {
+    var cv = $('pcCanvas'), g = cv.getContext('2d'), W = 1080, H = $('pcFormat').value === 'square' ? 1080 : 1350;
+    cv.width = W; cv.height = H;
+    var seq = ++pcSeq, pad = 60;
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+    loadImg(brand.logo || BRAND_DEFAULT.logo).catch(function () { return null; }).then(function (logo) {
+      if (seq !== pcSeq) return;
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+      var y = 44;
+      if (logo) { var lh = H === 1080 ? 110 : 130, lw = Math.round(logo.naturalWidth / logo.naturalHeight * lh); g.drawImage(logo, Math.round((W - lw) / 2), y, lw, lh); y += lh; }
+      // bottom text block: title (bold) and details (lighter), centred, anchored to the bottom
+      var title = $('pcTitle').value.trim(), sub = $('pcSub').value.trim();
+      g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+      g.font = '700 58px ' + PC_FONT; var tl = title ? pcWrap(g, title, W - pad * 2, 2) : [];
+      g.font = '400 36px ' + PC_FONT; var sl = sub ? pcWrap(g, sub, W - pad * 2, 2) : [];
+      var th = tl.length * 70, sh = sl.length * 46, gap = tl.length && sl.length ? 8 : 0;
+      var textH = th + gap + sh, textTop = H - pad - textH;
+      // photo: fitted inside the free space, never stretched
+      var top = y + 24, bottom = textTop - 28, boxW = W - pad * 2, boxH = Math.max(100, bottom - top);
+      if (pcImg) {
+        var r = Math.min(boxW / pcImg.naturalWidth, boxH / pcImg.naturalHeight), dw = Math.round(pcImg.naturalWidth * r), dh = Math.round(pcImg.naturalHeight * r);
+        g.drawImage(pcImg, Math.round((W - dw) / 2), Math.round(top + (boxH - dh) / 2), dw, dh);
+      } else {
+        g.strokeStyle = '#d5dde3'; g.setLineDash([14, 10]); g.lineWidth = 3; g.strokeRect(pad + 60, top + 10, boxW - 120, boxH - 20); g.setLineDash([]);
+        g.fillStyle = '#94a3b8'; g.font = '500 34px ' + PC_FONT; g.fillText('Add a product photo', W / 2, top + boxH / 2 + 12);
+      }
+      g.fillStyle = '#1f2937'; g.font = '700 58px ' + PC_FONT; tl.forEach(function (t, i) { g.fillText(t, W / 2, textTop + 52 + i * 70); });
+      g.fillStyle = '#6b7280'; g.font = '400 36px ' + PC_FONT; sl.forEach(function (t, i) { g.fillText(t, W / 2, textTop + th + gap + 34 + i * 46); });
+    });
+  }
+  function setCardPhoto(src) {
+    if (!src) { pcImg = null; $('pcImgPrev').hidden = true; $('pcImgClear').hidden = true; drawProductCard(); return; }
+    loadImg(src).then(function (i) { pcImg = i; $('pcImgPrev').src = src; $('pcImgPrev').hidden = false; $('pcImgClear').hidden = false; drawProductCard(); }).catch(function (e) { toast(e.message); });
+  }
+  function drawCardPick() {
+    $('pcPick').innerHTML = '<option value="">Choose a product...</option>' + products.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('');
+  }
+  $('pcPick').addEventListener('change', function () {
+    var p = products.filter(function (x) { return String(x.id) === this.value; }, this)[0];
+    if (!p) return;
+    $('pcTitle').value = p.name; $('pcSub').value = '';
+    setCardPhoto('/uploads/' + firstImage(p));
+  });
+  $('pcImgBtn').addEventListener('click', function () { $('pcImgIn').click(); });
+  $('pcImgClear').addEventListener('click', function () { $('pcImgIn').value = ''; setCardPhoto(''); });
+  $('pcImgIn').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    if (!/^image\//.test(f.type)) { toast('Only image files'); return; }
+    var rd = new FileReader(); rd.onload = function () { setCardPhoto(rd.result); }; rd.readAsDataURL(f);
+  });
+  ['pcTitle', 'pcSub', 'pcFormat'].forEach(function (id) { $(id).addEventListener('input', drawProductCard); $(id).addEventListener('change', drawProductCard); });
+  function cardFileName() { return (($('pcTitle').value || 'product-card').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'product-card') + '.png'; }
+  $('pcDownload').addEventListener('click', function () {
+    if (!$('pcTitle').value.trim() && !pcImg) { toast('Add a photo and a title first'); return; }
+    var a = document.createElement('a'); a.href = $('pcCanvas').toDataURL('image/png'); a.download = cardFileName(); document.body.appendChild(a); a.click(); a.remove();
+  });
+  $('pcSave').addEventListener('click', function () {
+    var title = $('pcTitle').value.trim();
+    if (!title || !pcImg) { toast('Add a photo and a title first'); return; }
+    var b = this; b.disabled = true;
+    var pick = products.filter(function (x) { return String(x.id) === $('pcPick').value; })[0];
+    post('/api/creatives', { channel: 'product-card', template: 'product-card', category: (pick && pick.category) || 'Product cards', title: title, caption: $('pcSub').value.trim(), images: [$('pcCanvas').toDataURL('image/png')], products: [title] })
+      .then(function () { toast('Saved to Library'); }).catch(function (e) { toast('Could not save: ' + e.message); }).then(function () { b.disabled = false; });
+  });
 
   /* ---------------- website sync status ---------------- */
   var lastSync = null;
@@ -632,7 +732,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
   $('syncNow').addEventListener('click', function () {
     var b = this; b.disabled = true; b.textContent = 'Refreshing...';
     post('/api/products/import-website', {}).then(function (j) { lastSync = j.lastSync || Date.now(); return fetch('/api/products').then(function (r) { return r.json(); }); })
-      .then(function (r) { products = (r.data || []).filter(function (p) { return firstImage(p); }); selected = selected.filter(function (s) { return products.some(function (p) { return p.id === s.id; }); }); drawChips(); drawSync(); toast('Products refreshed from the website'); })
+      .then(function (r) { products = (r.data || []).filter(function (p) { return firstImage(p); }); selected = selected.filter(function (s) { return products.some(function (p) { return p.id === s.id; }); }); drawChips(); drawCardPick(); drawSync(); toast('Products refreshed from the website'); })
       .catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; b.textContent = 'Refresh now'; });
   });
   setInterval(drawSync, 60000);
@@ -675,7 +775,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 
   /* ---------------- start ---------------- */
   drawWeek(); drawChips(); drawTpls(); chooseTemplate('spotlight');
-  loadProducts().then(function () { drawChips(); return loadSyncStatus(); });
+  loadProducts().then(function () { drawChips(); drawCardPick(); return loadSyncStatus(); });
 })();
 </script>
 </body>
