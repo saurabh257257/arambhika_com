@@ -475,4 +475,9 @@ describe('library and refresh status', () => {
     const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
     for (const needle of ['data-pt="cat"', 'id="pt-cat"', 'id="ciCanvas"', 'id="ciPicker"', 'id="ciLayout"', 'id="ciBg"', 'id="ciDownload"', 'id="ciSave"', "channel: 'category-image'", "'create', 'card', 'cat', 'plan', 'library'"]) assert.ok(page.includes(needle), needle);
   });
+
+  test('the Category image tab can cut products out and put 2-3 of them in a circle', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['value="circle" selected', 'function cutOut(', 'function drawCircleImage(', 'ctx.arc'.replace('ctx', 'g'), 'slice(0, 3)']) assert.ok(page.includes(needle), needle);
+  });
 });

@@ -241,10 +241,10 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
           <div class="st-field"><label for="ciFilter">Show products from</label><select id="ciFilter"><option value="">All categories</option></select></div>
           <div class="st-field"><label for="ciSearch">Search</label><input type="text" id="ciSearch" placeholder="e.g. 18650"></div>
         </div>
-        <div class="st-field"><label>Choose products (up to 8, tap to select)</label><div class="ci-picker" id="ciPicker"></div></div>
+        <div class="st-field"><label>Choose products (tap to select; the circle uses the first 3)</label><div class="ci-picker" id="ciPicker"></div></div>
         <div class="st-field"><label>Or add your own photos</label><div class="st-logo-prev"><button type="button" class="st-btn ghost sm" id="ciUpBtn">Upload photos</button><input type="file" id="ciUpIn" accept="image/*" multiple hidden><span id="ciCount" style="font-size:12px;color:var(--muted)"></span><button type="button" class="st-btn ghost sm" id="ciClear" hidden>Clear all</button></div></div>
         <div class="st-row2">
-          <div class="st-field"><label for="ciLayout">Arrangement</label><select id="ciLayout"><option value="fan">Fan (overlapping)</option><option value="row">Row</option><option value="grid">Grid</option></select></div>
+          <div class="st-field"><label for="ciLayout">Arrangement</label><select id="ciLayout"><option value="circle" selected>Circle cut-out (2-3 products)</option><option value="fan">Fan (overlapping cards)</option><option value="row">Row</option><option value="grid">Grid</option></select></div>
           <div class="st-field"><label for="ciBg">Background</label><select id="ciBg"><option value="light">Soft light</option><option value="teal">Teal</option><option value="navy">Navy</option><option value="white">Plain white</option></select></div>
         </div>
         <div class="st-row2">
@@ -795,7 +795,79 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
     }
     return spots;
   }
+  // Cuts a product out of its photo: the photos have a white background, a logo at the top and a caption at the
+  // bottom, so the largest connected object (the strip or bar itself) is kept and everything else is made transparent.
+  var ciCut = {};
+  function cutOut(im, key) {
+    if (ciCut[key]) return ciCut[key];
+    var sc = Math.min(1, 700 / Math.max(im.naturalWidth, im.naturalHeight)), w = Math.max(1, Math.round(im.naturalWidth * sc)), hh = Math.max(1, Math.round(im.naturalHeight * sc));
+    var c = document.createElement('canvas'); c.width = w; c.height = hh;
+    var g = c.getContext('2d'); g.drawImage(im, 0, 0, w, hh);
+    var d = g.getImageData(0, 0, w, hh), px = d.data, n = w * hh, mask = new Uint8Array(n), i;
+    for (i = 0; i < n; i++) { var r = px[i * 4], gg = px[i * 4 + 1], b = px[i * 4 + 2], mn = Math.min(r, gg, b), mx = Math.max(r, gg, b); mask[i] = (px[i * 4 + 3] > 20 && (mn < 214 || mx - mn > 24)) ? 1 : 0; }
+    var label = new Int32Array(n), best = 0, bestScore = 0, bb = null, cur = 0, stack = [];
+    for (i = 0; i < n; i++) {
+      if (!mask[i] || label[i]) continue;
+      cur++; var x0 = w, x1 = 0, y0 = hh, y1 = 0, area = 0; stack.length = 0; stack.push(i); label[i] = cur;
+      while (stack.length) {
+        var p = stack.pop(), x = p % w, y = (p - x) / w; area++;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        if (x > 0 && mask[p - 1] && !label[p - 1]) { label[p - 1] = cur; stack.push(p - 1); }
+        if (x < w - 1 && mask[p + 1] && !label[p + 1]) { label[p + 1] = cur; stack.push(p + 1); }
+        if (y > 0 && mask[p - w] && !label[p - w]) { label[p - w] = cur; stack.push(p - w); }
+        if (y < hh - 1 && mask[p + w] && !label[p + w]) { label[p + w] = cur; stack.push(p + w); }
+      }
+      var score = Math.max(x1 - x0, y1 - y0) * Math.sqrt(area);
+      if (area > n * 0.004 && score > bestScore) { bestScore = score; best = cur; bb = [x0, y0, x1, y1]; }
+    }
+    var out;
+    if (!best) { out = c; }
+    else {
+      var m = 3, X0 = Math.max(0, bb[0] - m), Y0 = Math.max(0, bb[1] - m), X1 = Math.min(w - 1, bb[2] + m), Y1 = Math.min(hh - 1, bb[3] + m), cw = X1 - X0 + 1, ch = Y1 - Y0 + 1;
+      out = document.createElement('canvas'); out.width = cw; out.height = ch;
+      var og = out.getContext('2d'), od = og.createImageData(cw, ch);
+      for (var yy = 0; yy < ch; yy++) for (var xx = 0; xx < cw; xx++) {
+        var sx = xx + X0, sy = yy + Y0, sp = sy * w + sx, keep = label[sp] === best;
+        if (!keep) { for (var dy = -1; dy <= 1 && !keep; dy++) for (var dx = -1; dx <= 1; dx++) { var nx = sx + dx, ny = sy + dy; if (nx >= 0 && ny >= 0 && nx < w && ny < hh && label[ny * w + nx] === best) { keep = true; break; } } }
+        var o = (yy * cw + xx) * 4; od.data[o] = px[sp * 4]; od.data[o + 1] = px[sp * 4 + 1]; od.data[o + 2] = px[sp * 4 + 2]; od.data[o + 3] = keep ? 255 : 0;
+      }
+      og.putImageData(od, 0, 0);
+    }
+    ciCut[key] = out; return out;
+  }
+  // The website category picture: 2-3 products cut out and overlapping, inside a circle.
+  function drawCircleImage(srcs, seq) {
+    var cv = $('ciCanvas'), g = cv.getContext('2d'), sz = $('ciSize').value.split('x'), S = Math.min(Number(sz[0]), Number(sz[1]));
+    cv.width = S; cv.height = S; g.clearRect(0, 0, S, S);
+    var kind = $('ciBg').value, dark = kind === 'navy' || kind === 'teal', R = S / 2 - S * 0.02, C = S / 2;
+    function disc() {
+      g.save(); g.shadowColor = 'rgba(15,42,74,.25)'; g.shadowBlur = S * 0.03; g.shadowOffsetY = S * 0.012;
+      g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.closePath();
+      var grad = g.createLinearGradient(0, 0, S, S);
+      if (kind === 'navy') { grad.addColorStop(0, '#0f2a4a'); grad.addColorStop(1, '#16507a'); } else if (kind === 'teal') { grad.addColorStop(0, '#0f766e'); grad.addColorStop(1, '#14b8a6'); } else if (kind === 'white') { grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#ffffff'); } else { grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#e6eefb'); }
+      g.fillStyle = grad; g.fill(); g.restore();
+    }
+    function ring() { g.save(); g.beginPath(); g.arc(C, C, R - S * 0.008, 0, Math.PI * 2); g.lineWidth = S * 0.016; g.strokeStyle = dark ? 'rgba(255,255,255,.9)' : '#14b8a6'; g.stroke(); g.restore(); }
+    disc();
+    return Promise.all(srcs.slice(0, 3).map(function (s) { return loadImg(s.src).then(function (im) { return cutOut(im, s.key); }).catch(function () { return null; }); })).then(function (cuts) {
+      if (seq !== ciSeq) return;
+      cuts = cuts.filter(Boolean);
+      g.clearRect(0, 0, S, S); disc();
+      if (!cuts.length) { g.fillStyle = dark ? 'rgba(255,255,255,.75)' : '#94a3b8'; g.font = '500 ' + Math.round(S * 0.04) + 'px ' + PC_FONT; g.textAlign = 'center'; g.fillText('Choose 2-3 products', C, C); ring(); return; }
+      var n = cuts.length, rots = n === 1 ? [0] : n === 2 ? [-15, 13] : [-20, 18, 0], offs = n === 1 ? [0] : n === 2 ? [-0.12, 0.12] : [-0.2, 0.2, 0], order = n === 3 ? [0, 1, 2] : n === 2 ? [0, 1] : [0];
+      g.save(); g.beginPath(); g.arc(C, C, R - S * 0.012, 0, Math.PI * 2); g.clip();
+      order.forEach(function (i) {
+        var cu = cuts[i], ar = cu.width / cu.height, hgt = S * (n === 1 ? 0.6 : 0.52), wid = hgt * ar;
+        if (wid > S * 0.46) { wid = S * 0.46; hgt = wid / ar; }
+        g.save(); g.translate(C + offs[i] * S, C + S * 0.01); g.rotate(rots[i] * Math.PI / 180);
+        g.shadowColor = 'rgba(15,42,74,.35)'; g.shadowBlur = S * 0.03; g.shadowOffsetX = S * 0.008; g.shadowOffsetY = S * 0.014;
+        g.drawImage(cu, -wid / 2, -hgt / 2, wid, hgt); g.restore();
+      });
+      g.restore(); ring();
+    });
+  }
   function drawCategoryImage() {
+    if ($('ciLayout').value === 'circle') { var seq0 = ++ciSeq; drawCircleImage(ciSources(), seq0); return; }
     var cv = $('ciCanvas'), g = cv.getContext('2d'), sz = $('ciSize').value.split('x'), W = Number(sz[0]), H = Number(sz[1]);
     cv.width = W; cv.height = H;
     var seq = ++ciSeq, srcs = ciSources();
