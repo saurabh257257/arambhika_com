@@ -470,4 +470,9 @@ describe('library and refresh status', () => {
     for (const needle of ['data-pt="card"', 'id="pt-card"', 'id="pcCanvas"', 'id="pcTitle"', 'id="pcSub"', 'id="pcDownload"', 'id="pcSave"', "channel: 'product-card'", "'create', 'card', 'plan', 'library'"]) assert.ok(page.includes(needle), needle);
     assert.ok(page.includes('.st-wrap[hidden] { display: none; }'), 'the display rule must not override hidden');
   });
+
+  test('the Category image tab arranges several products on one image and saves it to the library', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['data-pt="cat"', 'id="pt-cat"', 'id="ciCanvas"', 'id="ciPicker"', 'id="ciLayout"', 'id="ciBg"', 'id="ciDownload"', 'id="ciSave"', "channel: 'category-image'", "'create', 'card', 'cat', 'plan', 'library'"]) assert.ok(page.includes(needle), needle);
+  });
 });
