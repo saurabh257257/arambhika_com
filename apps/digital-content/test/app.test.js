@@ -271,9 +271,10 @@ describe('website catalogue in the Products page', () => {
     ] };
     stub = http.createServer((req, res) => {
       if (req.url === '/products.json') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(catalog)); }
-      if (req.url === '/zimg/1/a.jpg') { res.setHeader('content-type', 'image/jpeg'); return res.end(Buffer.from([0xff, 0xd8, 0xff, 0xd9])); }
+      if (req.url === '/zimg/1/a.jpg' || req.url === '/zimg/2/b.jpg') { res.setHeader('content-type', 'image/jpeg'); return res.end(Buffer.from([0xff, 0xd8, 0xff, 0xd9])); }
       res.statusCode = 404; res.end();
     });
+    stub.catalog = catalog;
     await new Promise((r) => stub.listen(0, '127.0.0.1', r));
     app = await start({ WEBSITE_URL: `http://127.0.0.1:${stub.address().port}` });
     await app.login();
@@ -308,6 +309,18 @@ describe('website catalogue in the Products page', () => {
     assert.equal(del.json.removed, 1);
     await app.request('POST', '/api/products/import-website', {});
     assert.equal((await app.request('GET', '/api/products')).json.data.some((p) => p.sku === 'NS1'), true);
+  });
+
+  test('a photo replaced in Zoho is downloaded again on the next refresh', async () => {
+    const before = JSON.parse((await app.request('GET', '/api/products')).json.data.find((p) => p.sku === 'NS1').images);
+    stub.catalog.categories[0].products[0].Image_Link = ['/zimg/2/b.jpg'];
+    const r = await app.request('POST', '/api/products/import-website', {});
+    assert.equal(r.json.images, 1, 'the new photo was fetched');
+    const after = JSON.parse((await app.request('GET', '/api/products')).json.data.find((p) => p.sku === 'NS1').images);
+    assert.equal(after.length, 1);
+    assert.notDeepEqual(after, before, 'a new file replaced the old one');
+    assert.ok(!fs.existsSync(path.join(app.dir, 'uploads', before[0])), 'the old file is gone');
+    assert.equal((await app.request('POST', '/api/products/import-website', {})).json.images, 0, 'unchanged photos are not fetched again');
   });
 
   test('the import and bulk remove need a session', async () => {

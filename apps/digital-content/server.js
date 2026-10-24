@@ -270,6 +270,7 @@ try { db.exec("ALTER TABLE products ADD COLUMN source TEXT DEFAULT ''"); } catch
 db.exec('CREATE TABLE IF NOT EXISTS website_removed (sku TEXT PRIMARY KEY)');
 try { db.exec("ALTER TABLE products ADD COLUMN collections TEXT DEFAULT '[]'"); } catch (e) {}
 try { db.exec('ALTER TABLE products ADD COLUMN cat_order INTEGER DEFAULT 999'); } catch (e) {}
+try { db.exec("ALTER TABLE products ADD COLUMN image_src TEXT DEFAULT '[]'"); } catch (e) {}
 db.exec('CREATE TABLE IF NOT EXISTS sync_meta (k TEXT PRIMARY KEY, v TEXT)');
 db.exec(`CREATE TABLE IF NOT EXISTS creatives (
   id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT DEFAULT (datetime('now')),
@@ -321,9 +322,16 @@ async function importWebsiteCatalog({ restore = false } = {}) {
         result.added += 1;
       }
       const links = (Array.isArray(item.Image_Link) ? item.Image_Link : [item.Image_Link]).filter((l) => typeof l === 'string' && l.startsWith('/zimg/'));
+      // The photos are re-downloaded whenever the website's list of photos for this product differs from what was
+      // downloaded last time (a replaced, added, removed or reordered photo in Zoho), not only when there are none.
+      const prevSrc = existing ? existing.image_src : '[]';
+      if (existing && prevSrc !== JSON.stringify(links)) {
+        images.forEach((f) => { try { fs.unlinkSync(path.join(uploadsDir, path.basename(f))); } catch (e) {} });
+        images = [];
+      }
       for (let i = 0; i < links.length && images.length < links.length; i += 1) {
         const ext = (path.extname(links[i].split('?')[0]) || '.jpg').toLowerCase().replace(/[^.a-z0-9]/g, '');
-        const file = `web_${id}_${images.length + 1}${ext || '.jpg'}`;
+        const file = `web_${id}_${images.length + 1}_${crypto.createHash('md5').update(links[i]).digest('hex').slice(0, 8)}${ext || '.jpg'}`; // named after its source, so a replaced photo is never served from a browser's cache
         try {
           const ir = await fetch(WEBSITE_URL + links[i], { signal: AbortSignal.timeout(20000) });
           if (!ir.ok) continue;
@@ -332,7 +340,7 @@ async function importWebsiteCatalog({ restore = false } = {}) {
         } catch (e) { console.error('Image import failed:', e.message); }
       }
       db.prepare('UPDATE products SET flag_reference_image=1, cat_order=? WHERE id=?').run(catIndex, id);
-      db.prepare('UPDATE products SET images=?, collections=? WHERE id=?').run(JSON.stringify(images), JSON.stringify(collectionsByProduct.get(name) || []), id);
+      db.prepare('UPDATE products SET images=?, collections=?, image_src=? WHERE id=?').run(JSON.stringify(images), JSON.stringify(collectionsByProduct.get(name) || []), images.length === links.length ? JSON.stringify(links) : '[]', id);
       syncAvailabilityFlags(id);
     }
   }
