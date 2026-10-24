@@ -1,0 +1,63 @@
+name: admin-panel (dev only)
+
+# The Admin Panel is a separate service (employees' daily work, tasks and office approvals). It is tested and
+# deployed only to the DEV droplet (https://admin.arambhika.com) and never to production: there is no production job.
+# Nothing in apps/admin-panel is part of the website release either (deploy.sh skips apps/).
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'apps/admin-panel/**'
+      - 'scripts/deploy-admin.sh'
+      - '.github/workflows/admin-panel-dev.yml'
+  pull_request:
+    branches: [dev]
+    paths:
+      - 'apps/admin-panel/**'
+  workflow_dispatch:
+
+concurrency:
+  group: admin-panel
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: admin panel tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin-panel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/admin-panel/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    name: deploy to dev droplet
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: bash scripts/deploy-admin.sh
+        env:
+          DEPLOY_ENV: dev
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          ADMIN_PORT: ${{ vars.ADMIN_PANEL_PORT }}
+          # credentials, kept only as environment secrets
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PANEL_PASSWORD }}
+          SESSION_SECRET: ${{ secrets.ADMIN_PANEL_SESSION_SECRET }}
