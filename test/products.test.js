@@ -523,6 +523,7 @@ describe('rich product descriptions from Zoho', () => {
     const clean = sanitizeHtml(html)
     assert.ok(clean.includes('<h3>Overview</h3>') && clean.includes('<ul><li>Low viscosity</li></ul>') && clean.includes('<table><tbody><tr><td>Colour</td>'))
     assert.ok(!/script|alert|javascript|onclick|border|href/.test(clean), 'nothing unsafe survives')
+    assert.equal(sanitizeHtml('<p>6.8 &times; 10<sup>8</sup> M&Omega; and CTI &lt; 175, H<sub>2</sub>O</p>'), '<p>6.8 &times; 10<sup>8</sup> M&Omega; and CTI &lt; 175, H<sub>2</sub>O</p>')
     const zoho = {
       categories: [{ category_id: '1', name: 'Potting Compound', handle: 'potting-compound' }],
       products: [
@@ -549,5 +550,15 @@ describe('rich product descriptions from Zoho', () => {
     assert.ok(html.includes('"description":"A gel. '))
     const js = fs.readFileSync(path.join(ROOT, 'public/product.js'), 'utf8')
     assert.ok(js.includes('<h2>Description</h2><div class="pp-desc">'))
+  })
+})
+
+describe('description text for summaries and prompts', () => {
+  test('common HTML entities become real characters', async () => {
+    const { buildCatalog } = await import('../lib/catalog.js')
+    const zoho = { categories: [{ category_id: '1', name: 'Epoxy Board' }], products: [{ category_id: '1', name: 'Sheet', description: '<h3>Overview</h3><p>Volume resistivity 6.8 &times; 10<sup>8</sup> M&Omega;-cm &#177; 5 &amp; CTI &lt; 175. ' + 'x'.repeat(200) + '</p>', variants: [{ sku: 'E1', selling_price: 220, stock_available: 3 }] }] }
+    const p = buildCatalog(zoho).categories[0].products[0]
+    assert.ok(p.Description_Summary.startsWith('Volume resistivity 6.8 × 108 MΩ-cm ± 5 & CTI < 175.'), p.Description_Summary)
+    assert.ok(p.Description_Html.includes('10<sup>8</sup>'))
   })
 })
