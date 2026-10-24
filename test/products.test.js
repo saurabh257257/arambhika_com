@@ -515,3 +515,39 @@ describe('before the first copy arrives from Zoho', () => {
     } finally { await app.stop() }
   })
 })
+
+describe('rich product descriptions from Zoho', () => {
+  test('headings, lists and tables are kept as clean HTML and no longer dumped into Dimensions', async () => {
+    const { buildCatalog, sanitizeHtml } = await import('../lib/catalog.js')
+    const html = '<h3>Overview</h3><p>9606 is a two-part gel &amp; more.</p><ul><li>Low viscosity</li></ul><table border="1"><tbody><tr><td>Colour</td><td>Gray</td></tr></tbody></table><script>alert(1)</script><p><a href="javascript:x" onclick="y">link</a></p>'
+    const clean = sanitizeHtml(html)
+    assert.ok(clean.includes('<h3>Overview</h3>') && clean.includes('<ul><li>Low viscosity</li></ul>') && clean.includes('<table><tbody><tr><td>Colour</td>'))
+    assert.ok(!/script|alert|javascript|onclick|border|href/.test(clean), 'nothing unsafe survives')
+    const zoho = {
+      categories: [{ category_id: '1', name: 'Potting Compound', handle: 'potting-compound' }],
+      products: [
+        { category_id: '1', name: 'Gel A', description: html, variants: [{ sku: 'PC1', selling_price: 215, stock_available: 5 }] },
+        { category_id: '1', name: 'Strip B', description: '<p>31x0.15 mm</p>', variants: [{ sku: 'S1', selling_price: 10, stock_available: 5 }] },
+      ],
+    }
+    const out = buildCatalog(zoho)
+    const [gel, strip] = out.categories[0].products
+    assert.equal(gel.Product_Dimensions, '')
+    assert.deepEqual(gel.Additional_Details, [])
+    assert.ok(gel.Description_Html.includes('<h3>Overview</h3>'))
+    assert.ok(gel.Description_Summary.startsWith('9606 is a two-part gel & more.'))
+    assert.ok(gel.Description_Text.includes('Colour'))
+    assert.equal(strip.Product_Dimensions, '31x0.15 mm', 'a short size line keeps its old place')
+    assert.equal(strip.Description_Html, '')
+  })
+
+  test('the product page shows the description section and gives search engines the text', async () => {
+    const { renderProductPage } = await import('../lib/product-pages.js')
+    const catalog = { categories: [{ name: 'Potting Compound', Handle: 'potting-compound', products: [{ ProductCode: 'Gel A', SKU: 'PC1', Price: '215', Unit: 'KG', Description_Html: '<h3>Overview</h3><p>A gel.</p>', Description_Summary: 'A gel.' }] }] }
+    const html = renderProductPage('<!--SEO_HEAD--><!--PRODUCT_SSR--><!--PRODUCT_DATA-->', catalog, 'gel-a')
+    assert.ok(html.includes('<div class="pp-desc"><h3>Overview</h3><p>A gel.</p></div>'))
+    assert.ok(html.includes('"description":"A gel. '))
+    const js = fs.readFileSync(path.join(ROOT, 'public/product.js'), 'utf8')
+    assert.ok(js.includes('<h2>Description</h2><div class="pp-desc">'))
+  })
+})

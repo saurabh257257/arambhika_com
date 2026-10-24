@@ -2747,3 +2747,15 @@ body.acct-fixed-layout .acct-content { background: linear-gradient(180deg, #eaf5
 }
 @media (max-width: 640px) { .cat-arrow { width: 30px; height: 30px; top: 16px; font-size: 1.3rem; } }
 .cat-tiles, .cat-tiles:not(#x) { scroll-snap-type: none !important; }
+
+/* Product description (rich text from Zoho: headings, bullet lists, tables) */
+.pp-desc { font-size: 0.95rem; line-height: 1.65; color: #1f2937; overflow-wrap: anywhere; }
+.pp-desc h3 { font-size: 1.02rem; margin: 18px 0 6px; color: var(--p-navy, #0f2a4a); }
+.pp-desc h3:first-child, .pp-desc h4:first-child { margin-top: 0; }
+.pp-desc h4 { font-size: 0.95rem; margin: 14px 0 4px; }
+.pp-desc p { margin: 0 0 10px; }
+.pp-desc ul, .pp-desc ol { margin: 0 0 12px; padding-left: 20px; }
+.pp-desc li { margin: 3px 0; }
+.pp-desc table { display: block; width: 100%; overflow-x: auto; border-collapse: collapse; margin: 6px 0 14px; font-size: 0.88rem; }
+.pp-desc th, .pp-desc td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5eaf0; vertical-align: top; }
+.pp-desc tr td:first-child, .pp-desc tr th:first-child { width: 42%; font-weight: 600; background: #eef3fd; color: #0f2a4a; }

@@ -90,6 +90,7 @@
         </div>
       </div>
     </div>
+    ${P.descriptionHtml ? `<section class="pp-sec"><h2>Description</h2><div class="pp-desc">${P.descriptionHtml}</div></section>` : ""}
     <section class="pp-sec"><h2>Specifications</h2>
       <table class="pp-spec">${specRows(P).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>
     </section>

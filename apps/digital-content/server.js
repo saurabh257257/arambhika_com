@@ -304,7 +304,7 @@ async function importWebsiteCatalog({ restore = false } = {}) {
       seen.add(sku);
       if (removed.has(sku)) { result.skipped += 1; continue; }
       const price = item.Price == null ? '' : String(item.Price);
-      const details = Array.isArray(item.Additional_Details) ? item.Additional_Details.filter(Boolean).join('\n') : '';
+      const details = (Array.isArray(item.Additional_Details) ? item.Additional_Details.filter(Boolean).join('\n') : '') || String(item.Description_Text || '').slice(0, 1500);
       const avail = /out of stock|^no$/i.test(String(item.Availability || '')) ? 'no' : 'yes';
       const existing = db.prepare("SELECT * FROM products WHERE sku=? AND source='website'").get(sku);
       let id;
