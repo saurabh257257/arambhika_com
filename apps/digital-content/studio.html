@@ -219,7 +219,10 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
       <div class="st-card">
         <h4>Product card</h4>
         <p style="font-size:13px;color:var(--muted)">Add a photo and a title. Every card comes out in the same layout: logo on top, photo in the middle, title and details at the bottom.</p>
-        <div class="st-field"><label for="pcPick">Pick a product from your website (optional)</label><select id="pcPick"><option value="">Choose a product...</option></select></div>
+        <div class="st-row2">
+          <div class="st-field"><label for="pcCat">Category</label><select id="pcCat"><option value="">All categories</option></select></div>
+          <div class="st-field"><label for="pcPick">Product name</label><select id="pcPick"><option value="">Choose a product...</option></select></div>
+        </div>
         <div class="st-field"><label>Product photo</label>
           <div class="st-logo-prev"><img id="pcImgPrev" alt="Product photo" hidden><button type="button" class="st-btn ghost sm" id="pcImgBtn">Upload photo</button><button type="button" class="st-btn ghost sm" id="pcImgClear" hidden>Remove</button><input type="file" id="pcImgIn" accept="image/*" hidden></div>
         </div>
@@ -725,9 +728,19 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
     if (!src) { pcImg = null; $('pcImgPrev').hidden = true; $('pcImgClear').hidden = true; drawProductCard(); return; }
     loadImg(src).then(function (i) { pcImg = i; $('pcImgPrev').src = src; $('pcImgPrev').hidden = false; $('pcImgClear').hidden = false; drawProductCard(); }).catch(function (e) { toast(e.message); });
   }
+  // Category first, then the products of that category, as listed on the website.
   function drawCardPick() {
-    $('pcPick').innerHTML = '<option value="">Choose a product...</option>' + products.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('');
+    var cats = [], seen = {};
+    products.forEach(function (p) { if (p.category && !seen[p.category]) { seen[p.category] = 1; cats.push(p.category); } });
+    var sel = $('pcCat'), cur = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>' + cats.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+    sel.value = seen[cur] ? cur : '';
+    var keep = $('pcPick').value;
+    var list = products.filter(function (p) { return !sel.value || p.category === sel.value; });
+    $('pcPick').innerHTML = '<option value="">Choose a product...</option>' + list.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + (firstImage(p) ? '' : ' (no photo)') + '</option>'; }).join('');
+    $('pcPick').value = list.some(function (p) { return String(p.id) === keep; }) ? keep : '';
   }
+  $('pcCat').addEventListener('change', drawCardPick);
   $('pcPick').addEventListener('change', function () {
     var p = products.filter(function (x) { return String(x.id) === this.value; }, this)[0];
     if (!p) return;

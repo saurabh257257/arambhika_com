@@ -499,4 +499,9 @@ describe('library and refresh status', () => {
     assert.ok(page.includes('function thumb(p)') && page.includes('st-nophoto'));
     assert.ok(!page.includes("filter(function (p) { return firstImage(p); });"), 'the product list must not drop products without photos');
   });
+
+  test('the Product card tab has a category dropdown that narrows the product-name dropdown', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['id="pcCat"', 'id="pcPick"', "$('pcCat').addEventListener('change', drawCardPick)", '(no photo)']) assert.ok(page.includes(needle), needle);
+  });
 });
