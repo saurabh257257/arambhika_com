@@ -31,7 +31,7 @@
       var mine = r.ownerId === P.me.id, can = mine || isAdmin;
       var tone = r.complete ? 'good' : r.needsAttention ? 'hot' : r.followUpDue ? 'warn' : '';
       return '<div class="item ' + tone + '" data-id="' + r.id + '"><div class="head"><b>' + esc(r.customerName) + (r.company ? ' <span class="muted">' + esc(r.company) + '</span>' : '') + (r.amount ? ' <span class="muted">' + P.money(r.amount) + '</span>' : '') + '</b>' +
-        '<span class="chips">' + P.pill(r.source) + (r.complete ? P.pill('Sent successfully', 'ok') : P.pill(r.progress.done + ' of ' + r.progress.total + ' steps')) + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + (r.followUpDue ? P.pill('Follow up today', 'due') : '') + '</span></div>' +
+        '<span class="chips">' + P.pill(r.customerType === 'existing' ? 'Existing customer' : 'New customer', r.customerType === 'existing' ? 'ok' : 'new') + P.pill(r.source) + (r.complete ? P.pill('Sent successfully', 'ok') : P.pill(r.progress.done + ' of ' + r.progress.total + ' steps')) + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + (r.followUpDue ? P.pill('Follow up today', 'due') : '') + '</span></div>' +
         '<div class="meta">' + (r.phone ? '<span>&#9742; <b>' + esc(r.phone) + '</b></span>' : '') + '<span>Owner: <b>' + (r.ownerId ? esc(r.ownerName) : 'nobody yet') + '</b></span><span>Open for ' + r.daysOpen + ' day' + (r.daysOpen === 1 ? '' : 's') + '</span>' + (r.complete ? '' : '<span>Next: <b>' + esc(r.nextStep) + '</b></span>') + (r.nextDate && !r.complete ? '<span>Follow up on <b>' + P.fmtDate(r.nextDate) + '</b></span>' : '') + (r.zohoSoNumber ? '<span>Zoho ' + esc(r.zohoSoNumber) + '</span>' : '') + '</div>' +
         (r.request ? '<div>' + esc(r.request) + '</div>' : '') + P.bar(r.progress.done, r.progress.total) +
         '<div class="steps" style="padding:4px 0">' + steps.map(function (s) { return stepRow(r, s, can); }).join('') + '</div>' +
@@ -49,7 +49,9 @@
         steps = r.steps; sources = r.sources;
         var seg = [['open', 'Open'], ['unassigned', 'Waiting to be picked'], ['done', 'Finished'], ['all', 'All']];
         el.innerHTML = '<div class="card"><div class="between"><div class="seg">' + seg.map(function (s) { return '<button class="btn ' + (filter === s[0] ? '' : 'ghost') + '" data-f="' + s[0] + '" type="button">' + s[1] + '</button>'; }).join('') + '</div><div class="actions">' + (isAdmin ? '<select id="rw" style="width:auto"><option value="">All owners</option>' + P.userOptions(who) + '</select><button class="btn ghost sm" id="rf" type="button">Check Zoho</button>' : '') + '<button class="btn" id="addR" type="button">+ Log a customer request</button></div></div>' +
-          '<form id="rForm" class="list" hidden><div class="row"><label>Customer name<input name="customerName" required maxlength="100"></label><label>Phone<input name="phone" type="tel" maxlength="20"></label><label>Company<input name="company" maxlength="100"></label><label>Came through<select name="source">' + sources.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('') + '</select></label></div>' +
+          '<form id="rForm" class="list" hidden><div class="row"><label class="check"><input type="checkbox" name="existing"> This is an existing customer (choose them from the list)</label></div>' +
+          '<div class="row" data-existing hidden><label style="flex:3 1 300px">Existing customer<select name="customerId"><option value="">Loading the customer list...</option></select></label></div>' +
+          '<div class="row"><label>Customer name<input name="customerName" required maxlength="100"></label><label>Phone<input name="phone" type="tel" maxlength="20"></label><label>Company<input name="company" maxlength="100"></label><label>Came through<select name="source">' + sources.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('') + '</select></label></div>' +
           '<div class="row"><label style="flex:3 1 260px">What do they want?<input name="request" maxlength="1000" placeholder="e.g. 20 kg nickel strip 0.15 mm"></label>' + (isAdmin ? '<label>Give it to<select name="ownerId"><option value="">Nobody (let the team pick)</option>' + P.userOptions('') + '</select></label>' : '') + '<button class="btn fit" type="submit">Save request</button></div></form>' +
           '<div class="muted small">Every customer who asks for something goes through six steps: asked what is required, quote sent and payment asked, payment received (with the screenshot), material ready, dispatched, sent successfully. Tick each when it is done. A request that is not finished shows up again tomorrow.</div></div>' +
           (r.zoho && !r.zoho.ok && isAdmin ? '<div class="banner">Zoho did not answer (' + esc(r.zoho.error) + '). New website orders will appear once it is reachable.</div>' : '') +
@@ -57,7 +59,26 @@
         el.querySelector('#addR').addEventListener('click', function () { var f = el.querySelector('#rForm'); f.hidden = !f.hidden; });
         el.querySelector('#rForm').addEventListener('submit', function (e) {
           e.preventDefault(); var f = e.target;
-          P.api('POST', '/api/requests', { customerName: f.customerName.value, phone: f.phone.value, company: f.company.value, source: f.source.value, request: f.request.value, ownerId: f.ownerId ? f.ownerId.value : undefined }).then(function () { P.toast('Request logged'); filter = 'open'; return load(); }).catch(P.fail);
+          P.api('POST', '/api/requests', { customerName: f.customerName.value, phone: f.phone.value, company: f.company.value, source: f.source.value, request: f.request.value, ownerId: f.ownerId ? f.ownerId.value : undefined, customerType: f.existing.checked ? 'existing' : 'new', customerId: f.existing.checked ? f.customerId.value : '' }).then(function () { P.toast('Request logged'); filter = 'open'; return load(); }).catch(P.fail);
+        });
+        // an existing customer is picked from the Zoho list, and their details fill in
+        var rf = el.querySelector('#rForm'), custs = null;
+        function fillOptions() {
+          var sel = rf.customerId;
+          sel.innerHTML = '<option value="">Choose a customer...</option>' + custs.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.name) + (c.phone ? ' - ' + esc(c.phone) : '') + '</option>'; }).join('');
+        }
+        rf.existing.addEventListener('change', function () {
+          rf.querySelector('[data-existing]').hidden = !rf.existing.checked;
+          if (!rf.existing.checked || custs) return;
+          P.api('GET', '/api/customer-options').then(function (r) {
+            custs = r.customers; fillOptions();
+            if (r.error) P.toast(r.error);
+            else if (!custs.length) rf.customerId.innerHTML = '<option value="">No customers found in Zoho</option>';
+          }).catch(P.fail);
+        });
+        rf.customerId.addEventListener('change', function () {
+          var c = (custs || []).filter(function (x) { return x.id === rf.customerId.value; })[0]; if (!c) return;
+          rf.customerName.value = c.name; rf.phone.value = c.phone || ''; rf.company.value = c.company || '';
         });
         var rw = el.querySelector('#rw'); if (rw) rw.addEventListener('change', function () { who = rw.value; load().catch(P.fail); });
       });

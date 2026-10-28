@@ -112,8 +112,28 @@ module.exports = function requests(app, ctx) {
     res.json({ requests: shown.slice(0, 300), steps: STEPS, sources: SOURCES, zoho });
   });
 
-  app.post('/api/requests', (req, res) => {
-    const r = readFields(req.body || {}); if (r.error) return res.status(400).json({ error: r.error });
+  // the existing customers a request can be linked to (from Zoho, cached): just the names and phones, sorted
+  app.get('/api/customer-options', async (req, res) => {
+    try {
+      const d = await ctx.customersData(false);
+      res.json({ customers: d.list.map((c) => ({ id: c.id, name: c.name, company: c.company, phone: c.phone })).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 1000) });
+    } catch (err) { res.json({ customers: [], error: 'Zoho did not answer: ' + err.message }); }
+  });
+
+  app.post('/api/requests', async (req, res) => {
+    const body = { ...(req.body || {}) };
+    let customerType = 'new'; let customerId = '';
+    if (body.customerType === 'existing') {
+      customerType = 'existing'; customerId = String(body.customerId || '');
+      if (!/^\d{1,30}$/.test(customerId)) return res.status(400).json({ error: 'Choose the customer from the list' });
+      let found = null;
+      try { found = (await ctx.customersData(false)).list.find((c) => c.id === customerId); } catch (err) { return res.status(400).json({ error: 'Zoho is not answering, so the customer list cannot be used right now. Try again in a minute, or log them as a new customer.' }); }
+      if (!found) return res.status(400).json({ error: 'That customer was not found in Zoho. Refresh the page and choose again.' });
+      // the customer's details come from Zoho; anything typed in the form wins
+      body.customerName = body.customerName || found.name; body.phone = body.phone !== undefined && body.phone !== '' ? body.phone : found.phone; body.company = body.company || found.company;
+    }
+    const r = readFields(body); if (r.error) return res.status(400).json({ error: r.error });
+    r.value.customerType = customerType; r.value.customerId = customerId;
     let ownerId = '';
     if (req.user.role === 'employee') ownerId = req.user.id; // a request you log yourself is yours
     else if (req.body.ownerId) { if (!ctx.employees().some((u) => u.id === req.body.ownerId)) return res.status(400).json({ error: 'Choose a team member' }); ownerId = req.body.ownerId; }

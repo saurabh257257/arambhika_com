@@ -445,6 +445,28 @@ describe('customer requests: six steps, a screenshot, and carried to the next da
     assert.ok(done.steps.ready && done.steps.dispatched && done.steps.done); assert.equal(done.complete, true);
   });
 
+  test('a request is for a new customer, or an existing one chosen from the Zoho list', async () => {
+    const opts = (await ann.get('/api/customer-options')).data.customers;
+    assert.deepEqual(opts.map((c) => c.name), ['Green Cells', 'New Prospect', 'Shakti Batteries', 'Volt Works'], 'sorted by name');
+    assert.deepEqual(Object.keys(opts[0]).sort(), ['company', 'id', 'name', 'phone']);
+    const old = (await ann.post('/api/requests', { customerType: 'existing', customerId: '1001', request: 'Repeat order, 50 kg', source: 'WhatsApp' })).data.request;
+    assert.equal(old.customerType, 'existing'); assert.equal(old.customerId, '1001');
+    assert.equal(old.customerName, 'Shakti Batteries', 'the details come from Zoho'); assert.equal(old.phone, '9811111111');
+    const typed = (await ann.post('/api/requests', { customerType: 'existing', customerId: '1002', customerName: 'Volt Works (Pune unit)', phone: '9800000000' })).data.request;
+    assert.equal(typed.customerName, 'Volt Works (Pune unit)', 'what is typed wins'); assert.equal(typed.customerId, '1002');
+    const fresh = (await ann.post('/api/requests', { customerName: 'Brand New Buyer', phone: '9899900000' })).data.request;
+    assert.equal(fresh.customerType, 'new'); assert.equal(fresh.customerId, '');
+    assert.equal((await ann.post('/api/requests', { customerType: 'existing', customerId: '' })).status, 400, 'choose from the list');
+    assert.equal((await ann.post('/api/requests', { customerType: 'existing', customerId: 'abc' })).status, 400);
+    assert.equal((await ann.post('/api/requests', { customerType: 'existing', customerId: '999999' })).status, 400, 'not a Zoho customer');
+    z.data.fail = true;
+    const down = await ann.post('/api/requests', { customerType: 'existing', customerId: '1001' });
+    assert.equal(down.status, 400); assert.match(down.data.error, /Zoho is not answering/);
+    assert.equal((await ann.post('/api/requests', { customerName: 'New while Zoho is down' })).status, 200, 'a new customer never needs Zoho');
+    assert.equal((await ann.get('/api/customer-options')).data.customers.length, 0); 
+    z.data.fail = false;
+  });
+
   test('the owner can assign requests; a team member cannot; and Zoho being down does not break the list', async () => {
     const r = (await admin.post('/api/requests', { customerName: 'Phone enquiry', source: 'Call' })).data.request;
     assert.equal(r.ownerId, '');
