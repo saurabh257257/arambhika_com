@@ -953,3 +953,29 @@ describe('sharing customers fairly between the team', () => {
     assert.deepEqual(counts(o.regular), [2, 2, 2]); assert.deepEqual(counts(o.other), [2, 2, 3]);
   });
 });
+
+describe('deleting a customer request', () => {
+  let s, z, admin, ann, annId;
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  before(async () => { z = pretendZoho(); ({ s, admin, ann, annId } = await team(z)); });
+  after(() => s.stop());
+
+  test('only the owner can delete; the request and its screenshot are gone', async () => {
+    const id = (await ann.post('/api/requests', { customerName: 'Typo Traders', request: 'test' })).data.request.id;
+    const name = (await ann.post('/api/requests/' + id + '/screenshot', { dataUrl: PNG })).data.request.screenshots[0].name;
+    assert.equal((await ann.get('/api/files/' + name)).status, 200);
+    assert.equal((await ann.del('/api/requests/' + id)).status, 403, 'team members cannot delete');
+    assert.equal((await admin.del('/api/requests/nope')).status, 404);
+    assert.equal((await admin.del('/api/requests/' + id)).status, 200);
+    assert.ok(!(await admin.get('/api/requests?filter=all')).data.requests.some((r) => r.id === id));
+    assert.equal((await ann.get('/api/files/' + name)).status, 404, 'the screenshot file is removed too');
+    assert.ok((await admin.get('/api/activity')).data.activity.some((a) => /Deleted the customer request from Typo Traders/.test(a.text)));
+  });
+
+  test('a deleted website order does not come back from Zoho', async () => {
+    const web = (await admin.get('/api/requests?filter=all')).data.requests.find((r) => r.source === 'Website');
+    assert.ok(web, 'the website order was pulled in');
+    assert.equal((await admin.del('/api/requests/' + web.id)).status, 200);
+    assert.ok(!(await admin.get('/api/requests?filter=all&refresh=1')).data.requests.some((r) => r.source === 'Website'));
+  });
+});

@@ -23,6 +23,7 @@ const MAX_PHOTOS = 5;
 
 module.exports = function requests(app, ctx) {
   const list = () => ctx.col('requests');
+  const skipped = () => ctx.col('requestsdeleted'); // website orders the owner deleted: { id: zohoSoId }
   const dataDir = ctx.store.dir;
 
   function view(r) {
@@ -76,6 +77,7 @@ module.exports = function requests(app, ctx) {
       const sos = await ctx.zoho.salesOrders({ refresh });
       const today = ctx.todayIST(); const rows = list(); let changed = false;
       for (const so of sos) {
+        if (skipped().some((x) => x.id === so.id)) continue; // the owner deleted this one, so it does not come back
         let r = rows.find((x) => x.zohoSoId === so.id);
         const fulfilled = ['fulfilled', 'delivered'].includes(so.shipped);
         if (!r) {
@@ -194,6 +196,19 @@ module.exports = function requests(app, ctx) {
     r.nextDate = next; r.lastTouchedAt = nowISO(); r.updatedAt = r.lastTouchedAt; ctx.save('requests');
     ctx.log(req.user, 'Note on the request from ' + r.customerName + (next ? ', follow up on ' + next : ''));
     res.json({ request: view(r) });
+  });
+
+  // the owner can delete a request for good (wrong entry, test, duplicate). Its screenshots go too, and a website order is
+  // remembered so the next Zoho check does not bring it back.
+  app.delete('/api/requests/:id', ctx.requireAdmin, (req, res) => {
+    const rows = list(); const i = rows.findIndex((x) => x.id === req.params.id);
+    if (i < 0) return res.status(404).json({ error: 'Request not found' });
+    const r = rows[i]; rows.splice(i, 1);
+    if (r.zohoSoId) { skipped().push({ id: r.zohoSoId }); ctx.save('requestsdeleted'); }
+    for (const p of r.screenshots || []) { const fp = files.filePath(dataDir, p.name); if (fp) { try { fs.unlinkSync(fp); } catch (e) { /* already gone */ } } }
+    ctx.save('requests');
+    ctx.log(req.user, 'Deleted the customer request from ' + r.customerName + (r.request ? ' (' + String(r.request).slice(0, 60) + ')' : ''));
+    res.json({ ok: true });
   });
 
   app.post('/api/requests/:id/screenshot', (req, res) => {

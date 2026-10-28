@@ -38,7 +38,7 @@
         (r.notes.length ? '<div class="hist">' + r.notes.slice(-4).map(function (n) { return '<div><b>' + P.stamp(n.at, n.byName) + '</b> ' + esc(n.text) + (n.nextDate ? ' <span class="muted">(follow up ' + P.fmtDate(n.nextDate) + ')</span>' : '') + '</div>'; }).join('') + '</div>' : '') +
         (can && !r.complete ? '<form class="row" data-note><label style="flex:3 1 220px">Note (what happened with the customer)<input name="text" maxlength="1000" placeholder="e.g. Customer will send the address tomorrow"></label><label>Follow up on<input type="date" name="nextDate" min="' + P.today + '"></label><button class="btn sm fit" type="submit">Add note</button></form>' : '') +
         '<div class="actions">' + (!r.ownerId && !isAdmin ? '<button class="btn sm" data-act="pick" type="button">I will handle this request</button>' : '') + (isAdmin ? '<select data-assign style="width:auto"><option value="">Nobody</option>' + P.userOptions(r.ownerId) + '</select>' : '') +
-        (can ? '<button class="btn ghost sm" data-edit type="button">Edit details</button>' : '') + (r.updatedAt ? '<span class="stamp">Updated ' + P.fmtTime(r.updatedAt) + '</span>' : '') + '</div>' +
+        (can ? '<button class="btn ghost sm" data-edit type="button">Edit details</button>' : '') + (isAdmin ? '<button class="btn ghost sm" data-del type="button" style="color:#b91c1c">Delete</button>' : '') + (r.updatedAt ? '<span class="stamp">Updated ' + P.fmtTime(r.updatedAt) + '</span>' : '') + '</div>' +
         (editing === r.id ? '<form class="fu" data-editform><div class="row"><label>Customer<input name="customerName" value="' + esc(r.customerName) + '" maxlength="100" required></label><label>Phone<input name="phone" value="' + esc(r.phone) + '" maxlength="20"></label><label>Company<input name="company" value="' + esc(r.company) + '" maxlength="100"></label><label>Amount (₹)<input name="amount" type="number" min="0" step="0.01" value="' + (r.amount || '') + '"></label></div><label>What they want<input name="request" value="' + esc(r.request) + '" maxlength="1000"></label><div class="actions"><button class="btn sm" type="submit">Save</button><button class="btn ghost sm" type="button" data-edit-cancel>Cancel</button></div></form>' : '') +
         '</div>';
     }
@@ -89,6 +89,10 @@
       if (e.target.id === 'rf') { e.target.disabled = true; load(true).then(function () { P.toast('Checked Zoho'); }).catch(P.fail); return; }
       var id = (e.target.closest('[data-id]') || { dataset: {} }).dataset;
       if (e.target.closest('[data-act="pick"]')) { P.api('POST', '/api/requests/' + id.id + '/pick', {}).then(function () { P.toast('Picked. It is yours now.'); return load(); }).catch(P.fail); return; }
+      if (e.target.closest('[data-del]')) {
+        if (!window.confirm('Delete this customer request for good?\n\nIts notes and screenshots are removed too. This cannot be undone.')) return;
+        P.api('DELETE', '/api/requests/' + id.id).then(function () { P.toast('Request deleted'); return load(); }).catch(P.fail); return;
+      }
       if (e.target.closest('[data-edit]')) { editing = editing === id.id ? '' : id.id; load().catch(P.fail); return; }
       if (e.target.closest('[data-edit-cancel]')) { editing = ''; load().catch(P.fail); }
     });
