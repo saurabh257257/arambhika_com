@@ -88,13 +88,19 @@
     });
   }
 
-  // a short list of the customer requests still open, with a way into the Customer requests tab where they are worked on
+  // the customer requests still open: a short list with how far along each one is, and a way into the Customer requests tab
+  // where they are worked on. The card folds up; with more than 3 requests it starts folded (a click remembers the choice).
+  var reqFold = null;
   function requestsCard(list) {
     if (!list.length) return '';
-    var late = list.filter(function (r) { return r.needsAttention || r.followUpDue; }).length, shown = list.slice(0, 5);
-    return '<div class="card" id="reqCard"><div class="between"><div><h3>Customer requests open (' + list.length + ')</h3><div class="muted small">' + (late ? late + ' need attention today. ' : '') + 'Open the tab to tick the steps, add notes and upload screenshots.</div></div><button class="btn sm" data-goreq type="button">Open customer requests</button></div><div class="list">' + shown.map(function (r) {
-      return '<div class="item ' + (r.needsAttention ? 'hot' : r.followUpDue ? 'warn' : '') + '" data-goreq style="cursor:pointer"><div class="between"><b>' + esc(r.customerName) + (r.request ? ' <span class="muted">' + esc(r.request.slice(0, 60)) + '</span>' : '') + '</b><span class="chips">' + P.pill(r.progress.done + ' of ' + r.progress.total + ' steps') + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + (r.followUpDue ? P.pill('Follow up today', 'due') : '') + '</span></div><div class="meta"><span>Next: <b>' + esc(r.nextStep) + '</b></span></div></div>';
-    }).join('') + '</div>' + (list.length > shown.length ? '<div class="muted small">and ' + (list.length - shown.length) + ' more in the tab</div>' : '') + '</div>';
+    var folded = reqFold === null ? list.length > 3 : reqFold;
+    var late = list.filter(function (r) { return r.needsAttention || r.followUpDue; }).length, shown = list.slice(0, 8);
+    var done = list.reduce(function (n, r) { return n + r.progress.done; }, 0), total = list.reduce(function (n, r) { return n + r.progress.total; }, 0), pct = total ? Math.round(done / total * 100) : 0;
+    return '<div class="card' + (folded ? ' folded' : '') + '" id="reqCard"><div class="between reqhead" data-reqfold role="button" tabindex="0"><div><h3><span class="caret">' + (folded ? '&#9656;' : '&#9662;') + '</span> Customer requests open (' + list.length + ')</h3><div class="muted small">' + (late ? late + ' need attention today. ' : '') + pct + '% of the steps completed.</div></div>' +
+      '<button class="btn sm" data-goreq type="button">Open customer requests</button></div><div class="reqbody"><div class="list">' + shown.map(function (r) {
+      var p = r.progress.total ? Math.round(r.progress.done / r.progress.total * 100) : 0;
+      return '<div class="item ' + (r.needsAttention ? 'hot' : r.followUpDue ? 'warn' : '') + '" data-goreq style="cursor:pointer"><div class="between"><b>' + esc(r.customerName) + (r.request ? ' <span class="muted">' + esc(r.request.slice(0, 60)) + '</span>' : '') + '</b><span class="chips">' + P.pill(p + '% completed', p >= 100 ? 'ok' : '') + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + (r.followUpDue ? P.pill('Follow up today', 'due') : '') + '</span></div>' + P.bar(r.progress.done, r.progress.total) + '<div class="meta"><span>' + r.progress.done + ' of ' + r.progress.total + ' steps</span><span>Pending: <b>' + esc(r.nextStep) + '</b></span></div></div>';
+    }).join('') + '</div>' + (list.length > shown.length ? '<div class="muted small">and ' + (list.length - shown.length) + ' more in the tab</div>' : '') + '</div></div>';
   }
 
   // calls whose follow-up date has come: what was said before, and a form for this call
@@ -170,7 +176,11 @@
         if (!wired) { wired = true; wireTasks(el, true, r.tasks, refreshTop); wireWeek(el, state, { get min() { return limits.min; }, get max() { return limits.max; } }, function () { load().catch(P.fail); }); }
       });
     }
-    el.addEventListener('click', function (e) { if (e.target.closest('[data-goreq]')) P.go('requests'); });
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-goreq]')) { P.go('requests'); return; }
+      var h = e.target.closest('[data-reqfold]'); if (!h) return;
+      var card = h.closest('#reqCard'), now = !card.classList.contains('folded'); reqFold = now; card.classList.toggle('folded', now); h.querySelector('.caret').innerHTML = now ? '&#9656;' : '&#9662;';
+    });
     // the follow-up list changes after each save, so the handler reads the latest list from the element
     el.addEventListener('submit', function (e) {
       var f = e.target.closest('[data-fuform]'); if (!f) return; e.preventDefault();
