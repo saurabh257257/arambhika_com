@@ -2,7 +2,7 @@
   'use strict';
   var P = window.Panel, esc = P.esc;
 
-  P.register({ id: 'customers', label: 'Customers', roles: ['admin', 'employee'], order: 4, render: function (el) {
+  P.register({ id: 'customers', label: 'Customers', roles: ['admin', 'employee'], order: 11, render: function (el) {
     var isAdmin = P.me.role === 'admin', filter = isAdmin ? 'all' : 'mine', who = '', q = '', outcomes = [], timer, lastSplit = '';
 
     function item(c) {
