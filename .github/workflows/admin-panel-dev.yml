@@ -61,3 +61,9 @@ jobs:
           # credentials, kept only as environment secrets
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PANEL_PASSWORD }}
           SESSION_SECRET: ${{ secrets.ADMIN_PANEL_SESSION_SECRET }}
+          # read-only access to Zoho Books (customers, invoices, sales orders): the same values the website already uses
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_BOOKS_ORG_ID: ${{ secrets.ZOHO_BOOKS_ORG_ID }}
+          ZOHO_DC: ${{ vars.ZOHO_DC }}
