@@ -949,6 +949,16 @@ describe('sharing customers fairly between the team', () => {
     assert.ok((await admin.get('/api/activity')).data.activity.some((a) => /Re-split all customers between the team: 6 regular and 7 others, 13 assigned/.test(a.text)));
   });
 
+  test('the owner gets the counts for the pie charts; team members do not', async () => {
+    await admin.post('/api/customers/auto-assign', { all: true });
+    const o = (await admin.get('/api/customers')).data.counts.owners;
+    assert.deepEqual(o.map((x) => x.name), ['Nobody yet', 'Ann', 'Raj'].filter((n) => o.some((x) => x.name === n)));
+    const sum = (k) => o.reduce((s, x) => s + x[k], 0);
+    assert.equal(sum('regular'), 6); assert.equal(sum('other'), 7);
+    assert.equal(o.find((x) => x.name === 'Nobody yet').regular + o.find((x) => x.name === 'Nobody yet').other, 0);
+    assert.equal((await ann.get('/api/customers')).data.counts.owners, undefined);
+  });
+
   test('with three people nobody gets most of a kind either', async () => {
     const third = (await admin.post('/api/users', { name: 'Meena', username: 'meena', password: 'meena-password-1' })).data.user.id;
     await admin.post('/api/customers/auto-assign', { all: true });

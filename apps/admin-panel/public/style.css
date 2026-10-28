@@ -166,3 +166,10 @@ textarea { min-height: 70px; resize: vertical; }
 #daySummary h3 { font-size: 14px; }
 .wkhead { margin-top: 6px; padding: 0 2px; }
 .wkhead h3 { font-size: 14px; }
+
+/* customer pie charts */
+.pies { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.piebox h4 { margin-bottom: 6px; } .piewrap { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.legend { display: grid; gap: 4px; font-size: 12.5px; min-width: 130px; }
+.legend .lg { display: flex; align-items: center; gap: 6px; } .legend .lg i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.legend .lg span { flex: 1; } .legend .lg b { white-space: nowrap; }

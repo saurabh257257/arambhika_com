@@ -48,6 +48,13 @@ module.exports = function customers(app, ctx) {
     try { data = await load(req.query.refresh === '1'); } catch (err) { return res.json({ customers: [], counts: {}, error: err.message, outcomes: ctx.cadence().customer }); }
     let rows = data.list.map((c) => view(c, data.by, today));
     const counts = { total: rows.length, unassigned: rows.filter((r) => !r.ownerId).length, mine: rows.filter((r) => r.ownerId === req.user.id).length, due: rows.filter((r) => r.ownerId && (r.followStatus === 'due' || r.followStatus === 'overdue')).length };
+    // who has how many customers (regular and others), for the owner's pie charts
+    if (req.user.role === 'admin') {
+      const mk = (id, name) => ({ id, name, regular: 0, other: 0 });
+      const per = new Map([['', mk('', 'Nobody yet')], ...ctx.employees().map((u) => [u.id, mk(u.id, u.name)])]);
+      for (const r of rows) { const p = per.get(r.ownerId) || per.get(''); p[r.regular ? 'regular' : 'other'] += 1; }
+      counts.owners = [...per.values()];
+    }
     if (req.user.role !== 'admin') rows = rows.filter((r) => !r.ownerId || r.ownerId === req.user.id);
     const f = req.query.filter;
     if (f === 'mine') rows = rows.filter((r) => r.ownerId === req.user.id);
