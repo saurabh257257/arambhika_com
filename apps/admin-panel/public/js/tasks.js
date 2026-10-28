@@ -130,7 +130,8 @@
     var day = r.tasks.filter(function (t) { return t.schedule !== 'weekly'; });
     var done = day.reduce(function (s, t) { return s + t.progress.done; }, 0), total = day.reduce(function (s, t) { return s + t.progress.total; }, 0);
     var title = date === P.today ? 'Today' : DOW[new Date(date + 'T00:00:00').getDay()] + ' ' + shortDate(date);
-    return '<div class="card" id="daySummary"><div><h3>' + title + (r.ahead ? ' (working ahead)' : '') + (r.workDay ? '' : ' (day off)') + '</h3><div class="muted">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left</div></div>' + (total ? P.bar(done, total) : '') +
+    var pct = total ? Math.round(done / total * 100) : 0;
+    return '<div class="card" id="daySummary"><div class="between"><div><h3>' + title + (r.ahead ? ' (working ahead)' : '') + (r.workDay ? '' : ' (day off)') + '</h3><div class="muted">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left</div></div><div class="pct' + (pct >= 100 ? ' ok' : '') + '">' + pct + '%<span>completed</span></div></div>' + (total ? P.bar(done, total) : '') +
       (r.ahead ? '<div class="banner info">You are working ahead on this day. Whatever is left over from the days before is added on top when this day comes, and everything you write now is kept.</div>' : '') + '</div>';
   }
   // the week strip and its buttons, shared by the team member and the owner. load(date, anchor) is called with the new choice.
@@ -162,7 +163,7 @@
       return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] }), date === P.today ? P.api('GET', '/api/requests?filter=mine').catch(function () { return { requests: [] }; }) : Promise.resolve({ requests: [] })]).then(function (res) {
         var r = res[0], w = res[1], fu = res[2].followups, rq = res[3].requests.filter(function (x) { return !x.complete; }); limits = { min: w.minDate, max: w.maxDate };
         seedOpen(r.tasks);
-        el.innerHTML = '<div class="tasklayout"><aside>' + weekStrip(w, date, false) + daySummary(r, date) + '</aside><main>' +
+        el.innerHTML = '<div class="tasklayout"><aside>' + daySummary(r, date) + weekStrip(w, date, false) + '</aside><main>' +
           requestsCard(rq) + followupsCard(fu) +
           taskList(r.tasks, true, P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.')) + '</main></div>';
         el.__fu = fu;

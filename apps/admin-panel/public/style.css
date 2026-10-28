@@ -196,3 +196,4 @@ textarea { min-height: 70px; resize: vertical; }
   .tasklayout .wk-day .wk-tag { display: none; } .tasklayout .wk-day .wk-d { width: 26px; height: 26px; font-size: 14px; }
   .tasklayout .wk-day .bar { height: 6px; } .tasklayout .wk-day .wk-t { white-space: nowrap; }
 }
+.pct { text-align: right; font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1; } .pct span { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; } .pct.ok { color: var(--ok); }
