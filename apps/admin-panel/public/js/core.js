@@ -29,6 +29,25 @@
     money: function (n) { return '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 }); },
     addDays: function (d, n) { return new Date(Date.parse(d + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10); },
     pct: function (d, t) { return t > 0 ? Math.min(100, Math.round(d / t * 100)) : 0; },
+    // a request's progress as a row of stops: what is done (and how long that step took after the one before it), what is
+    // being waited on (and for how long), and what is still ahead. The first step is timed from when the request was logged.
+    track: function (r) {
+      var keys = [['ask', 'Asked'], ['quote', 'Quote sent'], ['payment', 'Paid'], ['ready', 'Ready'], ['dispatched', 'Dispatched'], ['done', 'Delivered']];
+      var ms = function (iso) { return new Date(iso).getTime(); };
+      var dur = function (n) { var m = Math.round(n / 60000); if (m < 1) return 'under 1 min'; if (m < 60) return m + ' min'; var h = Math.floor(m / 60); if (h < 24) return h + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); var d = Math.floor(h / 24); return d + 'd' + (h % 24 ? ' ' + (h % 24) + 'h' : ''); };
+      var times = [ms(r.createdAt)].concat(keys.filter(function (k) { return r.steps[k[0]]; }).map(function (k) { return ms(r.steps[k[0]].at); })).sort(function (a, b) { return a - b; });
+      var prevOf = function (t) { var p = times[0]; times.forEach(function (x) { if (x < t) p = x; }); return t === times[0] ? t : p; };
+      var cur = -1; keys.some(function (k, i) { if (!r.steps[k[0]]) { cur = i; return true; } return false; });
+      var last = times[times.length - 1];
+      var html = keys.map(function (k, i) {
+        var d = r.steps[k[0]], cls = d ? 'done' : i === cur ? 'now' : '', sub = '';
+        if (d) sub = '<b>' + dur(ms(d.at) - prevOf(ms(d.at))) + '</b><span>' + esc(Panel.fmtTime(d.at)) + '</span>';
+        else if (i === cur) sub = '<b>waiting ' + dur(Date.now() - last) + '</b>';
+        return '<div class="tk ' + cls + '"><i>' + (d ? '&#10003;' : i + 1) + '</i><em>' + k[1] + '</em>' + sub + '</div>';
+      }).join('');
+      var all = r.steps.done ? ms(r.steps.done.at) - times[0] : 0;
+      return '<div class="track">' + html + '</div>' + (r.steps.done ? '<div class="muted small">Delivered in ' + dur(all) + ' from when it was logged</div>' : '');
+    },
     bar: function (done, total) { var p = Panel.pct(done, total); return '<div class="bar ' + (total > 0 && done >= total ? 'done' : '') + '"><i style="width:' + p + '%"></i></div>'; },
     pill: function (text, cls) { return '<span class="pill ' + (cls || '') + '">' + esc(text) + '</span>'; },
     empty: function (text) { return '<div class="card empty">' + esc(text) + '</div>'; },

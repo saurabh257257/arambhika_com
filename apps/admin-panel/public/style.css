@@ -226,3 +226,18 @@ textarea { min-height: 70px; resize: vertical; }
 .mday.today b { color: var(--teal); } .mday.sel { border-color: var(--teal); background: #f0fdfa; box-shadow: 0 0 0 2px #99f6e4; }
 .mwk { white-space: nowrap; } @media (max-width: 720px) { .mwk { display: none; } }
 .colhead { padding: 10px 14px; gap: 8px; } .colhead h3 { font-size: 18px; } .colhead .pct { font-size: 24px; }
+
+/* request progress track: a stop per step with the time each one took */
+.track{display:flex;margin:10px 0 6px;overflow-x:auto;padding-bottom:2px}
+.track .tk{flex:1 1 0;min-width:78px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;font-size:11px;color:#94a3b8;line-height:1.3}
+.track .tk::before{content:"";position:absolute;top:13px;right:50%;width:100%;height:3px;background:#e2e8f0}
+.track .tk:first-child::before{display:none}
+.track .tk.done::before,.track .tk.now::before{background:#0f9d8a}
+.track .tk i{position:relative;z-index:1;width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:13px}
+.track .tk.done i{background:#0f9d8a;color:#fff}
+.track .tk.now i{background:#fff;color:#0f9d8a;border:3px solid #0f9d8a;box-shadow:0 0 0 3px #ccfbf1}
+.track .tk em{font-style:normal;font-weight:700;margin-top:4px;color:#64748b}
+.track .tk.done em,.track .tk.now em{color:#0f172a}
+.track .tk b{color:#0f766e;font-size:11.5px}
+.track .tk.now b{color:#b45309}
+.track .tk span{color:#94a3b8;font-size:10.5px}
