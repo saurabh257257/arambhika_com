@@ -256,3 +256,6 @@ textarea { min-height: 70px; resize: vertical; }
 
 /* % completed is shown in red everywhere */
 .pill.pcr,.red,.pct,.pct span,.pct.ok,.pct.ok span{color:#dc2626!important}
+
+/* the inner <main> of the Tasks layout must not pick up the page-level main rule (centred, shrink-to-fit) */
+.tasklayout > main { max-width: none; margin: 0; padding: 0; width: 100%; justify-self: stretch; }
