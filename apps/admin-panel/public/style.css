@@ -164,3 +164,5 @@ textarea { min-height: 70px; resize: vertical; }
 #tasksBody .task, .task { border-radius: 10px; }
 #daySummary { position: sticky; top: 96px; z-index: 4; padding: 8px 14px; gap: 6px; box-shadow: 0 2px 6px rgba(15,23,42,.08); }
 #daySummary h3 { font-size: 14px; }
+.wkhead { margin-top: 6px; padding: 0 2px; }
+.wkhead h3 { font-size: 14px; }

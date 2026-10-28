@@ -234,11 +234,11 @@ describe('daily and weekly work that carries forward', () => {
   const fill = (who, task, i, extra = {}) => who.put('/api/tasks/' + task.id + '/rows/' + i, { values: { name: 'Person ' + i, phone: '98' + String(10000000 + i), what_did_you_talk_about: 'Asked about BMS', ...extra } });
 
   test('the quick-start presets are the tasks the owner asked for', async () => {
-    assert.deepEqual(presets.map((p) => p.name), ['Call 10 people', 'Find 4 customers', 'Schedule 8 Instagram posts']);
+    assert.deepEqual(presets.map((p) => p.name), ['Call 10 people', 'Find 4 customers', 'Schedule 6 Instagram posts']);
     const calls = presets[0];
     assert.deepEqual(calls.columns.map((c) => c.label), ['Name', 'Phone', 'Company', 'What did you talk about', 'Follow-up date']);
     assert.ok(calls.columns.find((c) => c.label === 'Follow-up date').followUp);
-    assert.equal(presets[2].schedule, 'weekly'); assert.equal(presets[2].rowCount, 8);
+    assert.equal(presets[2].schedule, 'weekly'); assert.equal(presets[2].rowCount, 6);
     assert.equal((await admin.post('/api/templates', { name: 'x', kind: 'rows', rowCount: 3, assignees: [annId], columns: [{ label: 'A', type: 'date', followUp: true }, { label: 'B', type: 'date', followUp: true }] })).status, 400, 'only one follow-up date column');
   });
 
@@ -314,16 +314,16 @@ describe('daily and weekly work that carries forward', () => {
   test('a weekly task is one card for the whole week, and next week carries what is left', async () => {
     day('2026-11-23'); // Monday
     assert.equal((await post('instagram', { assignees: [annId] })).status, 200);
-    const w = await tasksOf(ann, 'Schedule 8 Instagram posts');
-    assert.equal(w.schedule, 'weekly'); assert.equal(w.date, '2026-11-23'); assert.equal(w.rows.length, 8);
+    const w = await tasksOf(ann, 'Schedule 6 Instagram posts');
+    assert.equal(w.schedule, 'weekly'); assert.equal(w.date, '2026-11-23'); assert.equal(w.rows.length, 6);
     for (let i = 0; i < 3; i++) await ann.put('/api/tasks/' + w.id + '/rows/' + i, { values: { post_topic: 'Post ' + i, scheduled_for: '2026-11-2' + (5 + i) } });
     day('2026-11-27'); // Friday of the same week
-    const fri = await tasksOf(ann, 'Schedule 8 Instagram posts');
+    const fri = await tasksOf(ann, 'Schedule 6 Instagram posts');
     assert.equal(fri.id, w.id, 'the same card all week'); assert.equal(fri.progress.done, 3);
-    assert.equal((await tasksOf(raj, 'Schedule 8 Instagram posts')), undefined, 'only the people it was given to');
+    assert.equal((await tasksOf(raj, 'Schedule 6 Instagram posts')), undefined, 'only the people it was given to');
     day('2026-11-30'); // next Monday
-    const next = await tasksOf(ann, 'Schedule 8 Instagram posts');
-    assert.notEqual(next.id, w.id); assert.equal(next.date, '2026-11-30'); assert.equal(next.carried, 5); assert.equal(next.rows.length, 13);
+    const next = await tasksOf(ann, 'Schedule 6 Instagram posts');
+    assert.notEqual(next.id, w.id); assert.equal(next.date, '2026-11-30'); assert.equal(next.carried, 3); assert.equal(next.rows.length, 9);
   });
 
   test('the owner can give a one-time task to both; it stays until done and does not carry numbers', async () => {
@@ -837,16 +837,16 @@ describe('working ahead, and the week view', () => {
   test('next week\'s weekly task can be started early, and gets the leftover when the week begins', async () => {
     const { id: _i, for: _f, ...insta } = presets[2];
     await admin.post('/api/templates', { ...insta, assignees: [annId] });
-    const thisWeek = (await getDay(ann, '2026-11-03')).tasks.find((t) => t.name === 'Schedule 8 Instagram posts');
+    const thisWeek = (await getDay(ann, '2026-11-03')).tasks.find((t) => t.name === 'Schedule 6 Instagram posts');
     assert.equal(thisWeek.date, '2026-11-02');
     for (let i = 0; i < 3; i++) await ann.put('/api/tasks/' + thisWeek.id + '/rows/' + i, { values: { post_topic: 'Post ' + i } });
-    const nextWeek = (await getDay(ann, '2026-11-09')).tasks.find((t) => t.name === 'Schedule 8 Instagram posts');
-    assert.equal(nextWeek.date, '2026-11-09'); assert.equal(nextWeek.ahead, true); assert.equal(nextWeek.rows.length, 8);
+    const nextWeek = (await getDay(ann, '2026-11-09')).tasks.find((t) => t.name === 'Schedule 6 Instagram posts');
+    assert.equal(nextWeek.date, '2026-11-09'); assert.equal(nextWeek.ahead, true); assert.equal(nextWeek.rows.length, 6);
     for (let i = 0; i < 2; i++) await ann.put('/api/tasks/' + nextWeek.id + '/rows/' + i, { values: { post_topic: 'Early ' + i } });
     assert.equal((await ann.get('/api/week?date=2026-11-09')).data.weekly[0].done, 2);
     day('2026-11-09');
-    const arrived = (await getDay(ann, '2026-11-09')).tasks.find((t) => t.name === 'Schedule 8 Instagram posts');
-    assert.equal(arrived.id, nextWeek.id); assert.equal(arrived.carried, 5); assert.equal(arrived.rows.length, 13); assert.equal(arrived.progress.done, 2);
+    const arrived = (await getDay(ann, '2026-11-09')).tasks.find((t) => t.name === 'Schedule 6 Instagram posts');
+    assert.equal(arrived.id, nextWeek.id); assert.equal(arrived.carried, 3); assert.equal(arrived.rows.length, 9); assert.equal(arrived.progress.done, 2);
   });
 });
 

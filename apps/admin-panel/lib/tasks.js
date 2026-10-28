@@ -35,8 +35,8 @@ const PRESETS = [
     columns: [
       { label: 'Name', type: 'text', required: true }, { label: 'Company', type: 'text' }, { label: 'Phone', type: 'phone' }, { label: 'Where found', type: 'text' },
     ] },
-  { id: 'instagram', for: 'Lokesh', name: 'Schedule 8 Instagram posts', kind: 'rows', schedule: 'weekly', rowCount: 8, carry: true,
-    instructions: 'Schedule 8 Instagram posts this week (Monday to Sunday).',
+  { id: 'instagram', for: 'Lokesh', name: 'Schedule 6 Instagram posts', kind: 'rows', schedule: 'weekly', rowCount: 6, carry: true,
+    instructions: 'Schedule 6 Instagram posts this week (Monday to Sunday).',
     columns: [{ label: 'Post topic', type: 'text', required: true }, { label: 'Scheduled for', type: 'date' }, { label: 'Link', type: 'text' }] },
 ];
 

@@ -19,6 +19,14 @@
   var openIds = {}, seeded = false;
   function seedOpen(tasks) { if (seeded) return; seeded = true; var first = tasks.filter(function (t) { return !(t.completedAt || (t.progress.total && t.progress.done >= t.progress.total)); })[0]; if (first) openIds[first.id] = true; }
   function isOpen(t) { return Boolean(openIds[t.id]); }
+  // today's and one-time tasks first, then the weekly ones under their own heading with the week's count
+  function taskList(tasks, editable, empty) {
+    if (!tasks.length) return empty;
+    var daily = tasks.filter(function (t) { return t.schedule !== 'weekly'; }), weekly = tasks.filter(function (t) { return t.schedule === 'weekly'; });
+    var done = weekly.reduce(function (s, t) { return s + t.progress.done; }, 0), total = weekly.reduce(function (s, t) { return s + t.progress.total; }, 0);
+    return daily.map(function (t) { return taskCard(t, editable); }).join('') +
+      (weekly.length ? '<div class="between wkhead"><h3>Weekly tasks</h3><span class="muted small">for the whole week, not every day &middot; ' + done + ' of ' + total + ' done this week</span></div>' + weekly.map(function (t) { return taskCard(t, editable); }).join('') : '');
+  }
   function taskCard(t, editable) {
     var pr = t.progress, hasFu = t.kind === 'rows' && t.columns.some(function (c) { return c.followUp; });
     var when = t.schedule === 'weekly' ? P.pill('This week, from ' + P.fmtDate(t.date)) : t.schedule === 'once' ? P.pill(t.dueDate ? 'Due ' + P.fmtDate(t.dueDate) : 'One-time', t.dueDate && t.dueDate < P.today && !t.completedAt ? 'overdue' : '') : P.pill('Daily');
@@ -119,7 +127,8 @@
       '<div class="muted small">Tap a day to see it. You can fill in later days too (up to a week ahead) if you have time: what is left over from earlier days is added on top when that day comes, and what you wrote is kept.</div></div>';
   }
   function daySummary(r, date) {
-    var done = r.tasks.reduce(function (s, t) { return s + t.progress.done; }, 0), total = r.tasks.reduce(function (s, t) { return s + t.progress.total; }, 0);
+    var day = r.tasks.filter(function (t) { return t.schedule !== 'weekly'; });
+    var done = day.reduce(function (s, t) { return s + t.progress.done; }, 0), total = day.reduce(function (s, t) { return s + t.progress.total; }, 0);
     var title = date === P.today ? 'Today' : DOW[new Date(date + 'T00:00:00').getDay()] + ' ' + shortDate(date);
     return '<div class="card" id="daySummary"><div><h3>' + title + (r.ahead ? ' (working ahead)' : '') + (r.workDay ? '' : ' (day off)') + '</h3><div class="muted">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left</div></div>' + (total ? P.bar(done, total) : '') +
       (r.ahead ? '<div class="banner info">You are working ahead on this day. Whatever is left over from the days before is added on top when this day comes, and everything you write now is kept.</div>' : '') + '</div>';
@@ -155,7 +164,7 @@
         seedOpen(r.tasks);
         el.innerHTML = weekStrip(w, date, false) + daySummary(r, date) +
           requestsCard(rq) + followupsCard(fu) +
-          (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, true); }).join('') : P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.'));
+          taskList(r.tasks, true, P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.'));
         el.__fu = fu;
         if (!wired) { wired = true; wireTasks(el, true, r.tasks, refreshTop); wireWeek(el, state, { get min() { return limits.min; }, get max() { return limits.max; } }, function () { load().catch(P.fail); }); }
       });
@@ -182,7 +191,7 @@
         seedOpen(r.tasks);
         el.innerHTML = '<div class="card"><div class="row"><label>Team member<select id="wu">' + P.userOptions(who) + '</select></label></div></div>' + weekStrip(w, date, true) +
           (fu.length ? '<div class="card"><h3>Follow-up calls due (' + fu.length + ')</h3><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></div>' : '') +
-          (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, false); }).join('') : P.empty('No tasks for them on this day.'));
+          taskList(r.tasks, false, P.empty('No tasks for them on this day.'));
         el.querySelector('#wu').addEventListener('change', function (e) { P.viewAs = e.target.value; load().catch(P.fail); });
         if (!wired) { wired = true; wireTasks(el, false, [], null); wireWeek(el, state, {}, function () { load().catch(P.fail); }); }
       });
