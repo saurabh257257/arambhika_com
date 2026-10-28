@@ -27,14 +27,21 @@
           (can && r.screenshots.length < 5 ? '<label class="btn ghost sm" style="display:inline-block;cursor:pointer">+ Upload screenshot<input type="file" accept="image/*" data-photo hidden></label>' : '') + '</div>' : '') + '</div>';
     }
 
+    // the payment screenshots live under the track, since the Paid step cannot be ticked without one
+    function photoRow(r, can) {
+      if (!r.screenshots.length && !can) return '';
+      return '<div class="actions"><span class="muted small">Payment screenshot:</span> ' + r.screenshots.map(function (p) { return '<a href="/api/files/' + p.name + '" target="_blank" rel="noopener" title="' + esc(p.byName) + ' &middot; ' + P.fmtTime(p.at) + '"><img src="/api/files/' + p.name + '" alt="Payment screenshot" style="height:36px;border-radius:8px;border:1px solid #e2e8f0"></a>'; }).join('') +
+        (can && r.screenshots.length < 5 ? '<label class="btn ghost sm" style="display:inline-block;cursor:pointer">+ Upload screenshot<input type="file" accept="image/*" data-photo hidden></label>' : '') + '</div>';
+    }
+
     function card(r) {
       var mine = r.ownerId === P.me.id, can = mine || isAdmin;
       var tone = r.complete ? 'good' : r.needsAttention ? 'hot' : r.followUpDue ? 'warn' : '';
       return '<div class="item ' + tone + '" data-id="' + r.id + '"><div class="head"><b>' + esc(r.customerName) + (r.company ? ' <span class="muted">' + esc(r.company) + '</span>' : '') + (r.amount ? ' <span class="muted">' + P.money(r.amount) + '</span>' : '') + '</b>' +
         '<span class="chips">' + P.pill(r.customerType === 'existing' ? 'Existing customer' : 'New customer', r.customerType === 'existing' ? 'ok' : 'new') + P.pill(r.source) + (r.complete ? P.pill('Sent successfully', 'ok') : P.pill(r.progress.done + ' of ' + r.progress.total + ' steps')) + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + (r.followUpDue ? P.pill('Follow up today', 'due') : '') + '</span></div>' +
         '<div class="meta">' + (r.phone ? '<span>&#9742; <b>' + esc(r.phone) + '</b></span>' : '') + '<span>Owner: <b>' + (r.ownerId ? esc(r.ownerName) : 'nobody yet') + '</b></span><span>Open for ' + r.daysOpen + ' day' + (r.daysOpen === 1 ? '' : 's') + '</span>' + (r.complete ? '' : '<span>Next: <b>' + esc(r.nextStep) + '</b></span>') + (r.nextDate && !r.complete ? '<span>Follow up on <b>' + P.fmtDate(r.nextDate) + '</b></span>' : '') + (r.zohoSoNumber ? '<span>Zoho ' + esc(r.zohoSoNumber) + '</span>' : '') + '</div>' +
-        (r.request ? '<div>' + esc(r.request) + '</div>' : '') + P.track(r) +
-        '<div class="steps rsteps">' + steps.map(function (s) { return stepRow(r, s, can); }).join('') + '</div>' +
+        (r.request ? '<div>' + esc(r.request) + '</div>' : '') + P.track(r, can) +
+        photoRow(r, can) +
         (r.notes.length ? '<div class="hist">' + r.notes.slice(-4).map(function (n) { return '<div><b>' + P.stamp(n.at, n.byName) + '</b> ' + esc(n.text) + (n.nextDate ? ' <span class="muted">(follow up ' + P.fmtDate(n.nextDate) + ')</span>' : '') + '</div>'; }).join('') + '</div>' : '') +
         (can && !r.complete ? '<form class="row" data-note><label style="flex:3 1 220px">Note (what happened with the customer)<input name="text" maxlength="1000" placeholder="e.g. Customer will send the address tomorrow"></label><label>Follow up on<input type="date" name="nextDate" min="' + P.today + '"></label><button class="btn sm fit" type="submit">Add note</button></form>' : '') +
         '<div class="actions">' + (!r.ownerId && !isAdmin ? '<button class="btn sm" data-act="pick" type="button">I will handle this request</button>' : '') + (isAdmin ? '<select data-assign style="width:auto"><option value="">Nobody</option>' + P.userOptions(r.ownerId) + '</select>' : '') +
@@ -100,6 +107,13 @@
       if (e.target.closest('[data-del]')) {
         if (!window.confirm('Delete this customer request for good?\n\nIts notes and screenshots are removed too. This cannot be undone.')) return;
         P.api('DELETE', '/api/requests/' + id.id).then(function () { P.toast('Request deleted'); return load(); }).catch(P.fail); return;
+      }
+      var tk = e.target.closest('[data-tick]');
+      if (tk) {
+        var on = tk.dataset.on === '1';
+        if (!on && tk.dataset.tick === 'payment' && !tk.closest('[data-id]').querySelector('img[alt="Payment screenshot"]')) { P.toast('Upload the payment screenshot first, then tick Paid'); return; }
+        if (on && !window.confirm('Undo this step?')) return;
+        P.api('PUT', '/api/requests/' + id.id + '/steps/' + tk.dataset.tick, { done: !on }).then(function (res) { P.toast((on ? 'Unticked, saved ' : 'Done, saved ') + P.fmtTime(res.request.updatedAt)); return load(); }).catch(P.fail); return;
       }
       if (e.target.closest('[data-edit]')) { editing = editing === id.id ? '' : id.id; load().catch(P.fail); return; }
       if (e.target.closest('[data-edit-cancel]')) { editing = ''; load().catch(P.fail); }

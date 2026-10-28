@@ -31,7 +31,7 @@
     pct: function (d, t) { return t > 0 ? Math.min(100, Math.round(d / t * 100)) : 0; },
     // a request's progress as a row of stops: what is done (and how long that step took after the one before it), what is
     // being waited on (and for how long), and what is still ahead. The first step is timed from when the request was logged.
-    track: function (r) {
+    track: function (r, can) {
       var keys = [['ask', 'Asked'], ['quote', 'Quote sent'], ['payment', 'Paid'], ['ready', 'Ready'], ['dispatched', 'Dispatched'], ['done', 'Delivered']];
       var ms = function (iso) { return new Date(iso).getTime(); };
       var dur = function (n) { var m = Math.round(n / 60000); if (m < 1) return 'under 1 min'; if (m < 60) return m + ' min'; var h = Math.floor(m / 60); if (h < 24) return h + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); var d = Math.floor(h / 24); return d + 'd' + (h % 24 ? ' ' + (h % 24) + 'h' : ''); };
@@ -43,7 +43,7 @@
         var d = r.steps[k[0]], cls = d ? 'done' : i === cur ? 'now' : '', sub = '';
         if (d) sub = '<b>' + dur(ms(d.at) - prevOf(ms(d.at))) + '</b><span>' + esc(Panel.fmtTime(d.at)) + '</span>';
         else if (i === cur) sub = '<b>waiting ' + dur(Date.now() - last) + '</b>';
-        return '<div class="tk ' + cls + '"><i>' + (d ? '&#10003;' : i + 1) + '</i><em>' + k[1] + '</em>' + sub + '</div>';
+        return '<div class="tk ' + cls + (can ? ' tap' : '') + '"><i' + (can ? ' role="button" tabindex="0" data-tick="' + k[0] + '" data-on="' + (d ? 1 : 0) + '" title="' + (d ? 'Click to undo' : 'Click when done') + '"' : '') + '>' + (d ? '&#10003;' : i + 1) + '</i><em>' + k[1] + '</em>' + sub + '</div>';
       }).join('');
       var all = r.steps.done ? ms(r.steps.done.at) - times[0] : 0;
       return '<div class="track">' + html + '</div>' + (r.steps.done ? '<div class="muted small">Delivered in ' + dur(all) + ' from when it was logged</div>' : '');

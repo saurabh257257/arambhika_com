@@ -241,3 +241,6 @@ textarea { min-height: 70px; resize: vertical; }
 .track .tk b{color:#0f766e;font-size:11.5px}
 .track .tk.now b{color:#b45309}
 .track .tk span{color:#94a3b8;font-size:10.5px}
+
+.track .tk.tap i{cursor:pointer;transition:transform .1s}
+.track .tk.tap i:hover{transform:scale(1.12)}
