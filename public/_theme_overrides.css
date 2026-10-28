@@ -2788,3 +2788,4 @@ html, body, body:has(.acct-dashboard) { background: #fff !important; background-
 .search-go:hover { background: #115e59; }
 .prod-btn, .pp-btn-yellow, .pp-btn-buy, .cd-btn-primary, .ck-btn-primary { background: #0f766e !important; color: #fff !important; }
 .prod-btn:hover, .pp-btn-yellow:hover, .pp-btn-buy:hover, .cd-btn-primary:hover, .ck-btn-primary:hover { background: #115e59 !important; }
+.prod-flag, .prod-flag.prod-flag-req { background: #115e59; color: #fff; }
