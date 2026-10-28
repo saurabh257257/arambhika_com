@@ -352,6 +352,7 @@ describe('daily and weekly work that carries forward', () => {
 });
 
 // ======================================================================
+process.env.ZOHO_SYNC_ORDERS = '1'; // the website-order sync is off by default; these tests exercise it
 describe('customer requests: six steps, a screenshot, and carried to the next day', () => {
   let s, z, admin, ann, raj, annId, rajId;
   const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';

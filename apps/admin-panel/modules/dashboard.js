@@ -97,7 +97,7 @@ module.exports = function dashboard(app, ctx) {
   app.get('/api/zoho/status', ctx.requireAdmin, (req, res) => res.json(ctx.zoho.status()));
   app.post('/api/zoho/refresh', ctx.requireAdmin, wrap(async (req, res) => {
     const out = {};
-    for (const [k, fn] of [['invoices', () => ctx.zoho.invoices({ refresh: true })], ['customers', () => ctx.zoho.customers({ refresh: true })], ['salesOrders', () => ctx.zoho.salesOrders({ refresh: true })]]) {
+    for (const [k, fn] of [['invoices', () => ctx.zoho.invoices({ refresh: true })], ['customers', () => ctx.zoho.customers({ refresh: true })]]) {
       try { const d = await fn(); out[k] = { ok: true, count: Array.isArray(d) ? d.length : (d.list || []).length }; } catch (e) { out[k] = { ok: false, error: e.message }; }
     }
     ctx.log(req.user, 'Refreshed the data from Zoho');

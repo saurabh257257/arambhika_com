@@ -71,7 +71,9 @@ module.exports = function requests(app, ctx) {
   }
 
   // ---- website orders from Zoho Books ----
+  // Off unless ZOHO_SYNC_ORDERS=1: the panel does not need to read sales orders, so it does not ask Zoho for them.
   async function syncFromZoho(refresh) {
+    if (process.env.ZOHO_SYNC_ORDERS !== '1') return { ok: true, off: true };
     if (!ctx.zoho.configured) return { ok: false, error: 'Zoho is not connected to this panel yet' };
     try {
       const sos = await ctx.zoho.salesOrders({ refresh });

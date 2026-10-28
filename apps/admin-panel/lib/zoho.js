@@ -106,7 +106,7 @@ function createZoho(env = process.env, fetchImpl = fetch) {
     // what each kind of data currently looks like, for the status screen
     status() {
       const one = (name) => { const c = cache.get(name); return c ? { at: c.at || 0, error: c.error || '', count: c.data ? (Array.isArray(c.data) ? c.data.length : (c.data.list || []).length) : 0, source: c.data && c.data.source } : { at: 0, error: '', count: 0 }; };
-      return { configured, invoices: one('invoices'), customers: one('customers'), salesOrders: one('salesorders') };
+      return { configured, invoices: one('invoices'), customers: one('customers') };
     },
     ZohoError,
   };

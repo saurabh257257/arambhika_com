@@ -56,7 +56,7 @@
         }).join('') || P.empty('No team members yet. Add them in the Team tab.')) + '</div>' +
         '<div class="card"><div class="between"><h3>Zoho connection</h3><button class="btn ghost sm" id="zr" type="button">Refresh from Zoho</button></div>' +
         (!z.configured ? '<div class="banner">Zoho is not connected to this panel yet. Customers, invoices and website orders will appear once it is.</div>' :
-          '<div class="stats">' + [['Customers', z.customers], ['Invoices', z.invoices], ['Sales orders', z.salesOrders]].map(function (r) { return '<div class="stat"><b>' + (r[1].count || 0) + '</b><span>' + r[0] + (r[1].at ? ' &middot; pulled ' + P.fmtTime(new Date(r[1].at).toISOString()) : '') + '</span>' + (r[1].error ? '<span class="err">' + esc(r[1].error) + '</span>' : '') + '</div>'; }).join('') + '</div>' +
+          '<div class="stats">' + [['Customers', z.customers], ['Invoices', z.invoices]].map(function (r) { return '<div class="stat"><b>' + (r[1].count || 0) + '</b><span>' + r[0] + (r[1].at ? ' &middot; pulled ' + P.fmtTime(new Date(r[1].at).toISOString()) : '') + '</span>' + (r[1].error ? '<span class="err">' + esc(r[1].error) + '</span>' : '') + '</div>'; }).join('') + '</div>' +
           (z.customers.source === 'invoices' ? '<div class="banner info">Customers are being built from invoices because the saved Zoho login cannot read the contact list.</div>' : '')) +
         '<div class="muted small">Data is pulled from Zoho Books when you open a screen (kept for 5 minutes) and nothing is copied or changed in Zoho.</div></div>';
       el.addEventListener('click', function (e) {

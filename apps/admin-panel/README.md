@@ -39,7 +39,7 @@ the work, the team does it, and everyone can see where things stand.
 Read-only, from Zoho Books, kept in memory for 5 minutes ("Refresh from Zoho" forces a pull). Nothing is copied to disk or written to Zoho.
 - **Customers** (contact list, or rebuilt from invoices if the saved login cannot read contacts) and whether each is **onboarded** (invoiced before).
 - **Invoices:** unpaid ones with due date, balance and phone; a paid invoice disappears by itself.
-- **Website orders** (sales orders) appear in Customer requests by themselves (source "Website"); payment, ready, dispatched and sent tick from Zoho.
+- **Website orders** (sales orders) can appear in Customer requests by themselves, but this is switched off: the panel does not read sales orders. Set `ZOHO_SYNC_ORDERS=1` (and give the Zoho login `ZohoBooks.salesorders.READ`) to turn it on.
 
 What the panel itself stores (JSON files in `DATA_DIR`, plus payment screenshots in `DATA_DIR/uploads`): team members, task designs and the work done,
 customer requests, who owns which customer/invoice, follow-up history, transactions, the activity feed and settings.
@@ -58,7 +58,7 @@ due + customer requests not finished. Percent = done / total. On a day off only 
 1. DNS: an `A` record `admin` -> the dev droplet IP (the same as `dev` and `digital`).
 2. GitHub -> Settings -> Environments -> `dev`: add `ADMIN_PANEL_PASSWORD` and `ADMIN_PANEL_SESSION_SECRET` (any long random text).
    The Zoho values (`ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_BOOKS_ORG_ID`, variable `ZOHO_DC`) are the ones the
-   website already uses. The login needs `ZohoBooks.invoices.READ`, `ZohoBooks.contacts.READ` and `ZohoBooks.salesorders.READ`.
+   website already uses. The login needs `ZohoBooks.invoices.READ`, and `ZohoBooks.contacts.READ` (sales orders are not needed).
 3. Push to `dev` (or run the workflow). The deploy creates the nginx site and, once the DNS record exists, the HTTPS certificate.
 
 Run locally: `ADMIN_PASSWORD=something npm start` (port 4100), tests: `npm test`.
