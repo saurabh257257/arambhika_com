@@ -66,6 +66,15 @@
     });
   }
 
+  // a short list of the customer requests still open, with a way into the Customer requests tab where they are worked on
+  function requestsCard(list) {
+    if (!list.length) return '';
+    var late = list.filter(function (r) { return r.needsAttention || r.followUpDue; }).length, shown = list.slice(0, 5);
+    return '<div class="card" id="reqCard"><div class="between"><div><h3>Customer requests open (' + list.length + ')</h3><div class="muted small">' + (late ? late + ' need attention today. ' : '') + 'Open the tab to tick the steps, add notes and upload screenshots.</div></div><button class="btn sm" data-goreq type="button">Open customer requests</button></div><div class="list">' + shown.map(function (r) {
+      return '<div class="item ' + (r.needsAttention ? 'hot' : r.followUpDue ? 'warn' : '') + '" data-goreq style="cursor:pointer"><div class="between"><b>' + esc(r.customerName) + (r.request ? ' <span class="muted">' + esc(r.request.slice(0, 60)) + '</span>' : '') + '</b><span class="chips">' + P.pill(r.progress.done + ' of ' + r.progress.total + ' steps') + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + (r.followUpDue ? P.pill('Follow up today', 'due') : '') + '</span></div><div class="meta"><span>Next: <b>' + esc(r.nextStep) + '</b></span></div></div>';
+    }).join('') + '</div>' + (list.length > shown.length ? '<div class="muted small">and ' + (list.length - shown.length) + ' more in the tab</div>' : '') + '</div>';
+  }
+
   // calls whose follow-up date has come: what was said before, and a form for this call
   function followupsCard(list) {
     if (!list.length) return '';
@@ -127,15 +136,16 @@
     }
     function load() {
       var date = state.date;
-      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] })]).then(function (res) {
-        var r = res[0], w = res[1], fu = res[2].followups; limits = { min: w.minDate, max: w.maxDate };
+      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] }), date === P.today ? P.api('GET', '/api/requests?filter=mine').catch(function () { return { requests: [] }; }) : Promise.resolve({ requests: [] })]).then(function (res) {
+        var r = res[0], w = res[1], fu = res[2].followups, rq = res[3].requests.filter(function (x) { return !x.complete; }); limits = { min: w.minDate, max: w.maxDate };
         el.innerHTML = weekStrip(w, date, false) + daySummary(r, date) +
-          followupsCard(fu) +
+          requestsCard(rq) + followupsCard(fu) +
           (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, true); }).join('') : P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.'));
         el.__fu = fu;
         if (!wired) { wired = true; wireTasks(el, true, r.tasks, refreshTop); wireWeek(el, state, { get min() { return limits.min; }, get max() { return limits.max; } }, function () { load().catch(P.fail); }); }
       });
     }
+    el.addEventListener('click', function (e) { if (e.target.closest('[data-goreq]')) P.go('requests'); });
     // the follow-up list changes after each save, so the handler reads the latest list from the element
     el.addEventListener('submit', function (e) {
       var f = e.target.closest('[data-fuform]'); if (!f) return; e.preventDefault();
