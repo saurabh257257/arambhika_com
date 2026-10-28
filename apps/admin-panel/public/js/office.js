@@ -3,7 +3,7 @@
   var P = window.Panel, esc = P.esc;
   var TYPES = { expense: 'Expense', income: 'Money received', purchase: 'Purchase', other: 'Other' };
 
-  P.register({ id: 'office', label: 'Office', roles: ['admin', 'employee'], order: 7, render: function (el) {
+  P.register({ id: 'office', label: 'Office expenses', roles: ['admin', 'employee'], order: 7, render: function (el) {
     var isAdmin = P.me.role === 'admin', editing = '', filter = isAdmin ? 'pending' : '';
 
     function load() {
