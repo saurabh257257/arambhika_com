@@ -183,3 +183,16 @@ textarea { min-height: 70px; resize: vertical; }
 .otable td { text-align: right; padding: 7px 8px; border-bottom: 1px solid #eef2f6; }
 .otable tfoot td { font-weight: 700; border-bottom: 0; background: #f8fafc; }
 .otable .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; }
+
+/* tasks page: the week and the day's total live in a side column on wide screens, so the tasks start at the top and are all in view */
+.tasklayout { display: grid; gap: 12px; } .tasklayout > main { display: grid; gap: 10px; align-content: start; min-width: 0; } .tasklayout > aside { display: grid; gap: 10px; align-content: start; }
+#weekCard { padding: 10px 12px; gap: 8px; } #weekCard .btn.sm { padding: 2px 10px; font-size: 16px; }
+@media (min-width: 960px) {
+  .tasklayout { grid-template-columns: 290px minmax(0, 1fr); align-items: start; }
+  .tasklayout > aside { position: sticky; top: 96px; }
+  .tasklayout #daySummary { position: static; }
+  .tasklayout .weekbar { grid-template-columns: 1fr; gap: 4px; }
+  .tasklayout .wk-day { grid-template-columns: 34px 28px 1fr auto; align-items: center; justify-items: start; padding: 5px 8px; gap: 8px; border-radius: 10px; }
+  .tasklayout .wk-day .wk-tag { display: none; } .tasklayout .wk-day .wk-d { width: 26px; height: 26px; font-size: 14px; }
+  .tasklayout .wk-day .bar { height: 6px; } .tasklayout .wk-day .wk-t { white-space: nowrap; }
+}

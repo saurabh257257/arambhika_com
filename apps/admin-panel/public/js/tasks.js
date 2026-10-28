@@ -15,9 +15,9 @@
     if (!t.carried) return '';
     return P.pill('+' + t.carried + ' carried over from ' + (t.schedule === 'weekly' ? 'last week' : 'earlier'), 'doing');
   }
-  // which task cards are open: each starts closed except the first one still to be finished; a click toggles it and the choice is remembered
-  var openIds = {}, seeded = false;
-  function seedOpen(tasks) { if (seeded) return; seeded = true; var first = tasks.filter(function (t) { return !(t.completedAt || (t.progress.total && t.progress.done >= t.progress.total)); })[0]; if (first) openIds[first.id] = true; }
+  // which task cards are open: all start closed so every task is in view at once; a click toggles one and the choice is remembered
+  var openIds = {};
+  function seedOpen() { /* nothing is opened for you */ }
   function isOpen(t) { return Boolean(openIds[t.id]); }
   // today's and one-time tasks first, then the weekly ones under their own heading with the week's count
   function taskList(tasks, editable, empty) {
@@ -113,9 +113,9 @@
   var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   function shortDate(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); }
   function weekStrip(w, selected, isOwner) {
-    return '<div class="card" id="weekCard"><div class="between"><button class="btn ghost sm" data-wk="-7" type="button">&lsaquo; Previous week</button>' +
-      '<div style="text-align:center"><b>' + shortDate(w.weekStart) + ' to ' + shortDate(w.weekEnd) + '</b><div class="muted small">This week: ' + w.totals.done + ' of ' + w.totals.total + ' done</div></div>' +
-      '<button class="btn ghost sm" data-wk="7" type="button">Next week &rsaquo;</button></div>' +
+    return '<div class="card" id="weekCard"><div class="between"><button class="btn ghost sm" data-wk="-7" type="button" title="Previous week">&lsaquo;</button>' +
+      '<div style="text-align:center"><b>' + shortDate(w.weekStart) + ' &ndash; ' + shortDate(w.weekEnd) + '</b><div class="muted small">Week: ' + w.totals.done + ' of ' + w.totals.total + ' done</div></div>' +
+      '<button class="btn ghost sm" data-wk="7" type="button" title="Next week">&rsaquo;</button></div>' +
       '<div class="weekbar">' + w.days.map(function (d) {
         var open = isOwner || d.editable || !d.isFuture;
         var cls = (d.date === selected ? ' sel' : '') + (d.isToday ? ' today' : '') + (d.isFuture ? ' future' : '') + (!d.isWorkDay ? ' off' : '');
@@ -123,8 +123,8 @@
           (d.isToday ? '<span class="wk-tag">Today</span>' : d.isFuture ? '<span class="wk-tag ahead">Ahead</span>' : '<span class="wk-tag">&nbsp;</span>') +
           (d.isWorkDay ? P.bar(d.done, d.total) + '<span class="wk-t">' + (d.planned ? d.total + ' planned' : d.done + ' of ' + d.total) + '</span>' : '<span class="wk-t">Day off</span>') + '</button>';
       }).join('') + '</div>' +
-      (w.weekly.length ? '<div class="muted small">This week:</div><div class="chips">' + w.weekly.map(function (x) { return '<span class="chip">' + esc(x.name) + ': <b>' + x.done + ' of ' + x.total + '</b>' + (x.carried ? ' (+' + x.carried + ' carried)' : '') + (x.planned ? ' planned' : '') + '</span>'; }).join('') + '</div>' : '') +
-      '<div class="muted small">Tap a day to see it. You can fill in later days too (up to a week ahead) if you have time: what is left over from earlier days is added on top when that day comes, and what you wrote is kept.</div></div>';
+      (w.weekly.length ? '<div class="chips">' + w.weekly.map(function (x) { return '<span class="chip">' + esc(x.name) + ': <b>' + x.done + ' of ' + x.total + '</b>' + (x.carried ? ' (+' + x.carried + ' carried)' : '') + (x.planned ? ' planned' : '') + '</span>'; }).join('') + '</div>' : '') +
+      '<div class="muted small" title="What is left over from earlier days is added on top when that day comes, and what you wrote is kept.">Tap a day. You can work up to a week ahead.</div></div>';
   }
   function daySummary(r, date) {
     var day = r.tasks.filter(function (t) { return t.schedule !== 'weekly'; });
@@ -162,9 +162,9 @@
       return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] }), date === P.today ? P.api('GET', '/api/requests?filter=mine').catch(function () { return { requests: [] }; }) : Promise.resolve({ requests: [] })]).then(function (res) {
         var r = res[0], w = res[1], fu = res[2].followups, rq = res[3].requests.filter(function (x) { return !x.complete; }); limits = { min: w.minDate, max: w.maxDate };
         seedOpen(r.tasks);
-        el.innerHTML = weekStrip(w, date, false) + daySummary(r, date) +
+        el.innerHTML = '<div class="tasklayout"><aside>' + weekStrip(w, date, false) + daySummary(r, date) + '</aside><main>' +
           requestsCard(rq) + followupsCard(fu) +
-          taskList(r.tasks, true, P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.'));
+          taskList(r.tasks, true, P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.')) + '</main></div>';
         el.__fu = fu;
         if (!wired) { wired = true; wireTasks(el, true, r.tasks, refreshTop); wireWeek(el, state, { get min() { return limits.min; }, get max() { return limits.max; } }, function () { load().catch(P.fail); }); }
       });
