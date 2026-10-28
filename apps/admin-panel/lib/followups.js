@@ -1,4 +1,4 @@
-// Follow-up rules shared by leads, customers and invoices. After every follow-up the employee picks what happened
+// Follow-up rules shared by customers and invoices. After every follow-up the employee picks what happened
 // (the outcome); the outcome decides when the next follow-up is due. The owner edits these days in Settings.
 'use strict';
 const { addDays, nowISO, str, text, isDate, uid, istDate } = require('./util');
@@ -20,14 +20,6 @@ const DEFAULT_CADENCE = {
     { key: 'noanswer', label: 'No answer', days: 1 },
     { key: 'dispute', label: 'Query or dispute', days: 3 },
     { key: 'paid', label: 'Customer says paid', days: 2 },
-  ],
-  lead: [
-    { key: 'contacted', label: 'Spoke to them', days: 2, status: 'contacted' },
-    { key: 'noanswer', label: 'No answer', days: 1 },
-    { key: 'quote', label: 'Quotation sent', days: 3, status: 'quoted' },
-    { key: 'callback', label: 'Asked to call back', days: 2 },
-    { key: 'won', label: 'Won: they will order', days: null, status: 'won' },
-    { key: 'lost', label: 'Lost / not interested', days: null, status: 'lost' },
   ],
 };
 

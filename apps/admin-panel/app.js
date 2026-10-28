@@ -2,7 +2,7 @@
 //
 // How it is organised (so features are easy to add or change):
 //   app.js             sign-in, sessions, the shared "ctx", and loading of the modules below
-//   modules/*.js       one file per feature (team, tasks, leads, customers, orders, invoices, office, dashboard).
+//   modules/*.js       one file per feature (team, tasks, requests, customers, invoices, office, dashboard).
 //                      A module is a function (app, ctx) that adds its own /api routes.
 //   lib/zoho.js        read-only pulls from Zoho Books, cached for a few minutes
 //   lib/followups.js   the follow-up rules (what happened -> when to follow up next)
@@ -16,9 +16,9 @@ const path = require('path');
 const { Store } = require('./lib/store');
 const { createZoho } = require('./lib/zoho');
 const { mergeCadence } = require('./lib/followups');
-const { todayIST, str, uid, nowISO, safeEqual, checkPassword } = require('./lib/util');
+const { todayIST, str, uid, nowISO, safeEqual, checkPassword, clock } = require('./lib/util');
 
-const MODULES = ['team', 'tasks', 'leads', 'customers', 'orders', 'invoices', 'office', 'dashboard'];
+const MODULES = ['team', 'tasks', 'requests', 'customers', 'invoices', 'office', 'dashboard'];
 
 function createApp({ dataDir, adminPassword, sessionSecret, zoho }) {
   if (!adminPassword) throw new Error('ADMIN_PASSWORD is not set. Refusing to start without a login password.');
@@ -30,7 +30,9 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho }) {
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(compression());
-  app.use(express.json({ limit: '200kb' }));
+  // a photo arrives inside JSON, so the screenshot route may be big; everything else stays small
+  const smallJson = express.json({ limit: '200kb' }); const bigJson = express.json({ limit: '7mb' });
+  app.use((req, res, next) => (/\/screenshot$/.test(req.path) ? bigJson : smallJson)(req, res, next));
   app.use((req, res, next) => {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -131,4 +133,4 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho }) {
   return app;
 }
 
-module.exports = { createApp, todayIST };
+module.exports = { createApp, todayIST, clock };

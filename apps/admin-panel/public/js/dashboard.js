@@ -2,30 +2,36 @@
   'use strict';
   var P = window.Panel, esc = P.esc;
 
-  function part(label, d, goTo) {
+  function part(label, d, goTo, note) {
     if (!d.total) return '<div class="part"><div class="between"><span>' + esc(label) + '</span><span class="muted">nothing today</span></div></div>';
-    return '<div class="part"><div class="between"><span>' + (goTo ? '<a href="#' + goTo + '">' + esc(label) + '</a>' : esc(label)) + '</span><b>' + d.done + ' of ' + d.total + '</b></div>' + P.bar(d.done, d.total) + '</div>';
+    return '<div class="part"><div class="between"><span>' + (goTo ? '<a href="#' + goTo + '">' + esc(label) + '</a>' : esc(label)) + (note ? ' <span class="muted small">' + esc(note) + '</span>' : '') + '</span><b>' + d.done + ' of ' + d.total + '</b></div>' + P.bar(d.done, d.total) + '</div>';
   }
   function overall(p) {
     var o = p.overall;
-    if (o.percent === null) return '<div class="big">&ndash;<small> nothing assigned yet</small></div>';
+    if (o.percent === null) return '<div class="big">&ndash;<small> ' + (p.workDay === false ? 'day off' : 'nothing assigned yet') + '</small></div>';
     return '<div class="between"><div class="big">' + o.percent + '<small>% done</small></div><div class="muted">' + o.done + ' of ' + o.total + ' done &middot; <b>' + o.left + ' left</b></div></div>' + P.bar(o.done, o.total);
   }
   function parts(p) {
-    return part('Tasks', p.tasks, 'tasks') + part('Customer follow-ups', p.customers, 'customers') + part('Invoice follow-ups', p.invoices, 'invoices') + part('Leads to contact', p.leads, 'leads');
+    return part('Tasks', p.tasks, 'tasks') + part('Call follow-ups', p.followups, 'tasks') + part('Customer requests', p.requests, 'requests') + part('Customer follow-ups', p.customers, 'customers') + part('Invoice follow-ups', p.invoices, 'invoices');
   }
 
   // ---------------- a team member's own day ----------------
   P.register({ id: 'home', label: 'My day', roles: ['employee'], order: 0, render: function (el) {
     return P.api('GET', '/api/my-day').then(function (d) {
-      var p = d.progress;
-      el.innerHTML = '<div class="card"><h3>Today, ' + P.fmtDate(P.today) + '</h3>' + overall(p) + '<div class="grid2">' + parts(p) + '</div>' +
+      var p = d.progress, fu = d.followups, rq = d.requests;
+      el.innerHTML = '<div class="card"><h3>' + (p.workDay === false ? 'Day off, ' : 'Today, ') + P.fmtDate(P.today) + '</h3>' + overall(p) + '<div class="grid2">' + parts(p) + '</div>' +
         (p.invoices && p.invoices.error ? '<div class="banner">Invoice follow-ups could not be loaded from Zoho right now: ' + esc(p.invoices.error) + '</div>' : '') +
         '<div class="stamp">' + (d.lastActivity ? 'Your last update: ' + P.fmtTime(d.lastActivity) : 'You have not updated anything yet today.') + '</div></div>' +
-        '<div class="card"><h3>Your tasks today</h3>' + (d.tasks.length ? '<div class="list">' + d.tasks.map(function (t) {
-          return '<a class="item" href="#tasks" style="text-decoration:none;color:inherit"><div class="between"><b>' + esc(t.name) + '</b><span class="muted">' + t.done + ' of ' + t.total + '</span></div>' + P.bar(t.done, t.total) + (t.updatedAt ? '<div class="stamp">Updated ' + P.fmtTime(t.updatedAt) + '</div>' : '') + '</a>';
+        (fu.length ? '<div class="card"><div class="between"><h3>Follow-up calls due</h3><a class="btn sm" href="#tasks">Open and log them</a></div><div class="list">' + fu.map(function (f) {
+          return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' day' + (f.daysLate === 1 ? '' : 's') + ' late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>';
+        }).join('') + '</div></div>' : '') +
+        (rq.length ? '<div class="card"><div class="between"><h3>Customer requests not finished</h3><a class="btn sm" href="#requests">Open them</a></div><div class="list">' + rq.map(function (r) {
+          return '<div class="item ' + (r.needsAttention ? 'hot' : '') + '"><div class="between"><b>' + esc(r.customerName) + '</b><span class="chips">' + P.pill(r.progress.done + ' of ' + r.progress.total + ' steps') + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + '</span></div><div class="muted">Next: <b>' + esc(r.nextStep) + '</b>' + (r.nextDate ? ' &middot; follow up on ' + P.fmtDate(r.nextDate) : '') + '</div></div>';
+        }).join('') + '</div></div>' : '') +
+        '<div class="card"><h3>Your tasks</h3>' + (d.tasks.length ? '<div class="list">' + d.tasks.map(function (t) {
+          return '<a class="item" href="#tasks" style="text-decoration:none;color:inherit"><div class="between"><b>' + esc(t.name) + '</b><span class="chips">' + (t.schedule === 'weekly' ? P.pill('This week') : '') + (t.carried ? P.pill('+' + t.carried + ' carried over', 'doing') : '') + '<span class="muted">' + t.done + ' of ' + t.total + '</span></span></div>' + P.bar(t.done, t.total) + (t.updatedAt ? '<div class="stamp">Updated ' + P.fmtTime(t.updatedAt) + '</div>' : '') + '</a>';
         }).join('') + '</div>' : '<div class="muted">No tasks assigned to you today.</div>') + '</div>' +
-        ((d.available.leads || d.available.orders) ? '<div class="card"><h3>Waiting for somebody to pick</h3><div class="actions">' + (d.available.leads ? '<a class="btn ghost sm" href="#leads">' + d.available.leads + ' new lead' + (d.available.leads === 1 ? '' : 's') + '</a>' : '') + (d.available.orders ? '<a class="btn ghost sm" href="#orders">' + d.available.orders + ' new order' + (d.available.orders === 1 ? '' : 's') + '</a>' : '') + '</div></div>' : '');
+        (d.available.requests ? '<div class="card"><h3>Waiting for somebody to pick</h3><div class="actions"><a class="btn ghost sm" href="#requests">' + d.available.requests + ' new request' + (d.available.requests === 1 ? '' : 's') + ' from the website</a></div></div>' : '');
     });
   } });
 
@@ -36,15 +42,16 @@
       P.setBadge('office', a.pendingApprovals);
       function stat(n, label, to, hot) { return '<a class="stat link ' + (hot && n ? 'hot' : '') + '" href="#' + to + '" style="text-decoration:none"><b>' + n + '</b><span>' + esc(label) + '</span></a>'; }
       var z = d.zoho;
-      el.innerHTML = '<div class="card"><div class="between"><h3>Needs your attention</h3><span class="muted">' + P.fmtDate(d.date) + '</span></div><div class="stats">' +
-        stat(a.unassignedLeads, 'new leads, nobody picked', 'leads', true) + stat(a.unassignedOrders, 'new orders, nobody picked', 'orders', true) +
+      el.innerHTML = '<div class="card"><div class="between"><h3>Needs your attention</h3><span class="muted">' + P.fmtDate(d.date) + (d.workDay ? '' : ' &middot; day off') + '</span></div><div class="stats">' +
+        stat(a.unassignedRequests, 'new requests, nobody picked', 'requests', true) + stat(a.openRequests, 'customer requests not finished', 'requests', false) +
         stat(a.unassignedCustomers + ' / ' + a.totalCustomers, 'customers without an owner', 'customers', a.unassignedCustomers > 0) + stat(a.unassignedInvoices, 'unpaid invoices without an owner', 'invoices', true) +
         stat(a.invoicesToChase, 'invoices not being followed up', 'invoices', true) + stat(a.invoiceCompliance + '%', 'invoice follow-up on track', 'invoices', a.invoiceCompliance < 100) + stat(a.pendingApprovals, 'transactions to approve', 'office', true) + '</div>' +
-        (a.notStarted.length ? '<div class="banner">Not started yet today: <b>' + a.notStarted.map(esc).join(', ') + '</b></div>' : '') + '</div>' +
+        (a.notStarted.length && d.workDay ? '<div class="banner">Not started yet today: <b>' + a.notStarted.map(esc).join(', ') + '</b></div>' : '') + '</div>' +
         '<div class="grid2">' + (d.team.map(function (t) {
-          var p = t.progress, o = p.overall;
-          return '<div class="card"><div class="between"><h3>' + esc(t.name) + '</h3><span class="stamp">' + (t.lastActivity ? 'Last update ' + P.fmtTime(t.lastActivity) : '<span class="err">Not started today</span>') + '</span></div>' + overall(p) + parts(p) +
-            '<div class="chips"><span class="chip">' + t.activeOrders + ' active order' + (t.activeOrders === 1 ? '' : 's') + '</span>' + (t.pendingTransactions ? '<span class="chip">' + t.pendingTransactions + ' to approve</span>' : '') + '</div>' +
+          var p = t.progress;
+          return '<div class="card"><div class="between"><h3>' + esc(t.name) + '</h3><span class="stamp">' + (t.lastActivity ? 'Last update ' + P.fmtTime(t.lastActivity) : (d.workDay ? '<span class="err">Not started today</span>' : 'No updates')) + '</span></div>' + overall(p) + parts(p) +
+            '<div class="chips">' + (t.carried ? '<span class="chip">+' + t.carried + ' carried over from earlier</span>' : '') + (t.followupsOverdue ? '<span class="chip" style="background:#fee2e2;color:#b91c1c">' + t.followupsOverdue + ' call follow-up' + (t.followupsOverdue === 1 ? '' : 's') + ' late</span>' : '') +
+            '<span class="chip">' + t.openRequests + ' open request' + (t.openRequests === 1 ? '' : 's') + (t.untouchedRequests ? ', ' + t.untouchedRequests + ' not touched today' : '') + '</span>' + (t.pendingTransactions ? '<span class="chip">' + t.pendingTransactions + ' to approve</span>' : '') + '</div>' +
             '<div class="actions"><button class="btn ghost sm" data-work="' + esc(t.id) + '" type="button">See their work</button></div></div>';
         }).join('') || P.empty('No team members yet. Add them in the Team tab.')) + '</div>' +
         '<div class="card"><div class="between"><h3>Zoho connection</h3><button class="btn ghost sm" id="zr" type="button">Refresh from Zoho</button></div>' +
@@ -54,7 +61,7 @@
         '<div class="muted small">Data is pulled from Zoho Books when you open a screen (kept for 5 minutes) and nothing is copied or changed in Zoho.</div></div>';
       el.addEventListener('click', function (e) {
         var w = e.target.closest('[data-work]'); if (w) P.go('work', { viewAs: w.dataset.work });
-        if (e.target.id === 'zr') { e.target.disabled = true; e.target.textContent = 'Refreshing...'; P.api('POST', '/api/zoho/refresh', {}).then(function () { P.toast('Refreshed from Zoho'); P.go('dashboard'); window.dispatchEvent(new Event('hashchange')); }).catch(P.fail); }
+        if (e.target.id === 'zr') { e.target.disabled = true; e.target.textContent = 'Refreshing...'; P.api('POST', '/api/zoho/refresh', {}).then(function () { P.toast('Refreshed from Zoho'); window.dispatchEvent(new Event('hashchange')); }).catch(P.fail); }
       });
     });
   } });

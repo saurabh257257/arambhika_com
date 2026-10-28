@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { createApp, todayIST } = require('../app');
+const { createApp, todayIST, clock } = require('../app');
 const { addDays } = require('../lib/util');
 
 const ROOT = path.join(__dirname, '..');
@@ -20,7 +20,7 @@ function client(base) {
     const type = res.headers.get('content-type') || '';
     return { status: res.status, data: type.includes('json') ? await res.json() : await res.text(), location: res.headers.get('location') };
   };
-  return { get: (u) => call('GET', u), post: (u, b) => call('POST', u, b === undefined ? {} : b), put: (u, b) => call('PUT', u, b), patch: (u, b) => call('PATCH', u, b), del: (u) => call('DELETE', u), raw: call };
+  return { cookie: () => cookie, get: (u) => call('GET', u), post: (u, b) => call('POST', u, b === undefined ? {} : b), put: (u, b) => call('PUT', u, b), patch: (u, b) => call('PATCH', u, b), del: (u) => call('DELETE', u), raw: call };
 }
 async function boot(zoho) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-panel-'));
@@ -85,7 +85,7 @@ describe('locked to staff', () => {
 
   test('every page and API needs a sign-in; only the login page is open', async () => {
     const c = client(s.base);
-    for (const u of ['/api/me', '/api/tasks', '/api/templates', '/api/leads', '/api/orders', '/api/customers', '/api/invoices', '/api/transactions', '/api/users', '/api/dashboard', '/api/my-day', '/api/activity', '/api/settings', '/api/zoho/status']) {
+    for (const u of ['/api/me', '/api/tasks', '/api/templates', '/api/requests', '/api/followups-due', '/api/customers', '/api/invoices', '/api/transactions', '/api/users', '/api/dashboard', '/api/my-day', '/api/activity', '/api/settings', '/api/zoho/status']) {
       assert.equal((await c.get(u)).status, 401, u);
     }
     for (const u of ['/', '/index.html', '/js/core.js']) { const r = await c.get(u); assert.equal(r.status, 302, u); assert.equal(r.location, '/login.html'); }
@@ -220,101 +220,239 @@ describe('the team, the task designer and the daily work', () => {
 });
 
 // ======================================================================
-describe('leads: who is picking', () => {
-  let s, admin, ann, raj, annId, rajId, leadId;
-  before(async () => { ({ s, admin, ann, raj, annId, rajId } = await team(pretendZoho())); });
-  after(() => s.stop());
+describe('daily and weekly work that carries forward', () => {
+  let s, admin, ann, raj, annId, rajId, presets;
+  const day = (d) => { clock.date = d; };
+  before(async () => {
+    day('2026-11-02'); // a Monday
+    ({ s, admin, ann, raj, annId, rajId } = await team(pretendZoho()));
+    presets = (await admin.get('/api/templates')).data.presets;
+  });
+  after(() => { clock.date = null; return s.stop(); });
+  const post = (id, extra) => { const p = presets.find((x) => x.id === id); const { id: _i, for: _f, ...body } = p; return admin.post('/api/templates', { ...body, ...extra }); };
+  const tasksOf = async (who, name) => (await who.get('/api/tasks')).data.tasks.find((t) => t.name === name);
+  const fill = (who, task, i, extra = {}) => who.put('/api/tasks/' + task.id + '/rows/' + i, { values: { name: 'Person ' + i, phone: '98' + String(10000000 + i), what_did_you_talk_about: 'Asked about BMS', ...extra } });
 
-  test('a new lead waits for somebody to pick it; only one person can', async () => {
-    leadId = (await admin.post('/api/leads', { name: 'Sun Power Pvt Ltd', phone: '9876500000', source: 'WhatsApp', need: 'BMS 16S' })).data.lead.id;
-    assert.equal((await admin.post('/api/leads', { name: '' })).status, 400);
-    assert.equal((await admin.post('/api/leads', { name: 'X', phone: 'abc' })).status, 400);
-    assert.equal((await ann.get('/api/leads')).data.leads.length, 1);
-    assert.equal((await ann.get('/api/leads')).data.leads[0].followStatus, 'new');
-    assert.equal((await admin.post('/api/leads/' + leadId + '/pick')).status, 403, 'the owner assigns, he does not pick');
-    assert.equal((await ann.post('/api/leads/' + leadId + '/pick')).status, 200);
-    const again = await raj.post('/api/leads/' + leadId + '/pick');
-    assert.equal(again.status, 400); assert.match(again.data.error, /Ann already picked/);
-    assert.equal((await raj.get('/api/leads')).data.leads.length, 0, 'picked leads are private to their owner');
-    assert.equal((await raj.post('/api/leads/' + leadId + '/followup', { outcome: 'contacted' })).status, 404);
+  test('the quick-start presets are the tasks the owner asked for', async () => {
+    assert.deepEqual(presets.map((p) => p.name), ['Call 10 people', 'Find 4 customers', 'Schedule 8 Instagram posts']);
+    const calls = presets[0];
+    assert.deepEqual(calls.columns.map((c) => c.label), ['Name', 'Phone', 'Company', 'What did you talk about', 'Follow-up date']);
+    assert.ok(calls.columns.find((c) => c.label === 'Follow-up date').followUp);
+    assert.equal(presets[2].schedule, 'weekly'); assert.equal(presets[2].rowCount, 8);
+    assert.equal((await admin.post('/api/templates', { name: 'x', kind: 'rows', rowCount: 3, assignees: [annId], columns: [{ label: 'A', type: 'date', followUp: true }, { label: 'B', type: 'date', followUp: true }] })).status, 400, 'only one follow-up date column');
   });
 
-  test('follow-ups set the status and the next date from the rules', async () => {
-    assert.equal((await ann.post('/api/leads/' + leadId + '/followup', { outcome: 'dancing' })).status, 400);
-    const q = (await ann.post('/api/leads/' + leadId + '/followup', { outcome: 'quote', note: 'Sent 16S quote' })).data.lead;
-    assert.equal(q.status, 'quoted'); assert.equal(q.nextDate, addDays(today, 3)); assert.equal(q.lastByName, 'Ann'); assert.ok(q.lastAt);
-    assert.equal((await ann.post('/api/leads/' + leadId + '/followup', { outcome: 'noanswer', nextDate: addDays(today, 10) })).data.lead.nextDate, addDays(today, 10), 'the person can pick another date');
-    assert.equal((await ann.post('/api/leads/' + leadId + '/followup', { outcome: 'noanswer', nextDate: addDays(today, -1) })).status, 400);
-    const h = (await ann.get('/api/leads/' + leadId + '/history')).data.history;
-    assert.equal(h.length, 2); assert.equal(h[0].byName, 'Ann');
+  test('8 calls of 10 today means 12 tomorrow; a person who did nothing is capped at double', async () => {
+    assert.equal((await post('calls', { assignees: [annId, rajId] })).status, 200);
+    const mon = await tasksOf(ann, 'Call 10 people');
+    assert.equal(mon.rows.length, 10); assert.equal(mon.carried, 0); assert.equal(mon.base, 10);
+    for (let i = 0; i < 8; i++) await fill(ann, mon, i, i === 0 ? { follow_up_date: '2026-11-04' } : i === 1 ? { follow_up_date: '2026-11-09' } : {});
+    day('2026-11-03');
+    const tue = await tasksOf(ann, 'Call 10 people');
+    assert.equal(tue.rows.length, 12); assert.equal(tue.carried, 2); assert.equal(tue.base, 10);
+    assert.equal(tue.progress.total, 12);
+    const rajTue = await tasksOf(raj, 'Call 10 people');
+    assert.equal(rajTue.rows.length, 20); assert.equal(rajTue.carried, 10, 'nothing done yesterday: the whole 10 carries');
+    day('2026-11-04');
+    assert.equal((await tasksOf(raj, 'Call 10 people')).rows.length, 20, 'the carry is capped at the daily target, so it never snowballs');
+    day('2026-11-03');
+    for (let i = 0; i < 12; i++) await fill(ann, tue, i);
+    day('2026-11-04');
+    const wed = await tasksOf(ann, 'Call 10 people');
+    assert.equal(wed.rows.length, 10); assert.equal(wed.carried, 0, 'everything was done, so nothing carries');
   });
 
-  test('a lead that will buy becomes an order; the lead is marked won', async () => {
-    const r = await ann.post('/api/leads/' + leadId + '/order', { amount: 25000 });
-    assert.equal(r.status, 200);
-    assert.equal(r.data.order.customerName, 'Sun Power Pvt Ltd'); assert.equal(r.data.order.ownerId, annId);
-    assert.equal(r.data.order.progress.done, 1);
-    const l = (await ann.get('/api/leads')).data.leads[0];
-    assert.equal(l.status, 'won'); assert.equal(l.nextDate, '');
+  test('a follow-up date makes the call come back by itself, stays until done, and is logged with what was said', async () => {
+    day('2026-11-03');
+    assert.equal((await ann.get('/api/followups-due')).data.followups.length, 0, 'not due yet');
+    day('2026-11-04');
+    let due = (await ann.get('/api/followups-due')).data.followups;
+    assert.equal(due.length, 1); assert.equal(due[0].daysLate, 0);
+    assert.ok(due[0].details.some((d) => d.label === 'Name' && d.value === 'Person 0'));
+    assert.ok(due[0].details.some((d) => d.label === 'What did you talk about' && d.value === 'Asked about BMS'));
+    assert.equal(due[0].calledOn, '2026-11-02');
+    day('2026-11-05');
+    due = (await ann.get('/api/followups-due')).data.followups;
+    assert.equal(due.length, 1, 'not done yet, so it is still there'); assert.equal(due[0].daysLate, 1);
+    const { taskId, rowIndex } = due[0];
+    assert.equal((await ann.post('/api/tasks/' + taskId + '/rows/' + rowIndex + '/followup', { notes: 'x' })).status, 400, 'say what you talked about');
+    assert.equal((await ann.post('/api/tasks/' + taskId + '/rows/' + rowIndex + '/followup', { notes: 'Spoke again', nextDate: '2026-11-05' })).status, 400, 'the next date must be after today');
+    assert.equal((await raj.post('/api/tasks/' + taskId + '/rows/' + rowIndex + '/followup', { notes: 'Spoke again' })).status, 404, 'only the owner of the call');
+    const ok = await ann.post('/api/tasks/' + taskId + '/rows/' + rowIndex + '/followup', { notes: 'Wants the quote on Tuesday', nextDate: '2026-11-10' });
+    assert.equal(ok.status, 200); assert.equal(ok.data.nextDate, '2026-11-10');
+    assert.equal(ok.data.followups.length, 0);
+    const row = (await ann.get('/api/tasks?date=2026-11-02')).data.tasks.find((t) => t.name === 'Call 10 people').rows[0];
+    assert.equal(row.history.length, 1); assert.equal(row.history[0].byName, 'Ann'); assert.equal(row.history[0].notes, 'Wants the quote on Tuesday'); assert.ok(row.history[0].at);
+    day('2026-11-09');
+    assert.equal((await ann.get('/api/followups-due')).data.followups.length, 1, 'the call that was set for the 9th is due');
+    day('2026-11-10');
+    const again = (await ann.get('/api/followups-due')).data.followups;
+    assert.equal(again.length, 2, 'the 9th was not done, and the 10th has now come');
+    const first = again.find((f) => f.dueDate === '2026-11-10');
+    assert.equal((await ann.post('/api/tasks/' + first.taskId + '/rows/' + first.rowIndex + '/followup', { notes: 'Order confirmed, nothing more to do' })).data.nextDate, '', 'no date = closed');
+    assert.equal((await ann.get('/api/followups-due')).data.followups.length, 1);
+    assert.equal((await admin.get('/api/followups-due?userId=' + annId)).data.followups.length, 1, 'the owner can see them too');
   });
 
-  test('the owner can assign a lead to anybody, and members can add their own', async () => {
-    const l2 = (await admin.post('/api/leads', { name: 'Hot Lead' })).data.lead.id;
-    assert.equal((await admin.post('/api/leads/' + l2 + '/assign', { ownerId: rajId })).data.lead.ownerName, 'Raj');
-    assert.equal((await raj.get('/api/leads')).data.leads.length, 1);
-    assert.equal((await raj.post('/api/leads', { name: 'Self found', phone: '9811100000' })).data.lead.ownerId, rajId);
-    assert.equal((await ann.post('/api/leads/' + l2 + '/assign', { ownerId: annId })).status, 403);
+  test('Sundays are days off, missed working days are filled in, and the carry chains through them', async () => {
+    day('2026-11-13'); // Friday
+    assert.equal((await post('find', { assignees: [annId] })).status, 200);
+    const fri = await tasksOf(ann, 'Find 4 customers');
+    assert.equal(fri.rows.length, 4);
+    await ann.put('/api/tasks/' + fri.id + '/rows/0', { values: { name: 'Volt Works' } });
+    day('2026-11-15'); // Sunday: nobody opens the panel on Saturday, and today is a day off
+    const sun = (await ann.get('/api/tasks')).data;
+    assert.equal(sun.workDay, false); assert.equal(sun.tasks.some((t) => t.name === 'Find 4 customers'), false);
+    day('2026-11-16'); // Monday
+    const mon = await tasksOf(ann, 'Find 4 customers');
+    assert.equal(mon.carried, 4, 'Friday missed 3 and Saturday (filled in) missed 7, but the carry is capped at 4');
+    assert.equal(mon.rows.length, 8);
+    const saved = JSON.parse(fs.readFileSync(path.join(s.dir, 'tasks.json'), 'utf8')).filter((t) => t.name === 'Find 4 customers').map((t) => t.date).sort();
+    assert.deepEqual(saved, ['2026-11-13', '2026-11-14', '2026-11-16'], 'Saturday was filled in, Sunday was not');
+  });
+
+  test('a weekly task is one card for the whole week, and next week carries what is left', async () => {
+    day('2026-11-23'); // Monday
+    assert.equal((await post('instagram', { assignees: [annId] })).status, 200);
+    const w = await tasksOf(ann, 'Schedule 8 Instagram posts');
+    assert.equal(w.schedule, 'weekly'); assert.equal(w.date, '2026-11-23'); assert.equal(w.rows.length, 8);
+    for (let i = 0; i < 3; i++) await ann.put('/api/tasks/' + w.id + '/rows/' + i, { values: { post_topic: 'Post ' + i, scheduled_for: '2026-11-2' + (5 + i) } });
+    day('2026-11-27'); // Friday of the same week
+    const fri = await tasksOf(ann, 'Schedule 8 Instagram posts');
+    assert.equal(fri.id, w.id, 'the same card all week'); assert.equal(fri.progress.done, 3);
+    assert.equal((await tasksOf(raj, 'Schedule 8 Instagram posts')), undefined, 'only the people it was given to');
+    day('2026-11-30'); // next Monday
+    const next = await tasksOf(ann, 'Schedule 8 Instagram posts');
+    assert.notEqual(next.id, w.id); assert.equal(next.date, '2026-11-30'); assert.equal(next.carried, 5); assert.equal(next.rows.length, 13);
+  });
+
+  test('the owner can give a one-time task to both; it stays until done and does not carry numbers', async () => {
+    day('2026-12-01');
+    const r = await admin.post('/api/templates', { name: 'Send the new price list to dealers', kind: 'checklist', steps: ['Prepare PDF', 'Send on WhatsApp'], schedule: 'once', dueDate: '2026-12-03', assignees: [annId, rajId], adhoc: true });
+    assert.equal(r.status, 200); assert.equal(r.data.template.adhoc, true); assert.equal(r.data.template.carry, false);
+    assert.ok(await tasksOf(ann, 'Send the new price list to dealers')); assert.ok(await tasksOf(raj, 'Send the new price list to dealers'));
+    day('2026-12-02');
+    const t = await tasksOf(ann, 'Send the new price list to dealers');
+    assert.ok(t, 'still there the next day'); assert.equal(t.dueDate, '2026-12-03');
+    await ann.put('/api/tasks/' + t.id + '/steps/0', { done: true }); await ann.put('/api/tasks/' + t.id + '/steps/1', { done: true });
+    day('2026-12-03');
+    assert.equal(await tasksOf(ann, 'Send the new price list to dealers'), undefined, 'done, so it is gone the day after');
+    assert.ok(await tasksOf(raj, 'Send the new price list to dealers'), 'Raj has not finished his');
+  });
+
+  test('the owner can change the working days', async () => {
+    assert.deepEqual((await admin.get('/api/settings')).data.workDays, [1, 2, 3, 4, 5, 6]);
+    assert.equal((await admin.put('/api/settings', { workDays: [] })).status, 400);
+    assert.equal((await admin.put('/api/settings', { workDays: [9] })).status, 400);
+    assert.equal((await ann.put('/api/settings', { workDays: [1] })).status, 403);
+    assert.deepEqual((await admin.put('/api/settings', { workDays: [1, 2, 3, 4, 5] })).data.workDays, [1, 2, 3, 4, 5]);
+    day('2026-12-05'); // Saturday is now a day off
+    assert.equal((await ann.get('/api/tasks')).data.workDay, false);
   });
 });
 
 // ======================================================================
-describe('orders: the six stages and the Zoho sync', () => {
-  let s, z, admin, ann, raj, annId;
-  before(async () => { z = pretendZoho(); ({ s, admin, ann, raj, annId } = await team(z)); });
-  after(() => s.stop());
+describe('customer requests: six steps, a screenshot, and carried to the next day', () => {
+  let s, z, admin, ann, raj, annId, rajId;
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const day = (d) => { clock.date = d; };
+  before(async () => {
+    day('2026-12-07'); z = pretendZoho();
+    z.data.salesOrders.forEach((o) => { o.date = '2020-01-01'; }); // no website orders until the test that wants one
+    ({ s, admin, ann, raj, annId, rajId } = await team(z));
+  });
+  after(() => { clock.date = null; return s.stop(); });
+  let id;
 
-  test('a new website order appears by itself, ticked from what Zoho says, waiting to be picked', async () => {
-    const r = (await ann.get('/api/orders')).data;
+  test('a team member logs a customer who messaged on WhatsApp; it is theirs', async () => {
+    assert.equal((await ann.post('/api/requests', { customerName: '' })).status, 400);
+    assert.equal((await ann.post('/api/requests', { customerName: 'X', phone: 'abc' })).status, 400);
+    const r = (await ann.post('/api/requests', { customerName: 'Sharma Traders', phone: '9811122233', company: 'Sharma Traders Pvt Ltd', request: 'Needs 20 kg nickel strip 0.15 mm', source: 'WhatsApp' })).data.request;
+    id = r.id;
+    assert.equal(r.ownerId, annId); assert.equal(r.source, 'WhatsApp'); assert.equal(r.progress.done, 0); assert.equal(r.nextStep, 'Asked what is required');
+    assert.equal((await raj.get('/api/requests')).data.requests.length, 0, 'private to the person who owns it');
+    assert.equal((await admin.get('/api/requests')).data.requests.length, 1, 'the owner sees everything');
+    assert.deepEqual((await ann.get('/api/requests')).data.steps.map((x) => x.label), ['Asked what is required', 'Quote sent and payment asked', 'Payment received', 'Material ready', 'Material dispatched', 'Sent successfully']);
+    assert.equal((await raj.put('/api/requests/' + id + '/steps/ask', { done: true })).status, 404);
+  });
+
+  test('every step is a checkbox with a time and a name; payment needs its screenshot; steps can be ticked in any order', async () => {
+    const t = (await ann.put('/api/requests/' + id + '/steps/ask', { done: true })).data.request;
+    assert.equal(t.steps.ask.by, 'Ann'); assert.ok(t.steps.ask.at); assert.equal(t.progress.done, 1);
+    assert.equal((await ann.put('/api/requests/' + id + '/steps/quote', { done: true })).data.request.progress.done, 2);
+    const noPhoto = await ann.put('/api/requests/' + id + '/steps/payment', { done: true });
+    assert.equal(noPhoto.status, 400); assert.match(noPhoto.data.error, /screenshot/i);
+    assert.equal((await ann.post('/api/requests/' + id + '/screenshot', { dataUrl: 'hello' })).status, 400);
+    assert.equal((await ann.post('/api/requests/' + id + '/screenshot', { dataUrl: 'data:image/png;base64,AAAAAAAAAAAA' })).status, 400, 'bytes that are not an image');
+    assert.equal((await raj.post('/api/requests/' + id + '/screenshot', { dataUrl: PNG })).status, 404);
+    const up = (await ann.post('/api/requests/' + id + '/screenshot', { dataUrl: PNG })).data.request;
+    assert.equal(up.screenshots.length, 1); assert.equal(up.screenshots[0].byName, 'Ann');
+    assert.equal((await ann.put('/api/requests/' + id + '/steps/payment', { done: true })).data.request.progress.done, 3);
+    assert.equal((await ann.put('/api/requests/' + id + '/steps/dispatched', { done: true })).status, 200, 'any order');
+    assert.equal((await ann.put('/api/requests/' + id + '/steps/dispatched', { done: false })).data.request.progress.done, 3, 'untick works');
+    assert.equal((await ann.put('/api/requests/' + id + '/steps/teleport', { done: true })).status, 400);
+    // the photo is only served to people who are signed in
+    const name = up.screenshots[0].name;
+    const got = await fetch(s.base + '/api/files/' + name, { headers: { Cookie: ann.cookie() } });
+    assert.equal(got.status, 200); assert.equal(got.headers.get('content-type'), 'image/png');
+    assert.equal((await client(s.base).get('/api/files/' + name)).status, 401);
+    assert.equal((await ann.get('/api/files/../../users.json')).status, 404);
+    assert.equal((await ann.get('/api/files/' + 'a'.repeat(32) + '.png')).status, 404);
+  });
+
+  test('an unfinished request is there again the next day, and counts as that day\'s work until it is touched', async () => {
+    day('2026-12-08');
+    const open = (await ann.get('/api/requests')).data.requests;
+    assert.equal(open.length, 1);
+    assert.equal(open[0].daysSinceTouched, 1); assert.equal(open[0].needsAttention, true); assert.equal(open[0].nextStep, 'Material ready'); assert.equal(open[0].touchedToday, false);
+    let p = (await ann.get('/api/my-day')).data;
+    assert.deepEqual(p.progress.requests, { done: 0, total: 1 });
+    assert.equal(p.requests.length, 1, 'listed on My day');
+    assert.equal((await admin.get('/api/dashboard')).data.team.find((t) => t.name === 'Ann').untouchedRequests, 1);
+    assert.equal((await ann.post('/api/requests/' + id + '/note', { text: 'x' })).status, 400);
+    assert.equal((await ann.post('/api/requests/' + id + '/note', { text: 'Customer will send the address tomorrow', nextDate: '2026-12-01' })).status, 400, 'not in the past');
+    const noted = (await ann.post('/api/requests/' + id + '/note', { text: 'Customer will send the address tomorrow', nextDate: '2026-12-09' })).data.request;
+    assert.equal(noted.notes.length, 1); assert.equal(noted.notes[0].byName, 'Ann'); assert.equal(noted.touchedToday, true); assert.equal(noted.needsAttention, false);
+    p = (await ann.get('/api/my-day')).data;
+    assert.deepEqual(p.progress.requests, { done: 1, total: 1 });
+    day('2026-12-09');
+    assert.equal((await ann.get('/api/requests')).data.requests[0].followUpDue, true, 'the date she set has come');
+    await ann.put('/api/requests/' + id + '/steps/ready', { done: true });
+    await ann.put('/api/requests/' + id + '/steps/dispatched', { done: true });
+    const fin = (await ann.put('/api/requests/' + id + '/steps/done', { done: true })).data.request;
+    assert.equal(fin.complete, true); assert.equal(fin.nextStep, 'Complete'); assert.equal(fin.progress.percent, 100);
+    assert.equal((await ann.get('/api/requests')).data.requests.length, 0, 'finished requests leave the open list');
+    assert.equal((await ann.get('/api/requests?filter=done')).data.requests.length, 1);
+    assert.deepEqual((await ann.get('/api/my-day')).data.progress.requests, { done: 1, total: 1 }, 'finishing it today still counts as done');
+    day('2026-12-10');
+    assert.deepEqual((await ann.get('/api/my-day')).data.progress.requests, { done: 0, total: 0 }, 'and it is gone from tomorrow\'s work');
+  });
+
+  test('website orders from Zoho appear by themselves, ready to be picked, and tick from what Zoho says', async () => {
+    day('2026-12-10');
+    z.data.salesOrders[0].date = '2026-12-10'; z.data.salesOrders[0].createdTime = '2026-12-10T05:00:00.000Z';
+    const r = (await raj.get('/api/requests')).data;
     assert.equal(r.zoho.ok, true);
-    assert.equal(r.orders.length, 1, 'the 200 day old order is not pulled in');
-    const o = r.orders[0];
-    assert.equal(o.customerName, 'Web Buyer'); assert.equal(o.amount, 1180); assert.equal(o.ownerId, '');
-    assert.deepEqual(Object.keys(o.stages).sort(), ['invoice', 'lead', 'payment']);
-    assert.equal(o.stages.payment.by, 'Zoho'); assert.ok(o.stages.payment.at);
-    assert.equal(o.nextStage, 'Quotation created'); assert.equal(o.progress.percent, 50);
-    assert.equal((await ann.get('/api/orders')).data.orders.length, 1, 'syncing again does not duplicate');
-  });
-
-  test('one person picks it; stages are ticked with time and name; Zoho progress is picked up later', async () => {
-    const id = (await ann.get('/api/orders')).data.orders[0].id;
-    assert.equal((await ann.post('/api/orders/' + id + '/pick')).status, 200);
-    assert.equal((await raj.post('/api/orders/' + id + '/pick')).status, 400);
-    assert.equal((await raj.put('/api/orders/' + id + '/stages/quotation', { done: true })).status, 404);
-    const t = (await ann.put('/api/orders/' + id + '/stages/quotation', { done: true })).data.order;
-    assert.equal(t.stages.quotation.by, 'Ann'); assert.equal(t.progress.done, 4);
-    assert.equal((await ann.put('/api/orders/' + id + '/stages/teleport', { done: true })).status, 400);
+    assert.equal(r.requests.length, 1, 'the 200 day old order is not pulled in');
+    const o = r.requests[0];
+    assert.equal(o.source, 'Website'); assert.equal(o.customerName, 'Web Buyer'); assert.equal(o.ownerId, ''); assert.equal(o.amount, 1180);
+    assert.equal(o.steps.ask.by, 'Website'); assert.equal(o.steps.payment.by, 'Zoho'); assert.equal(o.progress.done, 3);
+    assert.equal((await raj.get('/api/requests')).data.requests.length, 1, 'syncing again does not duplicate');
+    assert.equal((await raj.post('/api/requests/' + o.id + '/pick')).status, 200);
+    assert.equal((await ann.post('/api/requests/' + o.id + '/pick')).status, 400);
     z.data.salesOrders[0].shipped = 'fulfilled';
-    const full = (await ann.get('/api/orders?filter=all')).data.orders.find((o) => o.id === id);
-    assert.ok(full.stages.dispatched && full.stages.delivered, 'shipped and delivered come from Zoho');
-    assert.equal(full.progress.percent, 100); assert.equal(full.complete, true);
-    assert.equal((await ann.get('/api/orders')).data.orders.length, 0, 'finished orders leave the active list');
+    const done = (await raj.get('/api/requests?filter=all')).data.requests.find((x) => x.id === o.id);
+    assert.ok(done.steps.ready && done.steps.dispatched && done.steps.done); assert.equal(done.complete, true);
   });
 
-  test('orders can also be added by hand and assigned by the owner', async () => {
-    assert.equal((await ann.post('/api/orders', { customerName: '' })).status, 400);
-    const o = (await ann.post('/api/orders', { customerName: 'Walk-in', phone: '9899999999', amount: 500 })).data.order;
-    assert.equal(o.ownerId, annId);
-    const o2 = (await admin.post('/api/orders', { customerName: 'Phone order' })).data.order;
-    assert.equal(o2.ownerId, '');
-    assert.equal((await admin.post('/api/orders/' + o2.id + '/assign', { ownerId: annId })).data.order.ownerName, 'Ann');
-    assert.equal((await ann.post('/api/orders/' + o2.id + '/assign', { ownerId: annId })).status, 403);
-  });
-
-  test('when Zoho is down the pipeline still works', async () => {
+  test('the owner can assign requests; a team member cannot; and Zoho being down does not break the list', async () => {
+    const r = (await admin.post('/api/requests', { customerName: 'Phone enquiry', source: 'Call' })).data.request;
+    assert.equal(r.ownerId, '');
+    assert.equal((await admin.post('/api/requests/' + r.id + '/assign', { ownerId: rajId })).data.request.ownerName, 'Raj');
+    assert.equal((await raj.post('/api/requests/' + r.id + '/assign', { ownerId: annId })).status, 403);
     z.data.fail = true;
-    const r = await ann.get('/api/orders');
-    assert.equal(r.status, 200); assert.equal(r.data.zoho.ok, false); assert.match(r.data.zoho.error, /Zoho is down/);
-    assert.ok(r.data.orders.length >= 2);
+    const down = await raj.get('/api/requests');
+    assert.equal(down.status, 200); assert.equal(down.data.zoho.ok, false); assert.ok(down.data.requests.length >= 1);
     z.data.fail = false;
   });
 });
@@ -448,10 +586,11 @@ describe('invoices: are we following up properly?', () => {
 // ======================================================================
 describe('"how much is done": the percentage, and the owner\'s dashboard', () => {
   let s, z, admin, ann, raj, annId, rajId;
-  before(async () => { z = pretendZoho(); ({ s, admin, ann, raj, annId, rajId } = await team(z)); });
-  after(() => s.stop());
+  const day = (d) => { clock.date = d; };
+  before(async () => { day('2026-12-14'); z = pretendZoho(); ({ s, admin, ann, raj, annId, rajId } = await team(z)); });
+  after(() => { clock.date = null; return s.stop(); });
 
-  test('tasks + follow-ups + leads are added up into one percentage', async () => {
+  test('tasks + follow-ups + customer requests are added up into one percentage', async () => {
     await admin.post('/api/templates', { name: 'Call 10 people', kind: 'rows', rowCount: 10, assignees: [annId, rajId] });
     const start = (await ann.get('/api/my-day')).data;
     assert.deepEqual(start.progress.overall, { done: 0, total: 10, percent: 0, left: 10 });
@@ -460,38 +599,62 @@ describe('"how much is done": the percentage, and the owner\'s dashboard', () =>
     await admin.post('/api/customers/1001/assign', { ownerId: annId });
     await admin.post('/api/customers/1002/assign', { ownerId: annId });
     await admin.post('/api/invoices/9001/assign', { ownerId: annId });
-    await admin.post('/api/leads', { name: 'Fresh Lead', ownerId: annId });
+    const reqId = (await ann.post('/api/requests', { customerName: 'Fresh Customer', source: 'WhatsApp' })).data.request.id;
+    day('2026-12-15'); // the request was logged yesterday, so today it is waiting
+    for (let i = 3; i < 4; i++) await ann.put('/api/tasks/' + (await ann.get('/api/tasks')).data.tasks[0].id + '/rows/' + i, { values: { name: 'P' + i } });
     let p = (await ann.get('/api/my-day')).data.progress;
-    assert.deepEqual(p.tasks, { done: 3, total: 10 });
+    assert.equal(p.tasks.total, 10 + 7, 'yesterday missed 7 of 10, so 7 carry'); assert.equal(p.tasks.done, 1);
     assert.deepEqual(p.customers, { done: 0, total: 2 });
-    assert.equal(p.invoices.total, 1); assert.deepEqual(p.leads, { done: 0, total: 1 });
-    assert.deepEqual(p.overall, { done: 3, total: 14, percent: 21, left: 11 });
+    assert.deepEqual(p.invoices, { done: 0, total: 2 }, 'her own invoice and one that belongs to a customer she owns (both overdue by this date)'); assert.deepEqual(p.requests, { done: 0, total: 1 }); assert.deepEqual(p.followups, { done: 0, total: 0 });
+    assert.deepEqual(p.overall, { done: 1, total: 22, percent: 5, left: 21 });
     await ann.post('/api/customers/1001/followup', { outcome: 'interested' });
     await ann.post('/api/invoices/9001/followup', { outcome: 'reminded' });
-    const leadId = (await ann.get('/api/leads')).data.leads[0].id;
-    await ann.post('/api/leads/' + leadId + '/followup', { outcome: 'contacted' });
+    await ann.post('/api/requests/' + reqId + '/note', { text: 'Asked for their requirement' });
     p = (await ann.get('/api/my-day')).data.progress;
-    assert.deepEqual(p.customers, { done: 1, total: 2 }); assert.deepEqual(p.invoices, { done: 1, total: 1 }); assert.deepEqual(p.leads, { done: 1, total: 1 });
-    assert.deepEqual(p.overall, { done: 6, total: 14, percent: 43, left: 8 });
+    assert.deepEqual(p.customers, { done: 1, total: 2 }); assert.deepEqual(p.invoices, { done: 1, total: 2 }); assert.deepEqual(p.requests, { done: 1, total: 1 });
+    assert.deepEqual(p.overall, { done: 4, total: 22, percent: 18, left: 18 });
     assert.equal((await raj.get('/api/my-day')).data.progress.overall.done, 0, 'each person has their own figure');
     assert.equal((await admin.get('/api/my-day')).status, 403);
   });
 
-  test('the dashboard shows each member, who has not started, and what is waiting to be assigned', async () => {
-    const d = (await admin.get('/api/dashboard')).data;
-    assert.equal(d.team.length, 2);
-    const a = d.team.find((t) => t.name === 'Ann'); const r = d.team.find((t) => t.name === 'Raj');
-    assert.equal(a.progress.overall.percent, 43); assert.ok(a.lastActivity);
-    assert.equal(r.lastActivity, '');
-    assert.deepEqual(d.alerts.notStarted, ['Raj']);
-    assert.equal(d.alerts.totalCustomers, 4); assert.equal(d.alerts.unassignedCustomers, 2);
-    assert.equal(d.alerts.unpaidInvoices, 3); assert.equal(d.alerts.unassignedInvoices >= 1, true);
-    assert.equal(d.alerts.unassignedOrders, 0);
-    assert.equal(typeof d.alerts.invoiceCompliance, 'number');
-    assert.equal(d.zoho.configured, true);
+  test('a call follow-up that has come is part of the day\'s work until it is logged', async () => {
+    day('2026-12-16');
+    const r = await admin.post('/api/templates', { name: 'Visits', kind: 'rows', rowCount: 1, assignees: [rajId], columns: [{ label: 'Name', type: 'text', required: true }, { label: 'Follow-up date', type: 'date', followUp: true }] });
+    assert.equal(r.status, 200);
+    const v = (await raj.get('/api/tasks')).data.tasks.find((x) => x.name === 'Visits');
+    await raj.put('/api/tasks/' + v.id + '/rows/0', { values: { name: 'Mr Rao', follow_up_date: '2026-12-17' } });
+    const base = (await raj.get('/api/my-day')).data.progress.followups;
+    assert.deepEqual(base, { done: 0, total: 0 });
+    day('2026-12-17');
+    assert.deepEqual((await raj.get('/api/my-day')).data.progress.followups, { done: 0, total: 1 });
+    const due = (await raj.get('/api/followups-due')).data.followups[0];
+    await raj.post('/api/tasks/' + due.taskId + '/rows/' + due.rowIndex + '/followup', { notes: 'Confirmed the visit' });
+    assert.deepEqual((await raj.get('/api/my-day')).data.progress.followups, { done: 1, total: 1 });
   });
 
-  test('if Zoho is down the dashboard still opens', async () => {
+  test('on a day off nothing is expected, so only what was actually done counts', async () => {
+    day('2026-12-20'); // Sunday
+    const p = (await ann.get('/api/my-day')).data.progress;
+    assert.equal(p.workDay, false);
+    assert.deepEqual(p.requests, { done: 0, total: 0 }); assert.deepEqual(p.customers, { done: 0, total: 0 }); assert.deepEqual(p.invoices, { done: 0, total: 0 });
+    assert.equal(p.overall.total, 0);
+    assert.equal(p.overall.percent, null);
+  });
+
+  test('the dashboard shows each person: carried work, overdue follow-ups, open requests, and who has not started', async () => {
+    day('2026-12-22'); // Tuesday
+    const d = (await admin.get('/api/dashboard')).data;
+    assert.equal(d.team.length, 2); assert.equal(d.workDay, true);
+    const a = d.team.find((t) => t.name === 'Ann');
+    assert.ok(a.carried > 0, 'carried-forward calls are shown'); assert.equal(a.openRequests, 1); assert.equal(a.oldestRequestDays >= 1, true); assert.equal(a.untouchedRequests, 1);
+    assert.equal(typeof a.followupsOverdue, 'number');
+    assert.deepEqual(d.alerts.notStarted.sort(), ['Ann', 'Raj'].sort());
+    assert.equal(d.alerts.totalCustomers, 4); assert.equal(d.alerts.unassignedCustomers, 2);
+    assert.equal(d.alerts.unpaidInvoices, 3); assert.equal(d.alerts.unassignedRequests, 0); assert.equal(d.alerts.openRequests, 1);
+    assert.equal(typeof d.alerts.invoiceCompliance, 'number'); assert.equal(d.zoho.configured, true);
+  });
+
+  test('if Zoho is down the dashboard and My day still open', async () => {
     z.data.fail = true;
     assert.equal((await admin.get('/api/dashboard')).status, 200);
     assert.equal((await ann.get('/api/my-day')).status, 200);
@@ -530,13 +693,13 @@ describe('screens and deployment', () => {
   const repo = path.join(ROOT, '..', '..');
   test('the page, the script files and the module list are in place', () => {
     const index = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-    for (const f of ['core', 'dashboard', 'tasks', 'leads', 'customers', 'orders', 'invoices', 'office', 'team']) {
+    for (const f of ['core', 'dashboard', 'tasks', 'requests', 'customers', 'invoices', 'office', 'team']) {
       assert.ok(index.includes('/js/' + f + '.js'), f + ' is loaded by the page');
       assert.ok(fs.existsSync(path.join(ROOT, 'public', 'js', f + '.js')), f + '.js exists');
     }
     const login = fs.readFileSync(path.join(ROOT, 'public', 'login.html'), 'utf8');
     assert.ok(login.includes('/login.js') && login.includes('name="password"') && /noindex/.test(login));
-    for (const m of ['team', 'tasks', 'leads', 'customers', 'orders', 'invoices', 'office', 'dashboard']) assert.ok(fs.existsSync(path.join(ROOT, 'modules', m + '.js')), m + ' module');
+    for (const m of ['team', 'tasks', 'requests', 'customers', 'invoices', 'office', 'dashboard']) assert.ok(fs.existsSync(path.join(ROOT, 'modules', m + '.js')), m + ' module');
   });
   test('the deploy script refuses anything but dev, skips without a password, passes the Zoho settings and creates the web address', () => {
     const sh = fs.readFileSync(path.join(repo, 'scripts', 'deploy-admin.sh'), 'utf8');
@@ -550,5 +713,37 @@ describe('screens and deployment', () => {
     const wf = fs.readFileSync(path.join(repo, '.github', 'workflows', 'admin-panel-dev.yml'), 'utf8');
     assert.ok(wf.includes('branches: [dev]') && wf.includes('environment: dev') && !/environment:\s*production/.test(wf));
     for (const k of ['ADMIN_PANEL_PASSWORD', 'ADMIN_PANEL_SESSION_SECRET', 'ZOHO_REFRESH_TOKEN', 'ZOHO_CLIENT_SECRET']) assert.ok(wf.includes(k), k);
+  });
+});
+
+describe('tasks created before carry-over existed', () => {
+  test('carry forward by default, up to their own daily target', async () => {
+    const z = pretendZoho();
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-panel-legacy-'));
+    clock.date = '2026-11-02';
+    const app = createApp({ dataDir: dir, adminPassword: 'admin-secret-1', sessionSecret: 's', zoho: z });
+    const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
+    const base = 'http://127.0.0.1:' + server.address().port;
+    try {
+      const admin = client(base), ann = client(base);
+      await admin.post('/api/auth/login', { username: 'admin', password: 'admin-secret-1' });
+      const annId = (await admin.post('/api/users', { name: 'Ann', username: 'ann', password: 'ann-password-1' })).data.user.id;
+      await ann.post('/api/auth/login', { username: 'ann', password: 'ann-password-1' });
+      // a design saved by the older version: no carry, maxCarry, base or carried fields
+      fs.writeFileSync(path.join(dir, 'templates.json'), JSON.stringify([{ id: 't1', name: 'Call 10 people', kind: 'rows', schedule: 'daily', rowCount: 10, assignees: [annId], active: true, columns: [{ key: 'name', label: 'Name', type: 'text', required: true }], instructions: '', dueDate: '', createdAt: '2026-10-01T00:00:00.000Z' }]));
+      await server.close(); // reload the files by starting again below
+    } finally { /* the next app instance below reads the file */ }
+    const app2 = createApp({ dataDir: dir, adminPassword: 'admin-secret-1', sessionSecret: 's', zoho: z });
+    const server2 = await new Promise((r) => { const s = app2.listen(0, '127.0.0.1', () => r(s)); });
+    const b2 = 'http://127.0.0.1:' + server2.address().port;
+    try {
+      const ann = client(b2); await ann.post('/api/auth/login', { username: 'ann', password: 'ann-password-1' });
+      const mon = (await ann.get('/api/tasks')).data.tasks[0];
+      assert.equal(mon.rows.length, 10);
+      await ann.put('/api/tasks/' + mon.id + '/rows/0', { values: { name: 'One' } });
+      clock.date = '2026-11-03';
+      const tue = (await ann.get('/api/tasks')).data.tasks[0];
+      assert.equal(tue.carried, 9); assert.equal(tue.rows.length, 19);
+    } finally { clock.date = null; await new Promise((r) => server2.close(r)); }
   });
 });

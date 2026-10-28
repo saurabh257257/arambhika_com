@@ -2,28 +2,37 @@
   'use strict';
   var P = window.Panel, esc = P.esc;
   var KIND = { rows: 'Fill in rows', checklist: 'Checklist', count: 'Counter' };
+  var SCHED = { daily: 'Every day', weekly: 'Every week', once: 'One time' };
 
   // ---------------- one task, drawn the same way for the team member and for the owner ----------------
   function cellInput(col, value, editable) {
     var dis = editable ? '' : ' disabled', v = esc(value || '');
     if (col.type === 'choice') return '<select name="' + col.key + '"' + dis + '><option value="">' + esc(col.label) + '</option>' + col.options.map(function (o) { return '<option' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     var type = { phone: 'tel', date: 'date', number: 'number' }[col.type] || 'text';
-    return '<input name="' + col.key + '" type="' + type + '" value="' + v + '" placeholder="' + esc(col.label) + (col.required ? ' *' : '') + '" maxlength="200"' + dis + '>';
+    return '<input name="' + col.key + '" type="' + type + '" value="' + v + '" placeholder="' + esc(col.label) + (col.required ? ' *' : '') + '" maxlength="200"' + dis + (col.followUp ? ' min="' + P.addDays(P.today, 1) + '"' : '') + '>';
+  }
+  function carryNote(t) {
+    if (!t.carried) return '';
+    return P.pill('+' + t.carried + ' carried over from ' + (t.schedule === 'weekly' ? 'last week' : 'earlier'), 'doing');
   }
   function taskCard(t, editable) {
-    var pr = t.progress;
-    var head = '<div class="th"><div class="between"><h3>' + esc(t.name) + '</h3><span class="chips">' + P.pill(KIND[t.kind]) + (t.schedule === 'once' ? P.pill(t.dueDate ? 'Due ' + P.fmtDate(t.dueDate) : 'One-time', t.dueDate && t.dueDate < P.today && !t.completedAt ? 'overdue' : '') : P.pill('Daily')) + (t.completedAt ? P.pill('Complete', 'ok') : '') + '</span></div>' +
+    var pr = t.progress, hasFu = t.kind === 'rows' && t.columns.some(function (c) { return c.followUp; });
+    var when = t.schedule === 'weekly' ? P.pill('This week, from ' + P.fmtDate(t.date)) : t.schedule === 'once' ? P.pill(t.dueDate ? 'Due ' + P.fmtDate(t.dueDate) : 'One-time', t.dueDate && t.dueDate < P.today && !t.completedAt ? 'overdue' : '') : P.pill('Daily');
+    var head = '<div class="th"><div class="between"><h3>' + esc(t.name) + '</h3><span class="chips">' + P.pill(KIND[t.kind]) + when + carryNote(t) + (t.completedAt ? P.pill('Complete', 'ok') : '') + '</span></div>' +
       (t.instructions ? '<div class="muted">' + esc(t.instructions) + '</div>' : '') +
+      (t.carried ? '<div class="muted small">Target today: ' + t.base + ' + ' + t.carried + ' left over from before = ' + (t.base + t.carried) + '</div>' : '') +
+      (hasFu ? '<div class="muted small">Set a follow-up date on a call and it comes back by itself on that day.</div>' : '') +
       '<div class="between"><b>' + pr.done + ' of ' + pr.total + ' done (' + pr.percent + '%)</b><span class="stamp">' + (t.updatedAt ? 'Last updated ' + P.stamp(t.updatedAt, t.updatedByName) : 'Not started') + '</span></div>' + P.bar(pr.done, pr.total) + '</div>';
     var body = '';
     if (t.kind === 'rows') {
       var cols = t.columns, n = cols.length;
       body = '<div class="cells" style="--cols:' + n + '"><div class="cellrow head"><span></span>' + cols.map(function (c) { return '<span>' + esc(c.label) + (c.required ? ' *' : '') + '</span>'; }).join('') + '<span></span></div>' +
         t.rows.map(function (r, i) {
+          var last = (r.history || [])[(r.history || []).length - 1];
           return '<div class="cellrow ' + (t.rowsDone[i] ? 'done' : '') + '" data-task="' + t.id + '" data-i="' + i + '"><span class="no">' + (t.rowsDone[i] ? '&#10003;' : (i + 1)) + '</span>' +
             cols.map(function (c) { return '<span class="cell">' + cellInput(c, (r.values || {})[c.key], editable) + '</span>'; }).join('') +
             (editable ? '<span class="go"><button class="btn sm" type="button" data-save-row>Save</button></span>' : '<span></span>') +
-            (r.updatedAt ? '<div class="stampcol stamp">Updated ' + P.stamp(r.updatedAt, r.updatedByName) + '</div>' : '') + '</div>';
+            ((r.updatedAt || last) ? '<div class="stampcol stamp">' + (r.updatedAt ? 'Updated ' + P.stamp(r.updatedAt, r.updatedByName) : '') + (last ? ' &middot; Follow-up call ' + P.fmtTime(last.at) + ': ' + esc(last.notes) : '') + '</div>' : '') + '</div>';
         }).join('') + '</div>';
     } else if (t.kind === 'checklist') {
       body = '<div class="steps">' + t.steps.map(function (s, i) {
@@ -36,16 +45,15 @@
     return '<div class="task" data-card="' + t.id + '">' + head + body + '</div>';
   }
 
-  function wireTasks(el, editable, tasks) {
-    var byId = {}; tasks.forEach(function (t) { byId[t.id] = t; });
-    function replace(task) { byId[task.id] = task; var old = el.querySelector('[data-card="' + task.id + '"]'); var tmp = document.createElement('div'); tmp.innerHTML = taskCard(task, editable); if (old) old.replaceWith(tmp.firstChild); }
+  function wireTasks(el, editable, tasks, reload) {
+    function replace(task) { var old = el.querySelector('[data-card="' + task.id + '"]'); var tmp = document.createElement('div'); tmp.innerHTML = taskCard(task, editable); if (old) old.replaceWith(tmp.firstChild); }
     if (!editable) return;
     el.addEventListener('click', function (e) {
       var b = e.target.closest('[data-save-row]'); if (!b) return;
       var row = b.closest('.cellrow'), values = {};
       [].forEach.call(row.querySelectorAll('input,select'), function (i) { values[i.name] = i.value; });
       b.disabled = true;
-      P.api('PUT', '/api/tasks/' + row.dataset.task + '/rows/' + row.dataset.i, { values: values }).then(function (r) { replace(r.task); P.toast('Saved ' + P.fmtTime(r.task.updatedAt)); }).catch(function (err) { b.disabled = false; P.fail(err); });
+      P.api('PUT', '/api/tasks/' + row.dataset.task + '/rows/' + row.dataset.i, { values: values }).then(function (r) { replace(r.task); P.toast('Saved ' + P.fmtTime(r.task.updatedAt)); if (reload) reload(true); }).catch(function (err) { b.disabled = false; P.fail(err); });
     });
     el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('.cellrow') && e.target.tagName === 'INPUT') { e.preventDefault(); e.target.closest('.cellrow').querySelector('[data-save-row]').click(); } });
     el.addEventListener('change', function (e) {
@@ -58,18 +66,39 @@
     });
   }
 
+  // calls whose follow-up date has come: what was said before, and a form for this call
+  function followupsCard(list) {
+    if (!list.length) return '';
+    return '<div class="card" id="fuCard"><div class="between"><h3>Follow-up calls due (' + list.length + ')</h3><span class="muted small">They stay here until you log the call.</span></div><div class="list">' + list.map(function (f, n) {
+      return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '" data-fu="' + n + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b><span class="chips">' + P.pill(f.daysLate > 0 ? f.daysLate + ' day' + (f.daysLate === 1 ? '' : 's') + ' late' : 'Follow up today', f.daysLate > 0 ? 'overdue' : 'due') + '</span></div>' +
+        '<div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '<span>First called ' + P.fmtDate(f.calledOn) + '</span></div>' +
+        (f.history.length ? '<div class="hist">' + f.history.map(function (h) { return '<div><b>' + P.fmtTime(h.at) + '</b> ' + esc(h.notes) + '</div>'; }).join('') + '</div>' : '') +
+        '<form class="fu" data-fuform><label>What did you talk about this time<textarea name="notes" required minlength="2" maxlength="1000" style="min-height:56px"></textarea></label>' +
+        '<div class="row"><label>Next follow-up date<input type="date" name="nextDate" min="' + P.addDays(P.today, 1) + '"></label><div class="small muted" style="align-self:center">Leave it empty if there is nothing more to follow up.</div></div>' +
+        '<div class="actions"><button class="btn sm" type="submit">Save follow-up call</button></div></form></div>';
+    }).join('') + '</div></div>';
+  }
   // ---------------- the team member's tasks ----------------
   P.register({ id: 'tasks', label: 'Tasks', roles: ['employee'], order: 1, render: function (el) {
-    var date = P.today;
+    var date = P.today, wired = false;
     function load() {
-      return P.api('GET', '/api/tasks?date=' + date).then(function (r) {
+      return Promise.all([P.api('GET', '/api/tasks?date=' + date), date === P.today ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] })]).then(function (res) {
+        var r = res[0], fu = res[1].followups;
         var done = r.tasks.reduce(function (s, t) { return s + t.progress.done; }, 0), total = r.tasks.reduce(function (s, t) { return s + t.progress.total; }, 0);
-        el.innerHTML = '<div class="card"><div class="row"><label>Day<input type="date" id="td" value="' + date + '" max="' + P.today + '" min="' + P.addDays(P.today, -7) + '"></label><div><h3>' + (date === P.today ? 'Today' : P.fmtDate(date)) + '</h3><div class="muted">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left</div></div></div>' + (total ? P.bar(done, total) : '') + '</div>' +
-          (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, true); }).join('') : P.empty('No tasks for this day.'));
+        el.innerHTML = '<div class="card"><div class="row"><label>Day<input type="date" id="td" value="' + date + '" max="' + P.today + '" min="' + P.addDays(P.today, -7) + '"></label><div><h3>' + (date === P.today ? 'Today' : P.fmtDate(date)) + (r.workDay ? '' : ' (day off)') + '</h3><div class="muted">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left</div></div></div>' + (total ? P.bar(done, total) : '') + '</div>' +
+          followupsCard(fu) +
+          (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, true); }).join('') : P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected today.'));
         el.querySelector('#td').addEventListener('change', function (e) { if (e.target.value) { date = e.target.value; load().catch(P.fail); } });
-        wireTasks(el, true, r.tasks);
+        if (!wired) { wired = true; wireTasks(el, true, r.tasks, null); }
+        el.__fu = fu;
       });
     }
+    // the follow-up list changes after each save, so the handler reads the latest list from the element
+    el.addEventListener('submit', function (e) {
+      var f = e.target.closest('[data-fuform]'); if (!f) return; e.preventDefault();
+      var item = (el.__fu || [])[Number(f.closest('[data-fu]').dataset.fu)]; if (!item) return;
+      P.api('POST', '/api/tasks/' + item.taskId + '/rows/' + item.rowIndex + '/followup', { notes: f.notes.value, nextDate: f.nextDate.value }).then(function (r) { P.toast(r.nextDate ? 'Saved. Next follow-up on ' + P.fmtDate(r.nextDate) : 'Saved. No more follow-up needed.'); return load(); }).catch(P.fail);
+    });
     return load();
   } });
 
@@ -79,8 +108,10 @@
     function load() {
       var who = P.viewAs || (P.users.filter(function (u) { return u.active; })[0] || {}).id || '';
       if (!who) { el.innerHTML = P.empty('Add team members first.'); return Promise.resolve(); }
-      return P.api('GET', '/api/tasks?userId=' + who + '&date=' + date).then(function (r) {
+      return Promise.all([P.api('GET', '/api/tasks?userId=' + who + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + who)]).then(function (res) {
+        var r = res[0], fu = res[1].followups;
         el.innerHTML = '<div class="card"><div class="row"><label>Team member<select id="wu">' + P.userOptions(who) + '</select></label><label>Day<input type="date" id="wd" value="' + date + '" max="' + P.today + '"></label></div></div>' +
+          (fu.length ? '<div class="card"><h3>Follow-up calls due (' + fu.length + ')</h3><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></div>' : '') +
           (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, false); }).join('') : P.empty('No tasks for them on this day.'));
         el.querySelector('#wu').addEventListener('change', function (e) { P.viewAs = e.target.value; load().catch(P.fail); });
         el.querySelector('#wd').addEventListener('change', function (e) { if (e.target.value) { date = e.target.value; load().catch(P.fail); } });
@@ -92,56 +123,90 @@
   // ---------------- the task designer (owner) ----------------
   function colRow(c) {
     return '<div class="col-edit" data-col><label>Column name<input name="label" value="' + esc(c.label || '') + '" maxlength="30"></label><label>Type<select name="type">' + ['text', 'phone', 'choice', 'date', 'number'].map(function (t) { return '<option' + (c.type === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label>' +
-      '<label>Choices (comma separated)<input name="options" value="' + esc((c.options || []).join(', ')) + '" placeholder="only for type choice"></label><label class="check"><input type="checkbox" name="required"' + (c.required ? ' checked' : '') + '> must fill</label><button class="btn ghost sm" type="button" data-del-col>Remove</button></div>';
+      '<label>Choices (comma separated)<input name="options" value="' + esc((c.options || []).join(', ')) + '" placeholder="only for type choice"></label><div class="chips"><label class="check"><input type="checkbox" name="required"' + (c.required ? ' checked' : '') + '> must fill</label><label class="check" data-fu-box><input type="checkbox" name="followUp"' + (c.followUp ? ' checked' : '') + '> this is the follow-up date</label></div><button class="btn ghost sm" type="button" data-del-col>Remove</button></div>';
   }
   function designForm(t, defaults) {
-    t = t || { kind: 'rows', schedule: 'daily', assignees: [], active: true, rowCount: 10, columns: defaults, steps: [], target: 1, unit: 'done' };
+    t = t || { kind: 'rows', schedule: 'daily', assignees: [], active: true, rowCount: 10, columns: defaults, steps: [], target: 1, unit: 'done', carry: true };
     return '<form class="card" id="design"><div class="between"><h3>' + (t.id ? 'Change this task' : 'Design a new task') + '</h3>' + (t.id ? '<button class="btn ghost sm" type="button" data-cancel>Cancel</button>' : '') + '</div>' +
       '<div class="row"><label style="flex:3 1 240px">Task name<input name="name" value="' + esc(t.name || '') + '" maxlength="80" required placeholder="e.g. Call 10 people"></label>' +
       '<label>What kind of task<select name="kind"><option value="rows"' + (t.kind === 'rows' ? ' selected' : '') + '>Fill in rows (calls, visits, entries)</option><option value="checklist"' + (t.kind === 'checklist' ? ' selected' : '') + '>Checklist (steps to tick)</option><option value="count"' + (t.kind === 'count' ? ' selected' : '') + '>Counter (a number and a note)</option></select></label>' +
-      '<label>How often<select name="schedule"><option value="daily"' + (t.schedule === 'daily' ? ' selected' : '') + '>Every day</option><option value="once"' + (t.schedule === 'once' ? ' selected' : '') + '>One time (stays until done)</option></select></label>' +
+      '<label>How often<select name="schedule">' + Object.keys(SCHED).map(function (k) { return '<option value="' + k + '"' + (t.schedule === k ? ' selected' : '') + '>' + SCHED[k] + (k === 'daily' ? ' (working days)' : k === 'once' ? ' (stays until done)' : ' (Monday to Sunday)') + '</option>'; }).join('') + '</select></label>' +
       '<label data-due>Due date<input type="date" name="dueDate" value="' + esc(t.dueDate || '') + '"></label></div>' +
       '<div data-kind="rows"><div class="row"><label>How many rows<input type="number" name="rowCount" min="1" max="200" value="' + (t.rowCount || 10) + '"></label></div>' +
-      '<div class="muted small" style="margin:6px 0">Each row gets these columns. A row counts as done when the columns marked "must fill" are filled.</div><div class="list" id="cols">' + (t.columns || defaults).map(colRow).join('') + '</div><div style="margin-top:8px"><button class="btn ghost sm" type="button" data-add-col>+ Add a column</button></div></div>' +
+      '<div class="muted small" style="margin:6px 0">Each row gets these columns. A row counts as done when the columns marked "must fill" are filled. One date column can be the follow-up date: the call comes back by itself on that day.</div><div class="list" id="cols">' + (t.columns || defaults).map(colRow).join('') + '</div><div style="margin-top:8px"><button class="btn ghost sm" type="button" data-add-col>+ Add a column</button></div></div>' +
       '<div data-kind="checklist"><label>Steps (one per line)<textarea name="steps" placeholder="Check stock&#10;Update the sheet&#10;Send the report">' + esc((t.steps || []).join('\n')) + '</textarea></label></div>' +
       '<div data-kind="count"><div class="row"><label>Target number<input type="number" name="target" min="1" value="' + (t.target || 1) + '"></label><label>Unit<input name="unit" maxlength="20" value="' + esc(t.unit || 'done') + '" placeholder="photos, posts, calls"></label></div></div>' +
+      '<div data-carry class="row"><label class="check"><input type="checkbox" name="carry"' + (t.carry !== false ? ' checked' : '') + '> Carry forward what was missed (8 of 10 done means 12 next time)</label><label>Most that can carry over each time<input type="number" name="maxCarry" min="0" max="1000" value="' + (t.maxCarry === undefined ? '' : t.maxCarry) + '" placeholder="same as the target"></label></div>' +
       '<label>Instructions for the team (optional)<textarea name="instructions" maxlength="1000">' + esc(t.instructions || '') + '</textarea></label>' +
       '<div><div class="muted small" style="margin-bottom:6px">Who does this task</div><div class="chips">' + P.users.filter(function (u) { return u.active; }).map(function (u) { return '<label class="check"><input type="checkbox" name="assignee" value="' + esc(u.id) + '"' + ((t.assignees || []).indexOf(u.id) >= 0 ? ' checked' : '') + '> ' + esc(u.name) + '</label>'; }).join('') + '</div></div>' +
       '<div class="actions"><button class="btn" type="submit">' + (t.id ? 'Save changes' : 'Create task') + '</button></div></form>';
   }
   function readDesign(f) {
-    var cols = [].map.call(f.querySelectorAll('[data-col]'), function (r) { return { label: r.querySelector('[name=label]').value, type: r.querySelector('[name=type]').value, options: r.querySelector('[name=options]').value, required: r.querySelector('[name=required]').checked }; }).filter(function (c) { return c.label.trim(); });
-    return { name: f.name.value, kind: f.kind.value, schedule: f.schedule.value, dueDate: f.dueDate.value, rowCount: f.rowCount.value, columns: cols, steps: f.steps.value, target: f.target.value, unit: f.unit.value, instructions: f.instructions.value,
+    var cols = [].map.call(f.querySelectorAll('[data-col]'), function (r) { return { label: r.querySelector('[name=label]').value, type: r.querySelector('[name=type]').value, options: r.querySelector('[name=options]').value, required: r.querySelector('[name=required]').checked, followUp: r.querySelector('[name=followUp]').checked }; }).filter(function (c) { return c.label.trim(); });
+    return { name: f.name.value, kind: f.kind.value, schedule: f.schedule.value, dueDate: f.dueDate.value, rowCount: f.rowCount.value, columns: cols, steps: f.steps.value, target: f.target.value, unit: f.unit.value, instructions: f.instructions.value, carry: f.carry.checked, maxCarry: f.maxCarry.value,
       assignees: [].filter.call(f.querySelectorAll('[name=assignee]'), function (c) { return c.checked; }).map(function (c) { return c.value; }) };
   }
   function syncKind(f) {
     [].forEach.call(f.querySelectorAll('[data-kind]'), function (b) { b.hidden = b.dataset.kind !== f.kind.value; });
     f.querySelector('[data-due]').hidden = f.schedule.value !== 'once';
+    f.querySelector('[data-carry]').hidden = f.schedule.value === 'once' || f.kind.value === 'checklist';
+    [].forEach.call(f.querySelectorAll('[data-col]'), function (r) { r.querySelector('[data-fu-box]').hidden = r.querySelector('[name=type]').value !== 'date'; });
+  }
+  function memberChecks(name, pre) {
+    return P.users.filter(function (u) { return u.active; }).map(function (u) { return '<label class="check"><input type="checkbox" name="' + name + '" value="' + esc(u.id) + '"' + (pre(u) ? ' checked' : '') + '> ' + esc(u.name) + '</label>'; }).join('');
+  }
+  function templateItem(t) {
+    var names = t.assignees.map(function (id) { return esc((P.users.filter(function (u) { return u.id === id; })[0] || {}).name || '?'); }).join(', ') || 'nobody';
+    return '<div class="item ' + (t.active ? '' : 'warn') + '"><div class="between"><b>' + esc(t.name) + '</b><span class="chips">' + P.pill(KIND[t.kind]) + P.pill(SCHED[t.schedule]) + (t.carry ? P.pill('carries over') : '') + (t.active ? '' : P.pill('Switched off', 'overdue')) + '</span></div>' +
+      '<div class="meta"><span>' + (t.kind === 'rows' ? t.rowCount + ' rows: ' + t.columns.map(function (c) { return esc(c.label); }).join(', ') : t.kind === 'checklist' ? t.steps.length + ' steps' : 'target ' + t.target + ' ' + esc(t.unit)) + '</span><span>For: <b>' + names + '</b></span>' + (t.dueDate ? '<span>Due ' + P.fmtDate(t.dueDate) + '</span>' : '') + '</div>' +
+      '<div class="actions">' + (t.adhoc ? '' : '<button class="btn ghost sm" data-edit="' + t.id + '" type="button">Change</button>') + (t.active ? '<button class="btn ghost sm" data-off="' + t.id + '" type="button">Switch off</button>' : '<button class="btn ghost sm" data-on="' + t.id + '" type="button">Switch on</button>') + '</div></div>';
   }
 
   P.register({ id: 'designer', label: 'Task designer', roles: ['admin'], order: 1, render: function (el) {
-    var editing = null, state = { list: [] };
+    var editing = null, state = { list: [], presets: [] };
     function load() {
       return Promise.all([P.api('GET', '/api/templates'), P.api('GET', '/api/users')]).then(function (r) {
         P.users = r[1].users;
-        var list = r[0].templates, defaults = r[0].defaultColumns; state.list = list;
-        el.innerHTML = designForm(editing, defaults) +
-          '<div class="card"><h3>Your tasks</h3>' + (list.length ? '<div class="list">' + list.map(function (t) {
-            return '<div class="item ' + (t.active ? '' : 'warn') + '"><div class="between"><b>' + esc(t.name) + '</b><span class="chips">' + P.pill(KIND[t.kind]) + P.pill(t.schedule === 'once' ? 'One time' : 'Daily') + (t.active ? '' : P.pill('Switched off', 'overdue')) + '</span></div>' +
-              '<div class="meta"><span>' + (t.kind === 'rows' ? t.rowCount + ' rows: ' + t.columns.map(function (c) { return esc(c.label); }).join(', ') : t.kind === 'checklist' ? t.steps.length + ' steps' : 'target ' + t.target + ' ' + esc(t.unit)) + '</span><span>For: <b>' + (t.assignees.map(function (id) { return esc((P.users.filter(function (u) { return u.id === id; })[0] || {}).name || '?'); }).join(', ') || 'nobody') + '</b></span></div>' +
-              '<div class="actions"><button class="btn ghost sm" data-edit="' + t.id + '" type="button">Change</button>' + (t.active ? '<button class="btn ghost sm" data-off="' + t.id + '" type="button">Switch off</button>' : '<button class="btn ghost sm" data-on="' + t.id + '" type="button">Switch on</button>') + '</div></div>';
-          }).join('') + '</div>' : '<div class="muted">No tasks designed yet. Create the first one above, for example "Call 10 people".</div>') + '<div class="muted small">A change to a task applies from the next day. Work people already started keeps its old shape.</div></div>';
+        var list = r[0].templates, defaults = r[0].defaultColumns; state.list = list; state.presets = r[0].presets;
+        var designed = list.filter(function (t) { return !t.adhoc; }), oneTime = list.filter(function (t) { return t.adhoc && t.active; });
+        el.innerHTML =
+          '<div class="card"><h3>Give a quick task to your team</h3><div class="muted small">For something that comes up today: a one-time task that stays on their list until it is done.</div>' +
+          '<form id="quick" class="list"><div class="row"><label style="flex:3 1 240px">What needs to be done<input name="title" required maxlength="80" placeholder="e.g. Send the new price list to dealers"></label><label>Due date<input type="date" name="due" min="' + P.today + '"></label></div>' +
+          '<label>Steps (optional, one per line)<textarea name="steps" style="min-height:56px" placeholder="Prepare the PDF&#10;Send on WhatsApp"></textarea></label>' +
+          '<div class="chips">' + memberChecks('qassignee', function () { return true; }) + '</div><div class="actions"><button class="btn" type="submit">Give this task</button></div></form></div>' +
+          '<div class="card"><h3>Quick start: the usual tasks</h3><div class="muted small">One click creates the task for the people you tick. You can change it afterwards.</div><div class="list">' + state.presets.map(function (p) {
+            var made = list.some(function (t) { return t.name === p.name && t.active; });
+            return '<form class="item" data-preset="' + p.id + '"><div class="between"><b>' + esc(p.name) + '</b><span class="chips">' + P.pill(SCHED[p.schedule]) + (made ? P.pill('already created', 'ok') : '') + '</span></div><div class="muted small">' + esc(p.instructions) + '</div><div class="chips">' + memberChecks('passignee', function (u) { return p.for === 'both' || u.name.toLowerCase().indexOf(String(p.for).toLowerCase()) === 0; }) + '<button class="btn sm" type="submit">Create</button></div></form>';
+          }).join('') + '</div></div>' +
+          designForm(editing, defaults) +
+          '<div class="card"><h3>Your designed tasks</h3>' + (designed.length ? '<div class="list">' + designed.map(templateItem).join('') + '</div>' : '<div class="muted">Nothing designed yet. Use Quick start above, or design your own.</div>') + '<div class="muted small">A change applies from the next day or week. Work people already started keeps its old shape.</div></div>' +
+          (oneTime.length ? '<div class="card"><h3>Quick tasks still open</h3><div class="list">' + oneTime.map(templateItem).join('') + '</div></div>' : '');
         var f = el.querySelector('#design'); syncKind(f);
         f.kind.addEventListener('change', function () { syncKind(f); }); f.schedule.addEventListener('change', function () { syncKind(f); });
+        f.addEventListener('change', function (e) { if (e.target.name === 'type') syncKind(f); });
         f.addEventListener('submit', function (e) {
           e.preventDefault();
-          var body = readDesign(f);
-          P.api(editing ? 'PUT' : 'POST', '/api/templates' + (editing ? '/' + editing.id : ''), body).then(function () { P.toast(editing ? 'Saved' : 'Task created and given to the team'); editing = null; return load(); }).catch(P.fail);
+          P.api(editing ? 'PUT' : 'POST', '/api/templates' + (editing ? '/' + editing.id : ''), readDesign(f)).then(function () { P.toast(editing ? 'Saved' : 'Task created and given to the team'); editing = null; return load(); }).catch(P.fail);
+        });
+        el.querySelector('#quick').addEventListener('submit', function (e) {
+          e.preventDefault(); var q = e.target;
+          var steps = q.steps.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+          P.api('POST', '/api/templates', { name: q.title.value, kind: 'checklist', steps: steps.length ? steps : [q.title.value], schedule: 'once', dueDate: q.due.value, adhoc: true, assignees: [].filter.call(q.querySelectorAll('[name=qassignee]'), function (c) { return c.checked; }).map(function (c) { return c.value; }) })
+            .then(function () { P.toast('Task given. It is on their list now.'); return load(); }).catch(P.fail);
+        });
+        [].forEach.call(el.querySelectorAll('[data-preset]'), function (form) {
+          form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var p = state.presets.filter(function (x) { return x.id === form.dataset.preset; })[0];
+            var body = JSON.parse(JSON.stringify(p)); delete body.id; delete body.for;
+            body.assignees = [].filter.call(form.querySelectorAll('[name=passignee]'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+            P.api('POST', '/api/templates', body).then(function () { P.toast('"' + p.name + '" created and given to the team'); return load(); }).catch(P.fail);
+          });
         });
         if (el.__wired) return; el.__wired = true; // the click handler is attached once, however often the screen is redrawn
         el.addEventListener('click', function (e) {
-          var t = e.target, f = el.querySelector('#design');
-          if (t.closest('[data-add-col]')) { var d = document.createElement('div'); d.innerHTML = colRow({ type: 'text' }); f.querySelector('#cols').appendChild(d.firstChild); return; }
+          var t = e.target, ff = el.querySelector('#design');
+          if (t.closest('[data-add-col]')) { var d = document.createElement('div'); d.innerHTML = colRow({ type: 'text' }); ff.querySelector('#cols').appendChild(d.firstChild); syncKind(ff); return; }
           var dc = t.closest('[data-del-col]'); if (dc) { dc.closest('[data-col]').remove(); return; }
           if (t.closest('[data-cancel]')) { editing = null; load().catch(P.fail); return; }
           var ed = t.closest('[data-edit]'); if (ed) { editing = state.list.filter(function (x) { return x.id === ed.dataset.edit; })[0]; load().then(function () { window.scrollTo(0, 0); }).catch(P.fail); return; }
