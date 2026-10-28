@@ -194,9 +194,24 @@
   P.register({ id: 'work', label: 'Team work', roles: ['admin'], order: 2, render: function (el) {
     var state = { date: P.today }, wired = false;
     // everybody's day side by side: each person has their own column with the day's total, the week and their tasks
+    // one slim calendar for everybody: each day shows the team's done / planned together
+    function miniWeek(weeks, date) {
+      var w0 = weeks[0], tot = weeks.reduce(function (n, w) { return { done: n.done + w.totals.done, total: n.total + w.totals.total }; }, { done: 0, total: 0 });
+      return '<div class="card minibar"><button class="btn ghost sm" data-wk="-7" type="button" title="Previous week">&lsaquo;</button><div class="mdays">' + w0.days.map(function (d, i) {
+        var done = 0, total = 0; weeks.forEach(function (w) { done += w.days[i].done; total += w.days[i].total; });
+        return '<button type="button" class="mday' + (d.date === date ? ' sel' : '') + (d.isToday ? ' today' : '') + (d.isFuture ? ' future' : '') + (!d.isWorkDay ? ' off' : '') + '" data-day="' + d.date + '"><b>' + DOW[d.dow] + ' ' + Number(d.date.slice(8)) + '</b><span>' + (d.isWorkDay ? done + '/' + total : 'off') + '</span></button>';
+      }).join('') + '</div><span class="muted small mwk">' + shortDate(w0.weekStart) + ' &ndash; ' + shortDate(w0.weekEnd) + ' &middot; ' + tot.done + ' of ' + tot.total + '</span><button class="btn ghost sm" data-wk="7" type="button" title="Next week">&rsaquo;</button></div>';
+    }
+    // a person's header: their name and how much of the chosen day they have finished
+    function colHead(u, r, w) {
+      var day = r.tasks.filter(function (t) { return t.schedule !== 'weekly'; });
+      var done = day.reduce(function (n, t) { return n + t.progress.done; }, 0), total = day.reduce(function (n, t) { return n + t.progress.total; }, 0), pct = total ? Math.round(done / total * 100) : 0;
+      return '<div class="card colhead"><div class="between"><div><h3>' + esc(u.name) + '</h3><div class="muted small">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left' + (r.ahead ? ' &middot; working ahead' : '') + (r.workDay ? '' : ' &middot; day off') + '</div></div><div class="pct' + (pct >= 100 ? ' ok' : '') + '">' + pct + '%<span>completed</span></div></div>' + (total ? P.bar(done, total) : '') +
+        (w.weekly.length ? '<div class="chips">' + w.weekly.map(function (x) { return '<span class="chip">' + esc(x.name) + ': <b>' + x.done + ' of ' + x.total + '</b></span>'; }).join('') + '</div>' : '') + '</div>';
+    }
     function column(u, r, w, fu) {
       seedOpen(r.tasks, u.id);
-      return '<section class="tcol"><div class="tname2"><h3>' + esc(u.name) + '</h3></div>' + daySummary(r, state.date) + weekStrip(w, state.date, true) +
+      return '<section class="tcol">' + colHead(u, r, w) +
         (fu.length ? '<div class="card"><h3>Follow-up calls due (' + fu.length + ')</h3><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></div>' : '') +
         taskList(r.tasks, false, P.empty('No tasks for them on this day.')) + '</section>';
     }
@@ -207,7 +222,7 @@
       return Promise.all(people.map(function (u) {
         return Promise.all([P.api('GET', '/api/tasks?userId=' + u.id + '&date=' + date), P.api('GET', '/api/week?userId=' + u.id + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + u.id)]);
       })).then(function (all) {
-        el.innerHTML = '<div class="twgrid">' + people.map(function (u, i) { return column(u, all[i][0], all[i][1], all[i][2].followups); }).join('') + '</div>';
+        el.innerHTML = miniWeek(all.map(function (x) { return x[1]; }), date) + '<div class="twgrid">' + people.map(function (u, i) { return column(u, all[i][0], all[i][1], all[i][2].followups); }).join('') + '</div>';
         if (!wired) { wired = true; wireTasks(el, false, [], null); wireWeek(el, state, {}, function () { load().catch(P.fail); }); }
       });
     }

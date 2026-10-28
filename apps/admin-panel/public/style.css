@@ -216,3 +216,13 @@ textarea { min-height: 70px; resize: vertical; }
 .tcol { display: grid; gap: 10px; align-content: start; min-width: 0; }
 .tname2 h3 { font-size: 17px; padding: 6px 2px 0; border-bottom: 2px solid var(--teal-2); padding-bottom: 4px; }
 .reqhead { cursor: pointer; } .reqhead .caret { color: var(--muted); display: inline-block; width: 14px; } #reqCard.folded .reqbody { display: none; }
+
+/* owner: one slim calendar for the whole team, and a compact header per person */
+.minibar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; }
+.mdays { display: flex; gap: 4px; flex: 1 1 auto; overflow-x: auto; }
+.mday { flex: 1 1 0; min-width: 62px; display: grid; justify-items: center; gap: 0; padding: 3px 4px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; cursor: pointer; color: #1f2937; line-height: 1.25; }
+.mday b { font-size: 12px; } .mday span { font-size: 11px; color: var(--muted); }
+.mday.future { background: #f8fafc; } .mday.off { opacity: .55; } .mday:hover { border-color: var(--teal-2); }
+.mday.today b { color: var(--teal); } .mday.sel { border-color: var(--teal); background: #f0fdfa; box-shadow: 0 0 0 2px #99f6e4; }
+.mwk { white-space: nowrap; } @media (max-width: 720px) { .mwk { display: none; } }
+.colhead { padding: 10px 14px; gap: 8px; } .colhead h3 { font-size: 18px; } .colhead .pct { font-size: 24px; }
