@@ -111,7 +111,7 @@ module.exports = function requests(app, ctx) {
     if (f === 'unassigned') rows = rows.filter((r) => !r.ownerId);
     if (req.user.role === 'admin' && req.query.userId) rows = rows.filter((r) => r.ownerId === req.query.userId);
     const out = rows.map(view);
-    const shown = f === 'all' || f === 'done' ? out.filter((r) => f === 'all' || r.complete) : out.filter((r) => !r.complete);
+    const shown = f === 'all' || f === 'done' ? out.filter((r) => f === 'all' || r.complete) : out.filter((r) => !r.complete && (f !== 'nofollow' || !r.nextDate));
     shown.sort((a, b) => (a.complete - b.complete) || (a.ownerId ? 1 : 0) - (b.ownerId ? 1 : 0) || b.daysSinceTouched - a.daysSinceTouched || a.createdAt.localeCompare(b.createdAt));
     res.json({ requests: shown.slice(0, 300), steps: STEPS, sources: SOURCES, zoho });
   });

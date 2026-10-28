@@ -38,7 +38,7 @@
       var mine = r.ownerId === P.me.id, can = mine || isAdmin;
       var tone = r.complete ? 'good' : r.needsAttention ? 'hot' : r.followUpDue ? 'warn' : '';
       return '<div class="item ' + tone + '" data-id="' + r.id + '"><div class="head"><b>' + esc(r.customerName) + (r.company ? ' <span class="muted">' + esc(r.company) + '</span>' : '') + (r.amount ? ' <span class="muted">' + P.money(r.amount) + '</span>' : '') + '</b>' +
-        '<span class="chips">' + P.pill(r.customerType === 'existing' ? 'Existing customer' : 'New customer', r.customerType === 'existing' ? 'ok' : 'new') + P.pill(r.source) + (r.complete ? P.pill('Sent successfully', 'ok') : P.pill(r.progress.percent + '% completed (' + r.progress.done + ' of ' + r.progress.total + ' steps)', r.progress.percent >= 100 ? 'ok' : '')) + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + (r.followUpDue ? P.pill('Follow up today', 'due') : '') + '</span></div>' +
+        '<span class="chips">' + P.pill(r.customerType === 'existing' ? 'Existing customer' : 'New customer', r.customerType === 'existing' ? 'ok' : 'new') + P.pill(r.source) + (r.complete ? P.pill('Sent successfully', 'ok') : P.pill(r.progress.percent + '% completed (' + r.progress.done + ' of ' + r.progress.total + ' steps)', (r.progress.percent >= 100 ? 'ok ' : '') + 'pcr')) + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + (r.followUpDue ? P.pill('Follow up today', 'due') : '') + '</span></div>' +
         '<div class="meta">' + (r.phone ? '<span>&#9742; <b>' + esc(r.phone) + '</b></span>' : '') + '<span>Owner: <b>' + (r.ownerId ? esc(r.ownerName) : 'nobody yet') + '</b></span><span>Open for ' + r.daysOpen + ' day' + (r.daysOpen === 1 ? '' : 's') + '</span>' + (r.complete ? '' : '<span>Next: <b>' + esc(r.nextStep) + '</b></span>') + (r.nextDate && !r.complete ? '<span>Follow up on <b>' + P.fmtDate(r.nextDate) + '</b></span>' : '') + (r.zohoSoNumber ? '<span>Zoho ' + esc(r.zohoSoNumber) + '</span>' : '') + '</div>' +
         (r.request ? '<div>' + esc(r.request) + '</div>' : '') + P.track(r, can) +
         photoRow(r, can) +
@@ -55,7 +55,7 @@
     function card(r) {
       if (!isAdmin) return cardFull(r);
       var open = rOpen[r.id] === true;
-      return '<div class="rcard' + (open ? ' open' : '') + '" data-rc="' + r.id + '"><div class="rsum" data-rtoggle role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b class="rname">' + esc(r.customerName) + '</b>' + P.pill(r.progress.percent + '% completed', r.complete ? 'ok' : '') + '</div><div class="rbody">' + cardFull(r) + '</div></div>';
+      return '<div class="rcard' + (open ? ' open' : '') + '" data-rc="' + r.id + '"><div class="rsum" data-rtoggle role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b class="rname">' + esc(r.customerName) + '</b>' + P.pill(r.progress.percent + '% completed', (r.complete ? 'ok ' : '') + 'pcr') + '</div><div class="rbody">' + cardFull(r) + '</div></div>';
     }
 
     // the owner sees everybody's requests side by side, one column per person (and one for requests nobody has picked yet)
@@ -70,7 +70,7 @@
       var url = '/api/requests?filter=' + filter + (who ? '&userId=' + who : '') + (refresh ? '&refresh=1' : '');
       return P.api('GET', url).then(function (r) {
         steps = r.steps; sources = r.sources;
-        var seg = [['open', 'Open'], ['unassigned', 'Waiting to be picked'], ['done', 'Finished'], ['all', 'All']];
+        var seg = [['open', 'Open'], ['unassigned', 'Waiting to be picked']].concat(isAdmin ? [['nofollow', 'No follow-up date']] : [], [['done', 'Finished'], ['all', 'All']]);
         el.innerHTML = '<div class="card"><div class="between"><div class="seg">' + seg.map(function (s) { return '<button class="btn ' + (filter === s[0] ? '' : 'ghost') + '" data-f="' + s[0] + '" type="button">' + s[1] + '</button>'; }).join('') + '</div><div class="actions">' + (isAdmin ? '<select id="rw" style="width:auto"><option value="">All owners</option>' + P.userOptions(who) + '</select><button class="btn ghost sm" id="rf" type="button">Check Zoho</button>' : '') + '<button class="btn" id="addR" type="button">+ Log a customer request</button></div></div>' +
           '<form id="rForm" class="list" hidden><div class="row"><label class="check"><input type="checkbox" name="existing"> This is an existing customer (choose them from the list)</label></div>' +
           '<div class="row" data-existing hidden><label style="flex:3 1 300px">Existing customer<select name="customerId"><option value="">Loading the customer list...</option></select></label></div>' +

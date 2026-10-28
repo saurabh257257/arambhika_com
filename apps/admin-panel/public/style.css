@@ -253,3 +253,6 @@ textarea { min-height: 70px; resize: vertical; }
 .rcard .rname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rcard > .rbody{display:none;margin-top:6px}
 .rcard.open > .rbody{display:block}
+
+/* % completed is shown in red everywhere */
+.pill.pcr,.red,.pct,.pct span,.pct.ok,.pct.ok span{color:#dc2626!important}
