@@ -247,7 +247,7 @@
       return Promise.all([P.api('GET', '/api/templates'), P.api('GET', '/api/users')]).then(function (r) {
         P.users = r[1].users;
         var list = r[0].templates, defaults = r[0].defaultColumns; state.list = list; state.presets = r[0].presets;
-        var designed = list.filter(function (t) { return !t.adhoc; }), oneTime = list.filter(function (t) { return t.adhoc && t.active; });
+        var designed = list.filter(function (t) { return !t.adhoc && t.active; }), oneTime = list.filter(function (t) { return t.adhoc && t.active; }), switchedOff = list.filter(function (t) { return !t.active; });
         el.innerHTML =
           '<div class="card"><h3>Give a quick task to your team</h3><div class="muted small">For something that comes up today: a one-time task that stays on their list until it is done.</div>' +
           '<form id="quick" class="list"><div class="row"><label style="flex:3 1 240px">What needs to be done<input name="title" required maxlength="80" placeholder="e.g. Send the new price list to dealers"></label><label>Due date<input type="date" name="due" min="' + P.today + '"></label></div>' +
@@ -259,7 +259,8 @@
           }).join('') + '</div></div>' +
           designForm(editing, defaults) +
           '<div class="card"><h3>Your designed tasks</h3>' + (designed.length ? '<div class="list">' + designed.map(templateItem).join('') + '</div>' : '<div class="muted">Nothing designed yet. Use Quick start above, or design your own.</div>') + '<div class="muted small">A change applies from the next day or week. Work people already started keeps its old shape.</div></div>' +
-          (oneTime.length ? '<div class="card"><h3>Quick tasks still open</h3><div class="list">' + oneTime.map(templateItem).join('') + '</div></div>' : '');
+          (oneTime.length ? '<div class="card"><h3>Quick tasks still open</h3><div class="list">' + oneTime.map(templateItem).join('') + '</div></div>' : '') +
+          (switchedOff.length ? '<div class="card"><h3>Switched off (' + switchedOff.length + ')</h3><div class="muted small">These no longer appear for anybody. Switch one on to bring it back, or delete it for good (this also erases the work done under it).</div><div class="list">' + switchedOff.map(templateItem).join('') + '</div></div>' : '');
         var f = el.querySelector('#design'); syncKind(f);
         f.kind.addEventListener('change', function () { syncKind(f); }); f.schedule.addEventListener('change', function () { syncKind(f); });
         f.addEventListener('change', function (e) { if (e.target.name === 'type') syncKind(f); });
