@@ -1,27 +1,26 @@
-/* Arambhika theme: marketplace look. Dark navy header tiers, orange search button,
-   light grey page, white cards, yellow action buttons, teal links. */
+/* Arambhika theme: white page, white cards with a light border, one deep teal accent for buttons and links. */
 :root {
   --ink: #0f1111;
   --muted: #565959;
-  --accent: #007185;
-  --accent-dark: #c7511f;
+  --accent: #0f766e;
+  --accent-dark: #115e59;
   --top: #131921;
   --nav: #232f3e;
   --nav-2: #37475a;
-  --orange: #febd69;
-  --orange-dark: #f3a847;
-  --yellow: #ffd814;
-  --yellow-dark: #f7ca00;
-  --buy: #ffa41c;
-  --buy-dark: #fa8900;
+  --orange: #0f766e;
+  --orange-dark: #115e59;
+  --yellow: #0f766e;
+  --yellow-dark: #115e59;
+  --buy: #0f766e;
+  --buy-dark: #115e59;
   --navy: #0f1111;
-  --surface: #eaeded;
+  --surface: #ffffff;
   --surface-strong: #ffffff;
-  --surface-alt: #f7f8f8;
-  --line: #d5d9d9;
+  --surface-alt: #f8fafc;
+  --line: #e5e7eb;
   --shadow: 0 2px 5px rgba(15, 17, 17, 0.15);
-  --cta: #ffd814;
-  --cta-dark: #f7ca00;
+  --cta: #0f766e;
+  --cta-dark: #115e59;
   --ok: #007600;
 }
 
@@ -146,7 +145,7 @@ body {
 }
 .filter-btn.active,
 .filter-btn.active:hover {
-  background: #fef3e0;
+  background: #ccfbf1;
   color: var(--ink);
   font-weight: 700;
   box-shadow: inset 4px 0 0 var(--buy);
@@ -1426,8 +1425,8 @@ button.acct-stat-card:focus-visible { outline: 2px solid var(--accent); outline-
 }
 .wiz-btn:active { transform: scale(0.98); }
 .wiz-btn:disabled { opacity: 0.6; cursor: wait; }
-.wiz-btn-primary { background: #ffd814; color: #1f2937; }
-.wiz-btn-primary:hover:not(:disabled) { background: #f7ca00; }
+.wiz-btn-primary { background: #0f766e; color: #1f2937; }
+.wiz-btn-primary:hover:not(:disabled) { background: #115e59; }
 .wiz-btn-ghost { background: #eef2f8; color: #1f2937; }
 
 .wiz-done { text-align: center; padding: 18px 6px 6px; animation: wiz-pop 0.4s ease both; }
@@ -1542,8 +1541,8 @@ body.cd-lock { overflow: hidden; }
 .cd-note, .cd-count-hint { color: #64748b; font-size: 0.78rem; margin: 0 0 12px; }
 .cd-count-hint { text-align: center; margin: 10px 0 0; }
 .cd-btn { width: 100%; padding: 14px 18px; border-radius: 999px; border: 0; font: inherit; font-weight: 700; cursor: pointer; }
-.cd-btn-primary { background: #ffd814; color: #1f2937; transition: background 0.15s, transform 0.12s; }
-.cd-btn-primary:hover { background: #f7ca00; }
+.cd-btn-primary { background: #0f766e; color: #1f2937; transition: background 0.15s, transform 0.12s; }
+.cd-btn-primary:hover { background: #115e59; }
 .cd-btn-primary:active { transform: scale(0.99); }
 .cd-btn-ghost { background: transparent; color: #0b6f62; margin-top: 6px; }
 .cd-empty { text-align: center; padding: 60px 12px; }
@@ -1558,7 +1557,7 @@ body.cd-lock { overflow: hidden; }
 .cd-fab:hover { transform: translateY(-2px); }
 .cd-fab-badge {
   position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
-  background: #ffd814; color: #1f2937; font-size: 0.75rem; font-weight: 800; display: grid; place-items: center;
+  background: #0f766e; color: #1f2937; font-size: 0.75rem; font-weight: 800; display: grid; place-items: center;
 }
 .cd-fab:not(.has-items) .cd-fab-badge { display: none; }
 @media (max-width: 860px) { .cd-fab { display: none; } } /* the tab bar's Quote tab opens the cart */
@@ -1598,8 +1597,8 @@ body.cd-lock { overflow: hidden; }
   display: inline-block; text-align: center; padding: 14px 24px; border-radius: 999px; border: 0; font: inherit;
   font-weight: 700; cursor: pointer; text-decoration: none; transition: background 0.15s, transform 0.12s;
 }
-.ck-btn-primary { background: #ffd814; color: #1f2937; }
-.ck-btn-primary:hover:not(:disabled) { background: #f7ca00; }
+.ck-btn-primary { background: #0f766e; color: #1f2937; }
+.ck-btn-primary:hover:not(:disabled) { background: #115e59; }
 .ck-btn-primary:disabled { opacity: 0.65; cursor: wait; }
 .ck-btn-ghost { background: #eef2f8; color: #1f2937; }
 .ck-pay { width: 100%; padding: 16px; font-size: 1.05rem; }
@@ -1691,7 +1690,7 @@ body.cd-lock { overflow: hidden; }
   transition: box-shadow 0.18s ease;
 }
 .cat-tile:hover { box-shadow: 0 3px 12px rgba(15, 17, 17, 0.2); background: #fff; }
-.cat-tile.active, .cat-tile.active:hover { background: #fef3e0; box-shadow: inset 4px 0 0 var(--buy); }
+.cat-tile.active, .cat-tile.active:hover { background: #ccfbf1; box-shadow: inset 4px 0 0 var(--buy); }
 .cat-tile-img { width: 52px; height: 52px; flex: 0 0 52px; border-radius: 50%; overflow: hidden; background: #fff; border: 1px solid var(--line); display: block; }
 .cat-tile-img img { width: 100%; height: 100%; object-fit: contain; }
 .cat-tile-text { min-width: 0; }
@@ -1868,7 +1867,7 @@ body { background: linear-gradient(180deg, var(--b-bg) 0%, #ffffff 520px); }
 .search-go { background: var(--b-blue); color: #fff; }
 .search-go:hover { background: var(--b-blue-dark); }
 .header-search input:focus { outline-color: #8fb0ff; }
-.nav-cart-badge { background: #ffd814; color: var(--b-navy); }
+.nav-cart-badge { background: #0f766e; color: var(--b-navy); }
 .brand-tag { color: #d9ece8; }
 
 /* page title */
@@ -2759,3 +2758,12 @@ body.acct-fixed-layout .acct-content { background: linear-gradient(180deg, #eaf5
 .pp-desc table { display: block; width: 100%; overflow-x: auto; border-collapse: collapse; margin: 6px 0 14px; font-size: 0.88rem; }
 .pp-desc th, .pp-desc td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5eaf0; vertical-align: top; }
 .pp-desc tr td:first-child, .pp-desc tr th:first-child { width: 42%; font-weight: 600; background: #eef3fd; color: #0f2a4a; }
+
+/* White-and-teal theme: buttons that used to be yellow/orange are teal now, so their text turns white; cards get a light border on the white page. */
+.search-go, .order-btn, .panel-form .button, .mobile-fab, .mobile-fab.has-items, .test-pay-btn, .acct-step .button, .acct-btn-primary,
+.hero-btn, .prod-btn, .prod-stepper button, .pp-btn-yellow, .pp-btn-buy, .wiz-btn-primary, .cd-btn-primary, .ck-btn-primary,
+.cd-fab-badge, .nav-cart-badge { color: #fff; }
+.prod-card, .cat-tile, .panel, .pp-card { border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
+/* My Account: plain white backdrop instead of the pastel gradients */
+body:has(.acct-dashboard), body.acct-fixed-layout { background: #fff; }
+body.acct-fixed-layout main { background: #f8fafc; }
