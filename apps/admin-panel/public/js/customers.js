@@ -32,7 +32,7 @@
     }
     function donut(parts) {
       var total = parts.reduce(function (s, p) { return s + p.n; }, 0), R = 56, r = 34, C = 60;
-      var legend = parts.map(function (p) { return '<div class="lg"><i style="background:' + p.color + '"></i><span>' + esc(p.name) + '</span><b>' + p.n + (total ? ' (' + Math.round(p.n / total * 100) + '%)' : '') + '</b></div>'; }).join('');
+      var legend = parts.map(function (p) { var pc = total ? Math.round(p.n / total * 100) : 0; return '<div class="lg"><i style="background:' + p.color + '"></i><span class="nm">' + esc(p.name) + '</span><b>' + p.n + '</b><em>' + pc + '%</em><u style="width:' + pc + '%;background:' + p.color + '"></u></div>'; }).join('');
       var live = parts.filter(function (p) { return p.n > 0; }), svg;
       if (!total) svg = '<circle cx="60" cy="60" r="' + ((R + r) / 2) + '" fill="none" stroke="#eef2f6" stroke-width="' + (R - r) + '"/>';
       else if (live.length === 1) svg = '<circle cx="60" cy="60" r="' + ((R + r) / 2) + '" fill="none" stroke="' + live[0].color + '" stroke-width="' + (R - r) + '"><title>' + esc(live[0].name) + ': ' + live[0].n + '</title></circle>';
@@ -43,11 +43,16 @@
           return '<path d="' + d + '" fill="' + p.color + '" stroke="#fff" stroke-width="1.5"><title>' + esc(p.name) + ': ' + p.n + '</title></path>';
         }).join('');
       }
-      return '<div class="piewrap"><svg viewBox="0 0 120 120" width="150" height="150" role="img" aria-label="Customers donut chart">' + svg + '<text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="#0f2a4a">' + total + '</text><text x="60" y="72" text-anchor="middle" font-size="8" fill="#64748b">customers</text></svg><div class="legend">' + legend + '</div></div>';
+      return '<div class="piewrap"><svg viewBox="0 0 120 120" width="170" height="170" role="img" aria-label="Customers donut chart">' + svg + '<text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="#0f2a4a">' + total + '</text><text x="60" y="72" text-anchor="middle" font-size="8" fill="#64748b">customers</text></svg><div class="legend">' + legend + '</div></div>';
+    }
+    function ownerTable() {
+      var row = function (o, i) { var t = o.regular + o.other; return '<tr><td><i class="dot" style="background:' + (o.id ? COLORS[i % COLORS.length] : GREY) + '"></i>' + esc(o.name) + '</td><td>' + o.regular + '</td><td>' + o.other + '</td><td><b>' + t + '</b></td></tr>'; };
+      var sr = owners.reduce(function (s, o) { return s + o.regular; }, 0), so = owners.reduce(function (s, o) { return s + o.other; }, 0);
+      return '<table class="otable"><thead><tr><th>Owner</th><th>Regular</th><th>Other</th><th>Total</th></tr></thead><tbody>' + owners.map(row).join('') + '</tbody><tfoot><tr><td>Everyone</td><td>' + sr + '</td><td>' + so + '</td><td>' + (sr + so) + '</td></tr></tfoot></table>';
     }
     function pieCard() {
       if (!owners || !owners.length) return '';
-      return '<div class="card" id="pieCard"><div class="between"><h4>Customers by owner</h4><select id="pieSel" style="width:auto">' + VIEWS.map(function (v) { return '<option value="' + v[0] + '"' + (v[0] === pieView ? ' selected' : '') + '>' + esc(v[1]) + '</option>'; }).join('') + '</select></div><div id="pieBody">' + donut(pieParts(pieView)) + '</div></div>';
+      return '<div class="card" id="pieCard"><div class="between"><div><h3>Customers by owner</h3><div class="muted small">Regular means invoiced 2 or more times.' + (owners.some(function (o) { return !o.id && o.regular + o.other; }) ? ' <b style="color:var(--warn)">Some customers have no owner yet.</b>' : '') + '</div></div><select id="pieSel" style="width:auto">' + VIEWS.map(function (v) { return '<option value="' + v[0] + '"' + (v[0] === pieView ? ' selected' : '') + '>' + esc(v[1]) + '</option>'; }).join('') + '</select></div><div class="pieGrid"><div id="pieBody">' + donut(pieParts(pieView)) + '</div>' + ownerTable() + '</div></div>';
     }
     function load(refresh) {
       var url = '/api/customers?filter=' + filter + (who ? '&userId=' + who : '') + (q ? '&q=' + encodeURIComponent(q) : '') + (refresh ? '&refresh=1' : '');
