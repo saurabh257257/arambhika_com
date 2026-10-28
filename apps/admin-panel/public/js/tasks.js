@@ -15,10 +15,14 @@
     if (!t.carried) return '';
     return P.pill('+' + t.carried + ' carried over from ' + (t.schedule === 'weekly' ? 'last week' : 'earlier'), 'doing');
   }
+  // which task cards are open: each starts closed except the first one still to be finished; a click toggles it and the choice is remembered
+  var openIds = {}, seeded = false;
+  function seedOpen(tasks) { if (seeded) return; seeded = true; var first = tasks.filter(function (t) { return !(t.completedAt || (t.progress.total && t.progress.done >= t.progress.total)); })[0]; if (first) openIds[first.id] = true; }
+  function isOpen(t) { return Boolean(openIds[t.id]); }
   function taskCard(t, editable) {
     var pr = t.progress, hasFu = t.kind === 'rows' && t.columns.some(function (c) { return c.followUp; });
     var when = t.schedule === 'weekly' ? P.pill('This week, from ' + P.fmtDate(t.date)) : t.schedule === 'once' ? P.pill(t.dueDate ? 'Due ' + P.fmtDate(t.dueDate) : 'One-time', t.dueDate && t.dueDate < P.today && !t.completedAt ? 'overdue' : '') : P.pill('Daily');
-    var head = '<div class="th"><div class="between"><h3>' + esc(t.name) + '</h3><span class="chips">' + P.pill(KIND[t.kind]) + when + carryNote(t) + (t.completedAt ? P.pill('Complete', 'ok') : '') + '</span></div>' +
+    var head = '<div class="th"><div class="between"><span class="chips">' + P.pill(KIND[t.kind]) + when + carryNote(t) + (t.completedAt ? P.pill('Complete', 'ok') : '') + '</span></div>' +
       (t.instructions ? '<div class="muted">' + esc(t.instructions) + '</div>' : '') +
       (t.carried ? '<div class="muted small">Target today: ' + t.base + ' + ' + t.carried + ' left over from before = ' + (t.base + t.carried) + '</div>' : '') +
       (hasFu ? '<div class="muted small">Set a follow-up date on a call and it comes back by itself on that day.</div>' : '') +
@@ -42,11 +46,21 @@
       body = '<form class="row" style="padding:12px 14px" data-count="' + t.id + '"><label>How many ' + esc(t.unit) + ' (target ' + t.target + ')<input type="number" name="count" min="0" value="' + t.count + '"' + (editable ? '' : ' disabled') + '></label>' +
         '<label style="flex:3 1 240px">Notes or link<input name="notes" maxlength="2000" value="' + esc(t.notes) + '" placeholder="e.g. link of the Instagram post"' + (editable ? '' : ' disabled') + '></label>' + (editable ? '<button class="btn fit" type="submit">Save</button>' : '') + '</form>';
     }
-    return '<div class="task" data-card="' + t.id + '">' + head + body + '</div>';
+    var open = isOpen(t);
+    var sum = '<div class="tsum" data-toggle="' + t.id + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b class="tname">' + esc(t.name) + '</b><span class="tprog' + (t.completedAt || (pr.total && pr.done >= pr.total) ? ' ok' : '') + '">' + pr.done + '/' + pr.total + '</span><span class="tbar">' + P.bar(pr.done, pr.total) + '</span></div>';
+    return '<div class="task' + (open ? ' open' : '') + '" data-card="' + t.id + '">' + sum + '<div class="tbody">' + head + body + '</div></div>';
   }
 
   function wireTasks(el, editable, tasks, reload) {
     function replace(task) { var old = el.querySelector('[data-card="' + task.id + '"]'); var tmp = document.createElement('div'); tmp.innerHTML = taskCard(task, editable); if (old) old.replaceWith(tmp.firstChild); }
+    function toggle(e) {
+      var h = e.target.closest('[data-toggle]'); if (!h) return;
+      if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      var card = h.closest('.task'), id = h.dataset.toggle; openIds[id] = !openIds[id];
+      card.classList.toggle('open', openIds[id]); h.querySelector('.caret').innerHTML = openIds[id] ? '&#9662;' : '&#9656;';
+    }
+    el.addEventListener('click', toggle); el.addEventListener('keydown', toggle);
     if (!editable) return;
     el.addEventListener('click', function (e) {
       var b = e.target.closest('[data-save-row]'); if (!b) return;
@@ -138,6 +152,7 @@
       var date = state.date;
       return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] }), date === P.today ? P.api('GET', '/api/requests?filter=mine').catch(function () { return { requests: [] }; }) : Promise.resolve({ requests: [] })]).then(function (res) {
         var r = res[0], w = res[1], fu = res[2].followups, rq = res[3].requests.filter(function (x) { return !x.complete; }); limits = { min: w.minDate, max: w.maxDate };
+        seedOpen(r.tasks);
         el.innerHTML = weekStrip(w, date, false) + daySummary(r, date) +
           requestsCard(rq) + followupsCard(fu) +
           (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, true); }).join('') : P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.'));
@@ -164,11 +179,12 @@
       var date = state.date;
       return Promise.all([P.api('GET', '/api/tasks?userId=' + who + '&date=' + date), P.api('GET', '/api/week?userId=' + who + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + who)]).then(function (res) {
         var r = res[0], w = res[1], fu = res[2].followups;
+        seedOpen(r.tasks);
         el.innerHTML = '<div class="card"><div class="row"><label>Team member<select id="wu">' + P.userOptions(who) + '</select></label></div></div>' + weekStrip(w, date, true) +
           (fu.length ? '<div class="card"><h3>Follow-up calls due (' + fu.length + ')</h3><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></div>' : '') +
           (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, false); }).join('') : P.empty('No tasks for them on this day.'));
         el.querySelector('#wu').addEventListener('change', function (e) { P.viewAs = e.target.value; load().catch(P.fail); });
-        if (!wired) { wired = true; wireWeek(el, state, {}, function () { load().catch(P.fail); }); }
+        if (!wired) { wired = true; wireTasks(el, false, [], null); wireWeek(el, state, {}, function () { load().catch(P.fail); }); }
       });
     }
     return load();
