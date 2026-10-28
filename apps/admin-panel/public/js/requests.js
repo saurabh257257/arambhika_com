@@ -34,7 +34,7 @@
         (can && r.screenshots.length < 5 ? '<label class="btn ghost sm" style="display:inline-block;cursor:pointer">+ Upload screenshot<input type="file" accept="image/*" data-photo hidden></label>' : '') + '</div>';
     }
 
-    function card(r) {
+    function cardFull(r) {
       var mine = r.ownerId === P.me.id, can = mine || isAdmin;
       var tone = r.complete ? 'good' : r.needsAttention ? 'hot' : r.followUpDue ? 'warn' : '';
       return '<div class="item ' + tone + '" data-id="' + r.id + '"><div class="head"><b>' + esc(r.customerName) + (r.company ? ' <span class="muted">' + esc(r.company) + '</span>' : '') + (r.amount ? ' <span class="muted">' + P.money(r.amount) + '</span>' : '') + '</b>' +
@@ -48,6 +48,14 @@
         (can ? '<button class="btn ghost sm" data-edit type="button">Edit details</button>' : '') + (isAdmin ? '<button class="btn ghost sm" data-del type="button" style="color:#b91c1c">Delete</button>' : '') + (r.updatedAt ? '<span class="stamp">Updated ' + P.fmtTime(r.updatedAt) + '</span>' : '') + '</div>' +
         (editing === r.id ? '<form class="fu" data-editform><div class="row"><label>Customer<input name="customerName" value="' + esc(r.customerName) + '" maxlength="100" required></label><label>Phone<input name="phone" value="' + esc(r.phone) + '" maxlength="20"></label><label>Company<input name="company" value="' + esc(r.company) + '" maxlength="100"></label><label>Amount (₹)<input name="amount" type="number" min="0" step="0.01" value="' + (r.amount || '') + '"></label></div><label>What they want<input name="request" value="' + esc(r.request) + '" maxlength="1000"></label><div class="actions"><button class="btn sm" type="submit">Save</button><button class="btn ghost sm" type="button" data-edit-cancel>Cancel</button></div></form>' : '') +
         '</div>';
+    }
+
+    // the owner's list is folded: just the customer and how far along the request is, a click opens the whole card
+    var rOpen = {};
+    function card(r) {
+      if (!isAdmin) return cardFull(r);
+      var open = rOpen[r.id] === true;
+      return '<div class="rcard' + (open ? ' open' : '') + '" data-rc="' + r.id + '"><div class="rsum" data-rtoggle role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b class="rname">' + esc(r.customerName) + '</b>' + P.pill(r.progress.percent + '% completed', r.complete ? 'ok' : '') + '</div><div class="rbody">' + cardFull(r) + '</div></div>';
     }
 
     // the owner sees everybody's requests side by side, one column per person (and one for requests nobody has picked yet)
@@ -100,6 +108,8 @@
     }
 
     el.addEventListener('click', function (e) {
+      var rt = e.target.closest('[data-rtoggle]');
+      if (rt) { var rc = rt.parentNode, on = !rc.classList.contains('open'); rc.classList.toggle('open', on); rOpen[rc.dataset.rc] = on; rt.querySelector('.caret').innerHTML = on ? '&#9662;' : '&#9656;'; return; }
       var f = e.target.closest('[data-f]'); if (f) { filter = f.dataset.f; load().catch(P.fail); return; }
       if (e.target.id === 'rf') { e.target.disabled = true; load(true).then(function () { P.toast('Checked Zoho'); }).catch(P.fail); return; }
       var id = (e.target.closest('[data-id]') || { dataset: {} }).dataset;

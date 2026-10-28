@@ -244,3 +244,12 @@ textarea { min-height: 70px; resize: vertical; }
 
 .track .tk.tap i{cursor:pointer;transition:transform .1s}
 .track .tk.tap i:hover{transform:scale(1.12)}
+
+/* owner's customer requests: folded to the name and % completed */
+.rcard{margin-bottom:10px}
+.rcard > .rsum{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border:1px solid var(--line);border-radius:12px;cursor:pointer;user-select:none}
+.rcard > .rsum:hover{background:#f8fafc}
+.rcard .caret{color:var(--muted);width:12px}
+.rcard .rname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcard > .rbody{display:none;margin-top:6px}
+.rcard.open > .rbody{display:block}
