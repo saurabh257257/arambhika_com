@@ -190,9 +190,9 @@
       return Promise.all([P.api('GET', '/api/tasks?userId=' + who + '&date=' + date), P.api('GET', '/api/week?userId=' + who + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + who)]).then(function (res) {
         var r = res[0], w = res[1], fu = res[2].followups;
         seedOpen(r.tasks);
-        el.innerHTML = '<div class="card"><div class="row"><label>Team member<select id="wu">' + P.userOptions(who) + '</select></label></div></div>' + weekStrip(w, date, true) +
+        el.innerHTML = '<div class="tasklayout"><aside><div class="card" style="padding:10px 12px"><label>Team member<select id="wu">' + P.userOptions(who) + '</select></label></div>' + daySummary(r, date) + weekStrip(w, date, true) + '</aside><main>' +
           (fu.length ? '<div class="card"><h3>Follow-up calls due (' + fu.length + ')</h3><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></div>' : '') +
-          taskList(r.tasks, false, P.empty('No tasks for them on this day.'));
+          taskList(r.tasks, false, P.empty('No tasks for them on this day.')) + '</main></div>';
         el.querySelector('#wu').addEventListener('change', function (e) { P.viewAs = e.target.value; load().catch(P.fail); });
         if (!wired) { wired = true; wireTasks(el, false, [], null); wireWeek(el, state, {}, function () { load().catch(P.fail); }); }
       });
