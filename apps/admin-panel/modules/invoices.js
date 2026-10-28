@@ -44,10 +44,11 @@ module.exports = function invoices(app, ctx) {
   app.get('/api/invoices', async (req, res) => {
     let rows;
     try { rows = await load(req.query.refresh === '1'); } catch (err) { return res.json({ invoices: [], summary: {}, error: err.message, outcomes: ctx.cadence().invoice }); }
+    // a team member only ever sees (and is only counted on) the invoices that belong to them; the owner sees all
+    if (req.user.role !== 'admin') rows = rows.filter((r) => r.ownerId === req.user.id);
     const needing = rows.filter((r) => r.needs);
     const summary = { unpaid: rows.length, outstanding: Math.round(rows.reduce((s, r) => s + r.balance, 0)), overdue: rows.filter((r) => r.daysOverdue > 0).length, needing: needing.length, compliant: needing.filter((r) => r.compliant).length,
       percent: needing.length ? Math.round(needing.filter((r) => r.compliant).length / needing.length * 100) : 100, unassigned: rows.filter((r) => !r.ownerId).length, neverFollowed: needing.filter((r) => r.neverFollowed).length };
-    if (req.user.role !== 'admin') rows = rows.filter((r) => !r.ownerId || r.ownerId === req.user.id);
     const f = req.query.filter;
     if (f === 'mine') rows = rows.filter((r) => r.ownerId === req.user.id);
     if (f === 'unassigned') rows = rows.filter((r) => !r.ownerId);
@@ -64,13 +65,7 @@ module.exports = function invoices(app, ctx) {
   const idOk = (req, res) => { if (!ID_RE.test(req.params.id)) { res.status(400).json({ error: 'Bad invoice' }); return false; } return true; };
 
   app.post('/api/invoices/:id/pick', (req, res) => {
-    if (req.user.role !== 'employee') return res.status(403).json({ error: 'Team members pick invoices; the owner assigns them' });
-    if (!idOk(req, res)) return;
-    const s = ensureState(req.params.id);
-    if (s.ownerId) return res.status(400).json({ error: s.ownerId === req.user.id ? 'You already picked this invoice' : ctx.userName(s.ownerId) + ' already picked this invoice' });
-    s.ownerId = req.user.id; s.updatedAt = nowISO(); ctx.save('invoicestate');
-    ctx.log(req.user, 'Picked invoice ' + req.params.id);
-    res.json({ ok: true });
+    res.status(403).json({ error: 'The owner assigns invoices (they follow the customer, or are given to you directly)' });
   });
 
   app.post('/api/invoices/:id/assign', ctx.requireAdmin, (req, res) => {
@@ -97,8 +92,12 @@ module.exports = function invoices(app, ctx) {
     } catch (err) { res.status(400).json({ error: err.message }); }
   });
 
-  app.get('/api/invoices/:id/history', (req, res) => {
+  app.get('/api/invoices/:id/history', async (req, res) => {
     if (!idOk(req, res)) return;
+    if (req.user.role !== 'admin') {
+      let mine = null; try { mine = (await load(false)).find((r) => r.id === req.params.id); } catch (e) { /* no Zoho: nothing to show */ }
+      if (!mine || mine.ownerId !== req.user.id) return res.json({ history: [] });
+    }
     res.json({ history: logs().filter((e) => e.kind === 'invoice' && e.refId === req.params.id).sort((a, b) => b.at.localeCompare(a.at)) });
   });
 };

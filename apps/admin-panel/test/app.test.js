@@ -572,8 +572,12 @@ describe('invoices: are we following up properly?', () => {
     assert.equal((await admin.post('/api/invoices/9001/assign', { ownerId: rajId })).status, 200);
     assert.equal((await admin.get('/api/invoices')).data.invoices.find((i) => i.number === 'INV-1').ownerName, 'Raj', 'the invoice\'s own owner wins');
     assert.equal((await ann.get('/api/invoices')).data.invoices.some((i) => i.number === 'INV-1'), false);
-    assert.equal((await raj.post('/api/invoices/9004/pick')).status, 200);
-    assert.equal((await ann.post('/api/invoices/9004/pick')).status, 400);
+    assert.equal((await raj.post('/api/invoices/9004/pick')).status, 403, 'team members cannot pick invoices any more');
+    assert.equal((await ann.get('/api/invoices')).data.invoices.every((i) => i.ownerId === annId), true, 'a team member only sees their own invoices');
+    const sum = (await ann.get('/api/invoices')).data.summary, all = (await admin.get('/api/invoices')).data.summary;
+    assert.ok(sum.unpaid < all.unpaid, 'and the figures at the top count only theirs');
+    assert.deepEqual((await ann.get('/api/invoices/9001/history')).data.history, [], 'nor can they read the history of someone else invoice');
+    assert.equal((await admin.post('/api/invoices/9004/assign', { ownerId: rajId })).status, 200);
   });
 
   test('follow-ups: a promise needs a date; a reminder sets the next date; the compliance figure moves', async () => {
