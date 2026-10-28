@@ -16,8 +16,8 @@
     return P.pill('+' + t.carried + ' carried over from ' + (t.schedule === 'weekly' ? 'last week' : 'earlier'), 'doing');
   }
   // which task cards are open: the first task starts open and the rest closed; a click toggles one and the choice is remembered
-  var openIds = {}, seeded = false;
-  function seedOpen(tasks) { if (seeded) return; seeded = true; var first = tasks.filter(function (t) { return t.schedule !== 'weekly'; })[0] || tasks[0]; if (first) openIds[first.id] = true; }
+  var openIds = {}, seeded = {};
+  function seedOpen(tasks, key) { key = key || 'me'; if (seeded[key]) return; seeded[key] = true; var first = tasks.filter(function (t) { return t.schedule !== 'weekly'; })[0] || tasks[0]; if (first) openIds[first.id] = true; }
   function isOpen(t) { return Boolean(openIds[t.id]); }
   // today's and one-time tasks first, then the weekly ones under their own heading with the week's count
   function taskList(tasks, editable, empty) {
@@ -183,17 +183,21 @@
   // ---------------- the owner looks at somebody's work ----------------
   P.register({ id: 'work', label: 'Team work', roles: ['admin'], order: 2, render: function (el) {
     var state = { date: P.today }, wired = false;
+    // everybody's day side by side: each person has their own column with the day's total, the week and their tasks
+    function column(u, r, w, fu) {
+      seedOpen(r.tasks, u.id);
+      return '<section class="tcol"><div class="tname2"><h3>' + esc(u.name) + '</h3></div>' + daySummary(r, state.date) + weekStrip(w, state.date, true) +
+        (fu.length ? '<div class="card"><h3>Follow-up calls due (' + fu.length + ')</h3><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></div>' : '') +
+        taskList(r.tasks, false, P.empty('No tasks for them on this day.')) + '</section>';
+    }
     function load() {
-      var who = P.viewAs || (P.users.filter(function (u) { return u.active; })[0] || {}).id || '';
-      if (!who) { el.innerHTML = P.empty('Add team members first.'); return Promise.resolve(); }
+      var people = P.users.filter(function (u) { return u.active !== false; });
+      if (!people.length) { el.innerHTML = P.empty('Add team members first.'); return Promise.resolve(); }
       var date = state.date;
-      return Promise.all([P.api('GET', '/api/tasks?userId=' + who + '&date=' + date), P.api('GET', '/api/week?userId=' + who + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + who)]).then(function (res) {
-        var r = res[0], w = res[1], fu = res[2].followups;
-        seedOpen(r.tasks);
-        el.innerHTML = '<div class="tasklayout"><aside><div class="card" style="padding:10px 12px"><label>Team member<select id="wu">' + P.userOptions(who) + '</select></label></div>' + daySummary(r, date) + weekStrip(w, date, true) + '</aside><main>' +
-          (fu.length ? '<div class="card"><h3>Follow-up calls due (' + fu.length + ')</h3><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></div>' : '') +
-          taskList(r.tasks, false, P.empty('No tasks for them on this day.')) + '</main></div>';
-        el.querySelector('#wu').addEventListener('change', function (e) { P.viewAs = e.target.value; load().catch(P.fail); });
+      return Promise.all(people.map(function (u) {
+        return Promise.all([P.api('GET', '/api/tasks?userId=' + u.id + '&date=' + date), P.api('GET', '/api/week?userId=' + u.id + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + u.id)]);
+      })).then(function (all) {
+        el.innerHTML = '<div class="twgrid">' + people.map(function (u, i) { return column(u, all[i][0], all[i][1], all[i][2].followups); }).join('') + '</div>';
         if (!wired) { wired = true; wireTasks(el, false, [], null); wireWeek(el, state, {}, function () { load().catch(P.fail); }); }
       });
     }

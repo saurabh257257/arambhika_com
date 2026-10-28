@@ -43,6 +43,14 @@
         '</div>';
     }
 
+    // the owner sees everybody's requests side by side, one column per person (and one for requests nobody has picked yet)
+    function byPerson(list) {
+      var people = P.users.filter(function (u) { return u.active !== false; });
+      var cols = people.map(function (u) { return { name: u.name, items: list.filter(function (x) { return x.ownerId === u.id; }) }; });
+      var loose = list.filter(function (x) { return !people.some(function (u) { return u.id === x.ownerId; }); });
+      if (loose.length) cols.push({ name: 'Nobody yet', items: loose });
+      return '<div class="twgrid">' + cols.map(function (c) { return '<section class="tcol"><div class="tname2"><h3>' + esc(c.name) + ' <span class="muted small">(' + c.items.length + ')</span></h3></div>' + (c.items.length ? c.items.map(card).join('') : '<div class="muted small">Nothing here.</div>') + '</section>'; }).join('') + '</div>';
+    }
     function load(refresh) {
       var url = '/api/requests?filter=' + filter + (who ? '&userId=' + who : '') + (refresh ? '&refresh=1' : '');
       return P.api('GET', url).then(function (r) {
@@ -55,7 +63,7 @@
           '<div class="row"><label style="flex:3 1 260px">What do they want?<input name="request" maxlength="1000" placeholder="e.g. 20 kg nickel strip 0.15 mm"></label><label>Follow up on<input type="date" name="nextDate" min="' + P.today + '"></label>' + (isAdmin ? '<label>Give it to<select name="ownerId"><option value="">Nobody (let the team pick)</option>' + P.userOptions('') + '</select></label>' : '') + '<button class="btn fit" type="submit">Save request</button></div></form>' +
           '<div class="muted small">Every customer who asks for something goes through six steps: asked what is required, quote sent and payment asked, payment received (with the screenshot), material ready, dispatched, sent successfully. Tick each when it is done. A request that is not finished shows up again tomorrow.</div></div>' +
           (r.zoho && !r.zoho.ok && isAdmin ? '<div class="banner">Zoho did not answer (' + esc(r.zoho.error) + '). New website orders will appear once it is reachable.</div>' : '') +
-          (r.requests.length ? '<div class="list">' + r.requests.map(card).join('') + '</div>' : P.empty(filter === 'open' ? 'No open customer requests. When a customer asks for something, tap "+ Log a customer request".' : 'Nothing here.'));
+          (r.requests.length ? (isAdmin && !who ? byPerson(r.requests) : '<div class="list">' + r.requests.map(card).join('') + '</div>') : P.empty(filter === 'open' ? 'No open customer requests. When a customer asks for something, tap "+ Log a customer request".' : 'Nothing here.'));
         el.querySelector('#addR').addEventListener('click', function () { var f = el.querySelector('#rForm'); f.hidden = !f.hidden; });
         el.querySelector('#rForm').addEventListener('submit', function (e) {
           e.preventDefault(); var f = e.target;
