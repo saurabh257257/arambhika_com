@@ -15,9 +15,9 @@
     if (!t.carried) return '';
     return P.pill('+' + t.carried + ' carried over from ' + (t.schedule === 'weekly' ? 'last week' : 'earlier'), 'doing');
   }
-  // which task cards are open: all start closed so every task is in view at once; a click toggles one and the choice is remembered
-  var openIds = {};
-  function seedOpen() { /* nothing is opened for you */ }
+  // which task cards are open: the first task starts open and the rest closed; a click toggles one and the choice is remembered
+  var openIds = {}, seeded = false;
+  function seedOpen(tasks) { if (seeded) return; seeded = true; var first = tasks.filter(function (t) { return t.schedule !== 'weekly'; })[0] || tasks[0]; if (first) openIds[first.id] = true; }
   function isOpen(t) { return Boolean(openIds[t.id]); }
   // today's and one-time tasks first, then the weekly ones under their own heading with the week's count
   function taskList(tasks, editable, empty) {
