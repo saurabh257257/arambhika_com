@@ -22,29 +22,32 @@
         '</div><div data-slot></div></div>';
     }
 
-    // a pie drawn as SVG: slices = people, with the count beside each name in the legend
-    var COLORS = ['#0f766e', '#1d4ed8', '#b45309', '#7c3aed', '#be185d', '#0891b2'], GREY = '#cbd5e1';
-    function pie(title, parts) {
-      var total = parts.reduce(function (s, p) { return s + p.n; }, 0);
-      var legend = parts.map(function (p, i) { return '<div class="lg"><i style="background:' + p.color + '"></i><span>' + esc(p.name) + '</span><b>' + p.n + (total ? ' (' + Math.round(p.n / total * 100) + '%)' : '') + '</b></div>'; }).join('');
-      var svg;
-      if (!total) svg = '<circle cx="60" cy="60" r="56" fill="#eef2f6"/>';
-      else if (parts.filter(function (p) { return p.n > 0; }).length === 1) svg = '<circle cx="60" cy="60" r="56" fill="' + parts.filter(function (p) { return p.n > 0; })[0].color + '"/>';
+    // one donut chart with a drop-down to choose what it shows; drawn as SVG, the count beside each name in the legend
+    var COLORS = ['#0f766e', '#1d4ed8', '#b45309', '#7c3aed', '#be185d', '#0891b2'], GREY = '#cbd5e1', pieView = 'all', owners = [];
+    var VIEWS = [['all', 'All customers by owner'], ['regular', 'Regular customers by owner'], ['other', 'Other customers by owner'], ['kind', 'Regular vs occasional']];
+    function pieParts(view) {
+      var col = function (o, i) { return o.id ? COLORS[i % COLORS.length] : GREY; };
+      if (view === 'kind') return [{ name: 'Regular (2+ invoices)', n: owners.reduce(function (s, o) { return s + o.regular; }, 0), color: '#0f766e' }, { name: 'Occasional / not yet invoiced', n: owners.reduce(function (s, o) { return s + o.other; }, 0), color: GREY }];
+      return owners.map(function (o, i) { return { name: o.name, n: view === 'regular' ? o.regular : view === 'other' ? o.other : o.regular + o.other, color: col(o, i) }; });
+    }
+    function donut(parts) {
+      var total = parts.reduce(function (s, p) { return s + p.n; }, 0), R = 56, r = 34, C = 60;
+      var legend = parts.map(function (p) { return '<div class="lg"><i style="background:' + p.color + '"></i><span>' + esc(p.name) + '</span><b>' + p.n + (total ? ' (' + Math.round(p.n / total * 100) + '%)' : '') + '</b></div>'; }).join('');
+      var live = parts.filter(function (p) { return p.n > 0; }), svg;
+      if (!total) svg = '<circle cx="60" cy="60" r="' + ((R + r) / 2) + '" fill="none" stroke="#eef2f6" stroke-width="' + (R - r) + '"/>';
+      else if (live.length === 1) svg = '<circle cx="60" cy="60" r="' + ((R + r) / 2) + '" fill="none" stroke="' + live[0].color + '" stroke-width="' + (R - r) + '"><title>' + esc(live[0].name) + ': ' + live[0].n + '</title></circle>';
       else {
         var a = -Math.PI / 2; svg = parts.map(function (p) {
-          if (!p.n) return ''; var x = p.n / total * 2 * Math.PI, e = a + x, big = x > Math.PI ? 1 : 0;
-          var d = 'M60 60 L' + (60 + 56 * Math.cos(a)).toFixed(2) + ' ' + (60 + 56 * Math.sin(a)).toFixed(2) + ' A56 56 0 ' + big + ' 1 ' + (60 + 56 * Math.cos(e)).toFixed(2) + ' ' + (60 + 56 * Math.sin(e)).toFixed(2) + ' Z'; a = e;
+          if (!p.n) return ''; var x = p.n / total * 2 * Math.PI, e = a + x, big = x > Math.PI ? 1 : 0, pt = function (rad, ang) { return (C + rad * Math.cos(ang)).toFixed(2) + ' ' + (C + rad * Math.sin(ang)).toFixed(2); };
+          var d = 'M' + pt(R, a) + ' A' + R + ' ' + R + ' 0 ' + big + ' 1 ' + pt(R, e) + ' L' + pt(r, e) + ' A' + r + ' ' + r + ' 0 ' + big + ' 0 ' + pt(r, a) + ' Z'; a = e;
           return '<path d="' + d + '" fill="' + p.color + '" stroke="#fff" stroke-width="1.5"><title>' + esc(p.name) + ': ' + p.n + '</title></path>';
         }).join('');
       }
-      return '<div class="piebox"><h4>' + esc(title) + ' <span class="muted small">(' + total + ')</span></h4><div class="piewrap"><svg viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="' + esc(title) + '">' + svg + '</svg><div class="legend">' + legend + '</div></div></div>';
+      return '<div class="piewrap"><svg viewBox="0 0 120 120" width="150" height="150" role="img" aria-label="Customers donut chart">' + svg + '<text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="#0f2a4a">' + total + '</text><text x="60" y="72" text-anchor="middle" font-size="8" fill="#64748b">customers</text></svg><div class="legend">' + legend + '</div></div>';
     }
-    function pies(owners) {
+    function pieCard() {
       if (!owners || !owners.length) return '';
-      var col = function (o, i) { return o.id ? COLORS[i % COLORS.length] : GREY; };
-      var by = function (key) { return owners.map(function (o, i) { return { name: o.name, n: o[key], color: col(o, i) }; }); };
-      var kind = [{ name: 'Regular (2+ invoices)', n: owners.reduce(function (s, o) { return s + o.regular; }, 0), color: '#0f766e' }, { name: 'Occasional / not yet invoiced', n: owners.reduce(function (s, o) { return s + o.other; }, 0), color: GREY }];
-      return '<div class="card pies">' + pie('Regular customers by owner', by('regular')) + pie('Other customers by owner', by('other')) + pie('All customers by owner', owners.map(function (o, i) { return { name: o.name, n: o.regular + o.other, color: col(o, i) }; })) + pie('Regular vs occasional', kind) + '</div>';
+      return '<div class="card" id="pieCard"><div class="between"><h4>Customers by owner</h4><select id="pieSel" style="width:auto">' + VIEWS.map(function (v) { return '<option value="' + v[0] + '"' + (v[0] === pieView ? ' selected' : '') + '>' + esc(v[1]) + '</option>'; }).join('') + '</select></div><div id="pieBody">' + donut(pieParts(pieView)) + '</div></div>';
     }
     function load(refresh) {
       var url = '/api/customers?filter=' + filter + (who ? '&userId=' + who : '') + (q ? '&q=' + encodeURIComponent(q) : '') + (refresh ? '&refresh=1' : '');
@@ -56,7 +59,7 @@
         el.innerHTML = '<div class="card"><div class="between"><div class="seg">' + seg.map(function (s) { return '<button class="btn ' + (filter === s[0] ? '' : 'ghost') + '" data-f="' + s[0] + '" type="button">' + s[1] + '</button>'; }).join('') + '</div>' +
           '<div class="actions">' + (isAdmin ? '<button class="btn ghost sm" id="share" type="button">Share unowned customers evenly</button><button class="btn ghost sm" id="resplit" type="button">Re-split all customers</button>' : '') + '<button class="btn ghost sm" id="rf" type="button">Refresh from Zoho</button></div></div>' +
           '<div class="row">' + (isAdmin ? '<label>Team member<select id="cw"><option value="">Everyone</option>' + P.userOptions(who) + '</select></label>' : '') + '<label style="flex:3 1 240px">Search<input id="cq" value="' + esc(q) + '" placeholder="Name, phone or email"></label></div></div>' +
-          (isAdmin ? pies(c.owners) : '') +
+          (isAdmin ? (owners = c.owners || [], pieCard()) : '') +
           (lastSplit ? '<div class="banner info">' + esc(lastSplit) + '</div>' : '') +
           (r.error ? '<div class="banner">Zoho did not answer: ' + esc(r.error) + '. Try "Refresh from Zoho" in a minute.</div>' : '') +
           (r.note ? '<div class="banner info">' + esc(r.note) + '</div>' : '') +
@@ -84,6 +87,7 @@
     });
     el.addEventListener('input', function (e) { if (e.target.id !== 'cq') return; q = e.target.value; clearTimeout(timer); timer = setTimeout(function () { load().catch(P.fail); }, 350); });
     el.addEventListener('change', function (e) {
+      if (e.target.id === 'pieSel') { pieView = e.target.value; el.querySelector('#pieBody').innerHTML = donut(pieParts(pieView)); return; }
       if (e.target.id === 'cw') { who = e.target.value; load().catch(P.fail); return; }
       var o = e.target.closest('[data-onb]'); if (!o) return;
       P.api('PATCH', '/api/customers/' + o.closest('[data-id]').dataset.id, { onboarded: o.value === 'yes' ? true : o.value === 'no' ? false : null }).then(function () { P.toast('Saved'); return load(); }).catch(P.fail);
