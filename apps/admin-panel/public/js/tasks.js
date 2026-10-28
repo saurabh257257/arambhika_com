@@ -58,11 +58,11 @@
     el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('.cellrow') && e.target.tagName === 'INPUT') { e.preventDefault(); e.target.closest('.cellrow').querySelector('[data-save-row]').click(); } });
     el.addEventListener('change', function (e) {
       var c = e.target.closest('[data-step]'); if (!c) return;
-      P.api('PUT', '/api/tasks/' + c.dataset.task + '/steps/' + c.dataset.step, { done: c.checked }).then(function (r) { replace(r.task); }).catch(function (err) { c.checked = !c.checked; P.fail(err); });
+      P.api('PUT', '/api/tasks/' + c.dataset.task + '/steps/' + c.dataset.step, { done: c.checked }).then(function (r) { replace(r.task); if (reload) reload(true); }).catch(function (err) { c.checked = !c.checked; P.fail(err); });
     });
     el.addEventListener('submit', function (e) {
       var f = e.target.closest('[data-count]'); if (!f) return; e.preventDefault();
-      P.api('PUT', '/api/tasks/' + f.dataset.count + '/count', { count: f.count.value, notes: f.notes.value }).then(function (r) { replace(r.task); P.toast('Saved ' + P.fmtTime(r.task.updatedAt)); }).catch(P.fail);
+      P.api('PUT', '/api/tasks/' + f.dataset.count + '/count', { count: f.count.value, notes: f.notes.value }).then(function (r) { replace(r.task); P.toast('Saved ' + P.fmtTime(r.task.updatedAt)); if (reload) reload(true); }).catch(P.fail);
     });
   }
 
@@ -78,19 +78,62 @@
         '<div class="actions"><button class="btn sm" type="submit">Save follow-up call</button></div></form></div>';
     }).join('') + '</div></div>';
   }
+  // ---------------- the week at a glance (Monday to Sunday) ----------------
+  var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function shortDate(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); }
+  function weekStrip(w, selected, isOwner) {
+    return '<div class="card" id="weekCard"><div class="between"><button class="btn ghost sm" data-wk="-7" type="button">&lsaquo; Previous week</button>' +
+      '<div style="text-align:center"><b>' + shortDate(w.weekStart) + ' to ' + shortDate(w.weekEnd) + '</b><div class="muted small">This week: ' + w.totals.done + ' of ' + w.totals.total + ' done</div></div>' +
+      '<button class="btn ghost sm" data-wk="7" type="button">Next week &rsaquo;</button></div>' +
+      '<div class="weekbar">' + w.days.map(function (d) {
+        var open = isOwner || d.editable || !d.isFuture;
+        var cls = (d.date === selected ? ' sel' : '') + (d.isToday ? ' today' : '') + (d.isFuture ? ' future' : '') + (!d.isWorkDay ? ' off' : '');
+        return '<button type="button" class="wk-day' + cls + '" data-day="' + d.date + '"' + (open ? '' : ' disabled') + '><span class="wk-n">' + DOW[d.dow] + '</span><span class="wk-d">' + Number(d.date.slice(8)) + '</span>' +
+          (d.isToday ? '<span class="wk-tag">Today</span>' : d.isFuture ? '<span class="wk-tag ahead">Ahead</span>' : '<span class="wk-tag">&nbsp;</span>') +
+          (d.isWorkDay ? P.bar(d.done, d.total) + '<span class="wk-t">' + (d.planned ? d.total + ' planned' : d.done + ' of ' + d.total) + '</span>' : '<span class="wk-t">Day off</span>') + '</button>';
+      }).join('') + '</div>' +
+      (w.weekly.length ? '<div class="muted small">This week:</div><div class="chips">' + w.weekly.map(function (x) { return '<span class="chip">' + esc(x.name) + ': <b>' + x.done + ' of ' + x.total + '</b>' + (x.carried ? ' (+' + x.carried + ' carried)' : '') + (x.planned ? ' planned' : '') + '</span>'; }).join('') + '</div>' : '') +
+      '<div class="muted small">Tap a day to see it. You can fill in later days too (up to a week ahead) if you have time: what is left over from earlier days is added on top when that day comes, and what you wrote is kept.</div></div>';
+  }
+  function daySummary(r, date) {
+    var done = r.tasks.reduce(function (s, t) { return s + t.progress.done; }, 0), total = r.tasks.reduce(function (s, t) { return s + t.progress.total; }, 0);
+    var title = date === P.today ? 'Today' : DOW[new Date(date + 'T00:00:00').getDay()] + ' ' + shortDate(date);
+    return '<div class="card" id="daySummary"><div><h3>' + title + (r.ahead ? ' (working ahead)' : '') + (r.workDay ? '' : ' (day off)') + '</h3><div class="muted">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left</div></div>' + (total ? P.bar(done, total) : '') +
+      (r.ahead ? '<div class="banner info">You are working ahead on this day. Whatever is left over from the days before is added on top when this day comes, and everything you write now is kept.</div>' : '') + '</div>';
+  }
+  // the week strip and its buttons, shared by the team member and the owner. load(date, anchor) is called with the new choice.
+  function wireWeek(el, state, limits, load) {
+    el.addEventListener('click', function (e) {
+      var d = e.target.closest('[data-day]'); if (d && !d.disabled) { state.date = d.dataset.day; load(); return; }
+      var w = e.target.closest('[data-wk]'); if (!w) return;
+      var step = Number(w.dataset.wk), next = P.addDays(state.date, step);
+      if (limits.max && next > limits.max) next = limits.max;
+      if (limits.min && next < limits.min) next = limits.min;
+      state.date = next; load();
+    });
+  }
+
   // ---------------- the team member's tasks ----------------
   P.register({ id: 'tasks', label: 'Tasks', roles: ['employee'], order: 1, render: function (el) {
-    var date = P.today, wired = false;
+    var state = { date: P.today }, wired = false, limits = {};
+    // after each save, the week strip and the day's totals are brought up to date without redrawing the rows being typed in
+    function refreshTop() {
+      var date = state.date;
+      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date)]).then(function (res) {
+        var sum = el.querySelector('#daySummary'), wk = el.querySelector('#weekCard');
+        var t1 = document.createElement('div'); t1.innerHTML = daySummary(res[0], date); if (sum) sum.replaceWith(t1.firstChild);
+        var t2 = document.createElement('div'); t2.innerHTML = weekStrip(res[1], date, false); if (wk) wk.replaceWith(t2.firstChild);
+      }).catch(function () { /* the numbers catch up on the next reload */ });
+    }
     function load() {
-      return Promise.all([P.api('GET', '/api/tasks?date=' + date), date === P.today ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] })]).then(function (res) {
-        var r = res[0], fu = res[1].followups;
-        var done = r.tasks.reduce(function (s, t) { return s + t.progress.done; }, 0), total = r.tasks.reduce(function (s, t) { return s + t.progress.total; }, 0);
-        el.innerHTML = '<div class="card"><div class="row"><label>Day<input type="date" id="td" value="' + date + '" max="' + P.today + '" min="' + P.addDays(P.today, -7) + '"></label><div><h3>' + (date === P.today ? 'Today' : P.fmtDate(date)) + (r.workDay ? '' : ' (day off)') + '</h3><div class="muted">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left</div></div></div>' + (total ? P.bar(done, total) : '') + '</div>' +
+      var date = state.date;
+      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] })]).then(function (res) {
+        var r = res[0], w = res[1], fu = res[2].followups; limits = { min: w.minDate, max: w.maxDate };
+        el.innerHTML = weekStrip(w, date, false) + daySummary(r, date) +
           followupsCard(fu) +
-          (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, true); }).join('') : P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected today.'));
-        el.querySelector('#td').addEventListener('change', function (e) { if (e.target.value) { date = e.target.value; load().catch(P.fail); } });
-        if (!wired) { wired = true; wireTasks(el, true, r.tasks, null); }
+          (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, true); }).join('') : P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.'));
         el.__fu = fu;
+        if (!wired) { wired = true; wireTasks(el, true, r.tasks, refreshTop); wireWeek(el, state, { get min() { return limits.min; }, get max() { return limits.max; } }, function () { load().catch(P.fail); }); }
       });
     }
     // the follow-up list changes after each save, so the handler reads the latest list from the element
@@ -104,17 +147,18 @@
 
   // ---------------- the owner looks at somebody's work ----------------
   P.register({ id: 'work', label: 'Team work', roles: ['admin'], order: 2, render: function (el) {
-    var date = P.today;
+    var state = { date: P.today }, wired = false;
     function load() {
       var who = P.viewAs || (P.users.filter(function (u) { return u.active; })[0] || {}).id || '';
       if (!who) { el.innerHTML = P.empty('Add team members first.'); return Promise.resolve(); }
-      return Promise.all([P.api('GET', '/api/tasks?userId=' + who + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + who)]).then(function (res) {
-        var r = res[0], fu = res[1].followups;
-        el.innerHTML = '<div class="card"><div class="row"><label>Team member<select id="wu">' + P.userOptions(who) + '</select></label><label>Day<input type="date" id="wd" value="' + date + '" max="' + P.today + '"></label></div></div>' +
+      var date = state.date;
+      return Promise.all([P.api('GET', '/api/tasks?userId=' + who + '&date=' + date), P.api('GET', '/api/week?userId=' + who + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + who)]).then(function (res) {
+        var r = res[0], w = res[1], fu = res[2].followups;
+        el.innerHTML = '<div class="card"><div class="row"><label>Team member<select id="wu">' + P.userOptions(who) + '</select></label></div></div>' + weekStrip(w, date, true) +
           (fu.length ? '<div class="card"><h3>Follow-up calls due (' + fu.length + ')</h3><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></div>' : '') +
           (r.tasks.length ? r.tasks.map(function (t) { return taskCard(t, false); }).join('') : P.empty('No tasks for them on this day.'));
         el.querySelector('#wu').addEventListener('change', function (e) { P.viewAs = e.target.value; load().catch(P.fail); });
-        el.querySelector('#wd').addEventListener('change', function (e) { if (e.target.value) { date = e.target.value; load().catch(P.fail); } });
+        if (!wired) { wired = true; wireWeek(el, state, {}, function () { load().catch(P.fail); }); }
       });
     }
     return load();
@@ -159,7 +203,7 @@
     var names = t.assignees.map(function (id) { return esc((P.users.filter(function (u) { return u.id === id; })[0] || {}).name || '?'); }).join(', ') || 'nobody';
     return '<div class="item ' + (t.active ? '' : 'warn') + '"><div class="between"><b>' + esc(t.name) + '</b><span class="chips">' + P.pill(KIND[t.kind]) + P.pill(SCHED[t.schedule]) + (t.carry ? P.pill('carries over') : '') + (t.active ? '' : P.pill('Switched off', 'overdue')) + '</span></div>' +
       '<div class="meta"><span>' + (t.kind === 'rows' ? t.rowCount + ' rows: ' + t.columns.map(function (c) { return esc(c.label); }).join(', ') : t.kind === 'checklist' ? t.steps.length + ' steps' : 'target ' + t.target + ' ' + esc(t.unit)) + '</span><span>For: <b>' + names + '</b></span>' + (t.dueDate ? '<span>Due ' + P.fmtDate(t.dueDate) + '</span>' : '') + '</div>' +
-      '<div class="actions">' + (t.adhoc ? '' : '<button class="btn ghost sm" data-edit="' + t.id + '" type="button">Change</button>') + (t.active ? '<button class="btn ghost sm" data-off="' + t.id + '" type="button">Switch off</button>' : '<button class="btn ghost sm" data-on="' + t.id + '" type="button">Switch on</button>') + '</div></div>';
+      '<div class="actions">' + (t.adhoc ? '' : '<button class="btn ghost sm" data-edit="' + t.id + '" type="button">Change</button>') + (t.active ? '<button class="btn ghost sm" data-off="' + t.id + '" type="button">Switch off</button>' : '<button class="btn ghost sm" data-on="' + t.id + '" type="button">Switch on</button>') + '<button class="btn ghost sm" style="color:#b91c1c" data-delete="' + t.id + '" data-name="' + esc(t.name) + '" type="button">Delete</button></div></div>';
   }
 
   P.register({ id: 'designer', label: 'Task designer', roles: ['admin'], order: 1, render: function (el) {
@@ -210,6 +254,12 @@
           var dc = t.closest('[data-del-col]'); if (dc) { dc.closest('[data-col]').remove(); return; }
           if (t.closest('[data-cancel]')) { editing = null; load().catch(P.fail); return; }
           var ed = t.closest('[data-edit]'); if (ed) { editing = state.list.filter(function (x) { return x.id === ed.dataset.edit; })[0]; load().then(function () { window.scrollTo(0, 0); }).catch(P.fail); return; }
+          var del = t.closest('[data-delete]');
+          if (del) {
+            if (!window.confirm('Delete "' + del.dataset.name + '" for good?\n\nThis also erases all the work your team has done under it (every day, for everybody) and cannot be undone.\n\nTo keep the history and just stop it, use "Switch off" instead.')) return;
+            P.api('DELETE', '/api/templates/' + del.dataset.delete + '?permanent=1').then(function (r) { P.toast('Deleted' + (r.removedWork ? ' with ' + r.removedWork + ' day' + (r.removedWork === 1 ? '' : 's') + ' of work' : '')); return load(); }).catch(P.fail);
+            return;
+          }
           var off = t.closest('[data-off]'); if (off) { P.api('DELETE', '/api/templates/' + off.dataset.off).then(function () { P.toast('Switched off'); return load(); }).catch(P.fail); return; }
           var on = t.closest('[data-on]'); if (on) { P.api('PUT', '/api/templates/' + on.dataset.on, { active: true }).then(function () { P.toast('Switched on'); return load(); }).catch(P.fail); }
         });

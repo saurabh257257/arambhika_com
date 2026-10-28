@@ -126,3 +126,20 @@ textarea { min-height: 70px; resize: vertical; }
   .col-edit { grid-template-columns: 1fr 1fr; }
   main { padding: 12px 8px 70px; }
 }
+
+/* the week strip on the Tasks page */
+.weekbar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.wk-day { display: grid; gap: 3px; justify-items: center; padding: 8px 4px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; font: inherit; color: #1f2937; text-align: center; }
+.wk-day .bar { width: 100%; }
+.wk-day:hover:not([disabled]) { border-color: var(--teal-2); }
+.wk-day.sel { border-color: var(--teal); background: #f0fdfa; box-shadow: 0 0 0 2px #99f6e4; }
+.wk-day.today .wk-d { background: var(--teal); color: #fff; }
+.wk-day.future { background: #f8fafc; }
+.wk-day.off { opacity: .55; }
+.wk-day[disabled] { opacity: .4; cursor: not-allowed; }
+.wk-n { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.wk-d { font-size: 17px; font-weight: 800; color: var(--navy); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; }
+.wk-tag { font-size: 10px; font-weight: 700; color: var(--teal); min-height: 12px; }
+.wk-tag.ahead { color: #6366f1; }
+.wk-t { font-size: 11px; color: var(--muted); line-height: 1.2; }
+@media (max-width: 720px) { .weekbar { gap: 3px; } .wk-day { padding: 6px 2px; } .wk-d { font-size: 15px; width: 26px; height: 26px; } .wk-t { font-size: 10px; } }

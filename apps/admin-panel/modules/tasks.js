@@ -8,6 +8,7 @@ const T = require('../lib/tasks');
 const { uid, nowISO, istDate, addDays, diffDays, weekStart, dayOfWeek, isDate, text, str } = require('../lib/util');
 
 const EDIT_WINDOW_DAYS = 7;
+const FUTURE_DAYS = 7;    // a person may work up to a week ahead
 const BACKFILL_DAYS = 7;   // working days nobody opened the panel are filled in this far back, so the shortfall chains correctly
 const FOLLOWUP_LOOKBACK = 90;
 const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5, 6]; // Monday to Saturday
@@ -28,8 +29,9 @@ module.exports = function tasks(app, ctx) {
     return Math.min(cap, shortfall(prev));
   };
 
-  function add(template, userId, date, carried) {
+  function add(template, userId, date, carried, ahead = false) {
     const inst = T.makeInstance(template, userId, date, carried);
+    if (ahead) inst.ahead = true; // started before its day: the carry-over is added when the day arrives
     instances().push(inst); ctx.save('tasks');
     return inst;
   }
@@ -38,30 +40,41 @@ module.exports = function tasks(app, ctx) {
   function ensureFor(template, userId, date) {
     if (!template.active || !template.assignees.includes(userId)) return null;
     const mine = mineOf(template, userId);
+    const today = ctx.todayIST();
+    const byDate = (x, y) => x.date.localeCompare(y.date);
     if (template.schedule === 'once') return mine[0] || add(template, userId, date, 0);
 
     if (template.schedule === 'weekly') {
       const monday = weekStart(date);
       const found = mine.find((i) => i.date === monday);
-      if (found) return found;
-      const prev = mine.filter((i) => i.date < monday).sort((a, b) => b.date.localeCompare(a.date))[0];
+      if (monday > weekStart(today)) return found || add(template, userId, monday, 0, true); // next week, started early
+      const prev = mine.filter((i) => i.date < monday).sort(byDate).pop();
+      if (found) { if (found.ahead) { T.topUp(found, carryFrom(template, prev)); ctx.save('tasks'); } return found; }
       return add(template, userId, monday, carryFrom(template, prev));
     }
 
-    // daily
-    const found = mine.find((i) => i.date === date);
-    if (found) return found;
-    if (!isWorkDay(date)) return null;
-    let prev = mine.filter((i) => i.date < date).sort((a, b) => b.date.localeCompare(a.date))[0];
-    if (prev) { // fill in the working days in between that nobody opened, so a miss is not forgotten
-      let d = addDays(prev.date, 1);
-      const earliest = addDays(date, -BACKFILL_DAYS);
-      if (d < earliest) d = earliest;
-      for (; d < date; d = addDays(d, 1)) {
-        if (isWorkDay(d) && !mine.some((i) => i.date === d)) { prev = add(template, userId, d, carryFrom(template, prev)); mine.push(prev); }
-      }
+    // daily, in the future: a person working ahead gets the sheet without any carry-over (it is added when that day comes)
+    if (date > today) {
+      const f = mine.find((i) => i.date === date);
+      if (f || !isWorkDay(date)) return f || null;
+      return add(template, userId, date, 0, true);
     }
-    return add(template, userId, date, carryFrom(template, prev));
+
+    // daily, today: every working day from the last one up to today exists and is settled, so a miss is carried and
+    // work that was started ahead gets its carry-over now. Working days nobody opened are filled in (up to a week back).
+    const earliest = addDays(date, -BACKFILL_DAYS);
+    const sorted = mine.slice().sort(byDate);
+    let prev = sorted.filter((i) => i.date < earliest).pop();
+    const first = sorted.find((i) => i.date >= earliest && i.date <= date);
+    let d = prev ? earliest : (first ? first.date : date);
+    for (; d <= date; d = addDays(d, 1)) {
+      if (!isWorkDay(d)) continue;
+      let inst = mine.find((i) => i.date === d);
+      if (!inst) { inst = add(template, userId, d, carryFrom(template, prev)); mine.push(inst); }
+      else if (inst.ahead) { T.topUp(inst, carryFrom(template, prev)); ctx.save('tasks'); }
+      prev = inst;
+    }
+    return mine.find((i) => i.date === date) || null;
   }
   function ensureToday(userId) {
     const today = ctx.todayIST();
@@ -70,7 +83,9 @@ module.exports = function tasks(app, ctx) {
 
   // the work one person sees for a day: that day's daily tasks, this week's weekly tasks, and one-time tasks still open
   function forUser(userId, date) {
-    if (date === ctx.todayIST()) ensureToday(userId);
+    const today = ctx.todayIST();
+    if (date === today) ensureToday(userId);
+    else if (date > today && date <= addDays(today, FUTURE_DAYS)) for (const t of templates()) ensureFor(t, userId, date); // working ahead
     const monday = weekStart(date);
     return instances().filter((i) => i.userId === userId && (i.schedule === 'once' ? (!i.completedAt || istDate(i.completedAt) === date) : i.schedule === 'weekly' ? i.date === monday : i.date === date));
   }
@@ -128,9 +143,19 @@ module.exports = function tasks(app, ctx) {
     res.json({ template: t });
   });
 
+  // Without ?permanent=1 the task is only switched off (the work already done stays on record).
+  // With ?permanent=1 the task is deleted for good, together with all the work done under it, for every person.
   app.delete('/api/templates/:id', ctx.requireAdmin, (req, res) => {
-    const t = templates().find((x) => x.id === req.params.id);
-    if (!t) return res.status(404).json({ error: 'Not found' });
+    const list = templates(); const at = list.findIndex((x) => x.id === req.params.id);
+    if (at < 0) return res.status(404).json({ error: 'Not found' });
+    const t = list[at];
+    if (req.query.permanent === '1') {
+      const all = instances(); let removed = 0;
+      for (let i = all.length - 1; i >= 0; i -= 1) if (all[i].templateId === t.id) { all.splice(i, 1); removed += 1; }
+      list.splice(at, 1); ctx.save('templates'); ctx.save('tasks');
+      ctx.log(req.user, 'Deleted the task "' + t.name + '"' + (removed ? ' and ' + removed + ' day' + (removed === 1 ? '' : 's') + ' of work under it' : ''));
+      return res.json({ ok: true, deleted: true, removedWork: removed });
+    }
     t.active = false; ctx.save('templates'); // switched off, not erased: the work already done stays on record
     ctx.log(req.user, 'Switched off the task "' + t.name + '"');
     res.json({ ok: true });
@@ -144,7 +169,34 @@ module.exports = function tasks(app, ctx) {
       userId = String(req.query.userId || '');
       if (!userId) return res.status(400).json({ error: 'Choose a team member' });
     }
-    res.json({ date, tasks: forUser(userId, date).map(view), workDay: isWorkDay(date) });
+    if (req.user.role !== 'admin' && date > addDays(ctx.todayIST(), FUTURE_DAYS)) return res.status(400).json({ error: 'You can work up to a week ahead, no further' });
+    res.json({ date, tasks: forUser(userId, date).map(view), workDay: isWorkDay(date), ahead: date > ctx.todayIST() });
+  });
+
+  // the week at a glance (Monday to Sunday): each day's progress, and this week's weekly tasks. Days ahead show what is planned.
+  app.get('/api/week', (req, res) => {
+    let userId = req.user.id;
+    if (req.user.role === 'admin') { userId = String(req.query.userId || ''); if (!userId) return res.status(400).json({ error: 'Choose a team member' }); }
+    const today = ctx.todayIST();
+    const monday = weekStart(req.query.date && isDate(req.query.date) ? req.query.date : today);
+    if (monday <= today && addDays(monday, 6) >= today) ensureToday(userId);
+    const mineT = templates().filter((t) => t.active && t.assignees.includes(userId));
+    const baseOf = (t) => (t.kind === 'rows' ? t.rowCount : t.kind === 'count' ? t.target : 0);
+    const summary = (list) => list.map((i) => { const u = T.units(i); return { name: i.name, done: u.done, total: u.total, carried: i.carried || 0, ahead: Boolean(i.ahead) }; });
+    const days = [];
+    for (let n = 0; n < 7; n += 1) {
+      const d = addDays(monday, n);
+      const insts = instances().filter((i) => i.userId === userId && i.schedule === 'daily' && i.date === d);
+      let tasksOf = summary(insts); let planned = false;
+      if (!insts.length && d > today && isWorkDay(d)) { tasksOf = mineT.filter((t) => t.schedule === 'daily' && baseOf(t)).map((t) => ({ name: t.name, done: 0, total: baseOf(t), carried: 0, ahead: false })); planned = true; }
+      const done = tasksOf.reduce((s, x) => s + x.done, 0); const total = tasksOf.reduce((s, x) => s + x.total, 0);
+      days.push({ date: d, dow: dayOfWeek(d), isToday: d === today, isFuture: d > today, isWorkDay: isWorkDay(d), tasks: tasksOf, done, total, percent: total ? Math.round(done / total * 100) : null, planned,
+        editable: d >= addDays(today, -EDIT_WINDOW_DAYS) && d <= addDays(today, FUTURE_DAYS) });
+    }
+    let weekly = summary(instances().filter((i) => i.userId === userId && i.schedule === 'weekly' && i.date === monday));
+    if (!weekly.length && monday > weekStart(today)) weekly = mineT.filter((t) => t.schedule === 'weekly' && baseOf(t)).map((t) => ({ name: t.name, done: 0, total: baseOf(t), carried: 0, ahead: false, planned: true }));
+    const sum = days.reduce((s, x) => ({ done: s.done + x.done, total: s.total + x.total }), { done: 0, total: 0 });
+    res.json({ weekStart: monday, weekEnd: addDays(monday, 6), today, days, weekly, totals: sum, minDate: addDays(today, -EDIT_WINDOW_DAYS), maxDate: addDays(today, FUTURE_DAYS) });
   });
 
   app.get('/api/followups-due', (req, res) => {
@@ -160,7 +212,8 @@ module.exports = function tasks(app, ctx) {
     const inst = instances().find((i) => i.id === req.params.id && i.userId === req.user.id);
     if (!inst) { res.status(404).json({ error: 'Task not found' }); return null; }
     const today = ctx.todayIST();
-    if (inst.schedule === 'daily' && (inst.date > today || inst.date < addDays(today, -EDIT_WINDOW_DAYS))) { res.status(400).json({ error: 'That day is too old to change' }); return null; }
+    if (inst.schedule === 'daily' && inst.date > addDays(today, FUTURE_DAYS)) { res.status(400).json({ error: 'You can work up to a week ahead, no further' }); return null; }
+    if (inst.schedule === 'daily' && inst.date < addDays(today, -EDIT_WINDOW_DAYS)) { res.status(400).json({ error: 'That day is too old to change' }); return null; }
     return inst;
   }
   function touched(inst, user, what) {

@@ -94,6 +94,21 @@ function validateTemplate(body, employeeIds) {
   return { value: t };
 }
 
+const blankRow = () => ({ values: {}, updatedAt: '', updatedByName: '', history: [] });
+
+// Work that was started ahead of time (tomorrow's calls filled in today) gets what was left over added when its day arrives:
+// blank rows are added on top, so nothing already written is lost.
+function topUp(inst, carried) {
+  if (inst.kind === 'rows') {
+    const want = inst.base + carried;
+    while (inst.rows.length < want) inst.rows.push(blankRow());
+    inst.carried = Math.max(0, inst.rows.length - inst.base);
+  } else if (inst.kind === 'count') {
+    inst.carried = carried; inst.target = inst.base + carried;
+  }
+  inst.ahead = false;
+}
+
 const followUpKey = (columns) => { const c = (columns || []).find((x) => x.followUp); return c ? c.key : ''; };
 
 // A copy of the design, for one person on one day (or week). The copy keeps its own settings, so changing the design later
@@ -103,7 +118,7 @@ function makeInstance(template, userId, date, carried = 0) {
   if (template.kind === 'rows') {
     inst.base = template.rowCount; inst.carried = carried;
     inst.columns = JSON.parse(JSON.stringify(template.columns));
-    inst.rows = Array.from({ length: inst.base + carried }, () => ({ values: {}, updatedAt: '', updatedByName: '', history: [] }));
+    inst.rows = Array.from({ length: inst.base + carried }, blankRow);
   } else if (template.kind === 'checklist') {
     inst.steps = template.steps.map((s) => ({ text: s, done: false, doneAt: '' }));
   } else {
@@ -135,4 +150,4 @@ function readCell(col, value) {
   return { value: v };
 }
 
-module.exports = { KINDS, SCHEDULES, DEFAULT_COLUMNS, PRESETS, validateTemplate, makeInstance, rowDone, units, readCell, followUpKey };
+module.exports = { KINDS, SCHEDULES, DEFAULT_COLUMNS, PRESETS, validateTemplate, makeInstance, rowDone, units, readCell, followUpKey, blankRow, topUp };

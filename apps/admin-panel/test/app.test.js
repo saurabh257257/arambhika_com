@@ -769,3 +769,117 @@ describe('tasks created before carry-over existed', () => {
     } finally { clock.date = null; await new Promise((r) => server2.close(r)); }
   });
 });
+
+// ======================================================================
+describe('working ahead, and the week view', () => {
+  let s, admin, ann, raj, annId, rajId, presets;
+  const day = (d) => { clock.date = d; };
+  const getDay = async (who, d) => (await who.get('/api/tasks?date=' + d)).data;
+  const call = (i, label) => ({ values: { name: label + i, phone: '9811111111', what_did_you_talk_about: 'Asked about BMS' } });
+  before(async () => {
+    day('2026-11-02'); // a Monday
+    ({ s, admin, ann, raj, annId, rajId } = await team(pretendZoho()));
+    presets = (await admin.get('/api/templates')).data.presets;
+    const { id: _i, for: _f, ...body } = presets[0];
+    await admin.post('/api/templates', { ...body, assignees: [annId, rajId] });
+  });
+  after(() => { clock.date = null; return s.stop(); });
+
+  test('tomorrow can be filled in today; the carry-over is added when the day arrives and nothing already written is lost', async () => {
+    const mon = (await getDay(ann, '2026-11-02')).tasks[0];
+    for (let i = 0; i < 8; i++) await ann.put('/api/tasks/' + mon.id + '/rows/' + i, call(i, 'Today '));
+    const ahead = await getDay(ann, '2026-11-03');
+    assert.equal(ahead.ahead, true);
+    const tue = ahead.tasks[0];
+    assert.equal(tue.rows.length, 10); assert.equal(tue.carried, 0); assert.equal(tue.ahead, true);
+    for (let i = 0; i < 4; i++) assert.equal((await ann.put('/api/tasks/' + tue.id + '/rows/' + i, call(i, 'Ahead '))).status, 200);
+    day('2026-11-03'); // tomorrow has arrived; yesterday ended 2 short
+    const arrived = (await getDay(ann, '2026-11-03')).tasks[0];
+    assert.equal(arrived.id, tue.id, 'the same sheet');
+    assert.equal(arrived.rows.length, 12); assert.equal(arrived.carried, 2); assert.ok(!arrived.ahead);
+    assert.equal(arrived.progress.done, 4); assert.equal(arrived.rows[0].values.name, 'Ahead 0');
+    assert.equal((await getDay(raj, '2026-11-03')).tasks[0].rows.length, 20, 'Raj did nothing yesterday: his own carry is unaffected');
+  });
+
+  test('a week ahead is the limit, Sundays have no sheet, and the owner can look anywhere', async () => {
+    assert.equal((await ann.get('/api/tasks?date=2026-11-10')).status, 200, 'exactly a week ahead is fine');
+    const far = await ann.get('/api/tasks?date=2026-11-11');
+    assert.equal(far.status, 400); assert.match(far.data.error, /week ahead/);
+    const sun = await getDay(ann, '2026-11-08');
+    assert.equal(sun.workDay, false); assert.deepEqual(sun.tasks, []);
+    assert.equal((await admin.get('/api/tasks?userId=' + annId + '&date=2026-12-01')).status, 200);
+  });
+
+  test('the week view: Monday to Sunday, done and total for each day, planned work for days ahead', async () => {
+    const w = (await ann.get('/api/week')).data;
+    assert.equal(w.weekStart, '2026-11-02'); assert.equal(w.weekEnd, '2026-11-08'); assert.equal(w.days.length, 7);
+    const [mon, tue, wed, , , sat, sun] = w.days;
+    assert.deepEqual([mon.done, mon.total, mon.isToday, mon.isFuture], [8, 10, false, false]);
+    assert.deepEqual([tue.done, tue.total, tue.isToday], [4, 12, true]);
+    assert.equal(wed.planned, true); assert.equal(wed.total, 10); assert.equal(wed.isFuture, true); assert.equal(wed.done, 0);
+    assert.equal(sat.planned, true);
+    assert.deepEqual([sun.isWorkDay, sun.total, sun.percent], [false, 0, null]);
+    assert.deepEqual(w.totals, { done: 12, total: 62 });
+    assert.ok(w.days.every((d) => d.editable));
+    assert.equal(w.minDate, '2026-10-27'); assert.equal(w.maxDate, '2026-11-10');
+    await getDay(ann, '2026-11-04'); // open Wednesday: the planned sheet becomes a real one
+    assert.equal((await ann.get('/api/week')).data.days[2].planned, false);
+    assert.equal((await ann.get('/api/week?userId=' + rajId)).data.days[1].total, 12, 'asking for another person\'s week still returns your own');
+    assert.equal((await admin.get('/api/week')).status, 400, 'the owner chooses whose week');
+    assert.equal((await admin.get('/api/week?userId=' + rajId)).data.days[1].total, 20);
+    assert.equal((await ann.get('/api/week?date=2026-11-09')).data.weekStart, '2026-11-09', 'next week');
+  });
+
+  test('next week\'s weekly task can be started early, and gets the leftover when the week begins', async () => {
+    const { id: _i, for: _f, ...insta } = presets[2];
+    await admin.post('/api/templates', { ...insta, assignees: [annId] });
+    const thisWeek = (await getDay(ann, '2026-11-03')).tasks.find((t) => t.name === 'Schedule 8 Instagram posts');
+    assert.equal(thisWeek.date, '2026-11-02');
+    for (let i = 0; i < 3; i++) await ann.put('/api/tasks/' + thisWeek.id + '/rows/' + i, { values: { post_topic: 'Post ' + i } });
+    const nextWeek = (await getDay(ann, '2026-11-09')).tasks.find((t) => t.name === 'Schedule 8 Instagram posts');
+    assert.equal(nextWeek.date, '2026-11-09'); assert.equal(nextWeek.ahead, true); assert.equal(nextWeek.rows.length, 8);
+    for (let i = 0; i < 2; i++) await ann.put('/api/tasks/' + nextWeek.id + '/rows/' + i, { values: { post_topic: 'Early ' + i } });
+    assert.equal((await ann.get('/api/week?date=2026-11-09')).data.weekly[0].done, 2);
+    day('2026-11-09');
+    const arrived = (await getDay(ann, '2026-11-09')).tasks.find((t) => t.name === 'Schedule 8 Instagram posts');
+    assert.equal(arrived.id, nextWeek.id); assert.equal(arrived.carried, 5); assert.equal(arrived.rows.length, 13); assert.equal(arrived.progress.done, 2);
+  });
+});
+
+describe('deleting a task', () => {
+  let s, admin, ann, raj, annId, rajId;
+  before(async () => { ({ s, admin, ann, raj, annId, rajId } = await team(pretendZoho())); });
+  after(() => s.stop());
+
+  test('switching off keeps the work; deleting removes the task and all the work under it, for everybody', async () => {
+    const keep = (await admin.post('/api/templates', { name: 'Keep me', kind: 'count', target: 2, assignees: [annId] })).data.template;
+    const gone = (await admin.post('/api/templates', { name: 'Delete me', kind: 'rows', rowCount: 3, assignees: [annId, rajId] })).data.template;
+    const mine = (await ann.get('/api/tasks')).data.tasks.find((t) => t.name === 'Delete me');
+    await ann.put('/api/tasks/' + mine.id + '/rows/0', { values: { name: 'Somebody' } });
+    assert.equal((await ann.get('/api/my-day')).data.progress.tasks.total, 5, '2 + 3');
+    assert.equal((await ann.del('/api/templates/' + gone.id + '?permanent=1')).status, 403, 'only the owner');
+    assert.equal((await raj.del('/api/templates/' + gone.id)).status, 403);
+    // switching off keeps the template and the work
+    assert.equal((await admin.del('/api/templates/' + gone.id)).data.ok, true);
+    assert.equal((await admin.get('/api/templates')).data.templates.find((t) => t.id === gone.id).active, false);
+    assert.ok((await ann.get('/api/tasks')).data.tasks.some((t) => t.name === 'Delete me'));
+    // deleting is for good
+    const d = (await admin.del('/api/templates/' + gone.id + '?permanent=1')).data;
+    assert.equal(d.deleted, true); assert.equal(d.removedWork, 2, 'one day of work for each of the two people');
+    assert.equal((await admin.get('/api/templates')).data.templates.some((t) => t.id === gone.id), false);
+    assert.equal((await ann.get('/api/tasks')).data.tasks.some((t) => t.name === 'Delete me'), false);
+    assert.equal((await raj.get('/api/tasks')).data.tasks.length, 0);
+    assert.equal((await ann.get('/api/my-day')).data.progress.tasks.total, 2, 'it no longer counts toward the day');
+    assert.ok((await ann.get('/api/tasks')).data.tasks.some((t) => t.name === 'Keep me'), 'other tasks are untouched');
+    assert.equal((await admin.del('/api/templates/' + gone.id + '?permanent=1')).status, 404, 'already gone');
+    assert.ok((await admin.get('/api/activity')).data.activity.some((a) => /Deleted the task "Delete me" and 2 days of work/.test(a.text)));
+    assert.equal(keep.name, 'Keep me');
+  });
+
+  test('a quick one-time task can be deleted too', async () => {
+    const t = (await admin.post('/api/templates', { name: 'Send price list', kind: 'checklist', steps: ['Send'], schedule: 'once', assignees: [annId, rajId], adhoc: true })).data.template;
+    assert.equal((await raj.get('/api/tasks')).data.tasks.length, 1);
+    assert.equal((await admin.del('/api/templates/' + t.id + '?permanent=1')).data.removedWork, 2);
+    assert.equal((await raj.get('/api/tasks')).data.tasks.length, 0);
+  });
+});
