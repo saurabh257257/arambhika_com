@@ -883,3 +883,73 @@ describe('deleting a task', () => {
     assert.equal((await raj.get('/api/tasks')).data.tasks.length, 0);
   });
 });
+
+describe('sharing customers fairly between the team', () => {
+  let s, z, admin, ann, raj, annId, rajId;
+  const inv = (id, cust, total, status = 'paid') => ({ id: String(id), number: 'INV-' + id, customerId: String(cust), customerName: 'Customer ' + cust, date: '2026-09-01', dueDate: '2026-09-15', total, balance: 0, status, phone: '', email: '' });
+  before(async () => {
+    z = pretendZoho();
+    // 6 regular customers (2 or more invoices, different sizes), 7 others (one invoice, a void one, or none)
+    z.data.contacts = []; for (let c = 3001; c <= 3013; c++) z.data.contacts.push({ id: String(c), name: 'Customer ' + c, company: '', phone: '', email: '' });
+    z.data.invoices = [];
+    let n = 1;
+    const sizes = { 3001: 900000, 3002: 600000, 3003: 300000, 3004: 100000, 3005: 50000, 3006: 20000 };
+    for (const c of Object.keys(sizes)) { z.data.invoices.push(inv(n++, c, sizes[c] / 2)); z.data.invoices.push(inv(n++, c, sizes[c] / 2)); }
+    for (let c = 3007; c <= 3010; c++) z.data.invoices.push(inv(n++, c, 5000));
+    z.data.invoices.push(inv(n++, 3011, 5000)); z.data.invoices.push(inv(n++, 3011, 5000, 'void')); // one real invoice and a void one: not regular
+    ({ s, admin, ann, raj, annId, rajId } = await team(z)); // 3012 and 3013 have never been invoiced
+  });
+  after(() => s.stop());
+  const owners = async () => { const c = (await admin.get('/api/customers')).data.customers; return { regular: c.filter((x) => x.regular), other: c.filter((x) => !x.regular) }; };
+  const split = (g) => ['Lokesh', 'Vikas'].map((_, i) => g.filter((x) => x.ownerId === [annId, rajId][i]).length);
+
+  test('regular means invoiced 2 or more times (void and draft do not count)', async () => {
+    const o = await owners();
+    assert.deepEqual(o.regular.map((c) => c.id).sort(), ['3001', '3002', '3003', '3004', '3005', '3006']);
+    assert.equal(o.other.length, 7); assert.ok(o.other.some((c) => c.id === '3011'), 'one real invoice plus a void one is occasional');
+    assert.ok(o.other.some((c) => c.id === '3012'), 'never invoiced is occasional');
+  });
+
+  test('regular customers are split evenly, the others are split evenly on their own, and the big ones are spread', async () => {
+    const r = (await admin.post('/api/customers/auto-assign')).data;
+    assert.equal(r.assigned, 13); assert.equal(r.regularMinInvoices, 2);
+    assert.deepEqual(r.groups.regular.perPerson.map((p) => p.count), [3, 3]);
+    assert.deepEqual(r.groups.other.perPerson.map((p) => p.count).sort(), [3, 4]);
+    const o = await owners();
+    assert.deepEqual(split(o.regular), [3, 3]); assert.deepEqual(split(o.other).sort(), [3, 4]);
+    const [a, b] = r.groups.regular.perPerson.map((p) => p.billed);
+    assert.ok(Math.abs(a - b) <= 400000, 'the value is spread too, not just the number: ' + a + ' vs ' + b);
+    const top3 = ['3001', '3002', '3003'].map((id) => o.regular.find((c) => c.id === id).ownerId);
+    assert.ok(new Set(top3).size === 2, 'the three biggest customers are not all with one person');
+    const total = split(o.regular.concat(o.other)); assert.ok(Math.abs(total[0] - total[1]) <= 1, 'and the overall totals are within one');
+    assert.equal((await admin.post('/api/customers/auto-assign')).data.assigned, 0, 'nothing left to share');
+  });
+
+  test('customers who already have an owner stay, and the rest are shared so each kind still comes out even', async () => {
+    await admin.post('/api/customers/auto-assign', { all: true }); // start from scratch, then change it by hand
+    for (const id of ['3001', '3002', '3003']) await admin.post('/api/customers/' + id + '/assign', { ownerId: annId });
+    for (const id of ['3004', '3005', '3006']) await admin.post('/api/customers/' + id + '/assign', { ownerId: '' });
+    const r = (await admin.post('/api/customers/auto-assign')).data;
+    assert.equal(r.groups.regular.assigned, 3, 'only the three that had no owner');
+    const o = await owners();
+    assert.deepEqual(split(o.regular), [3, 3], 'Lokesh already had three, so the three left all went to Vikas');
+    assert.ok(['3001', '3002', '3003'].every((id) => o.regular.find((c) => c.id === id).ownerId === annId), 'nobody was taken away from');
+  });
+
+  test('"re-split everything" removes the owners first and starts again; members cannot do it', async () => {
+    assert.equal((await ann.post('/api/customers/auto-assign', { all: true })).status, 403);
+    const r = (await admin.post('/api/customers/auto-assign', { all: true })).data;
+    assert.equal(r.assigned, 13);
+    const o = await owners();
+    assert.deepEqual(split(o.regular), [3, 3]); assert.deepEqual(split(o.other).sort(), [3, 4]);
+    assert.ok((await admin.get('/api/activity')).data.activity.some((a) => /Re-split all customers between the team: 6 regular and 7 others, 13 assigned/.test(a.text)));
+  });
+
+  test('with three people nobody gets most of a kind either', async () => {
+    const third = (await admin.post('/api/users', { name: 'Meena', username: 'meena', password: 'meena-password-1' })).data.user.id;
+    await admin.post('/api/customers/auto-assign', { all: true });
+    const o = await owners(); const ids = [annId, rajId, third];
+    const counts = (g) => ids.map((id) => g.filter((x) => x.ownerId === id).length).sort();
+    assert.deepEqual(counts(o.regular), [2, 2, 2]); assert.deepEqual(counts(o.other), [2, 2, 3]);
+  });
+});

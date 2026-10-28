@@ -143,3 +143,11 @@ textarea { min-height: 70px; resize: vertical; }
 .wk-tag.ahead { color: #6366f1; }
 .wk-t { font-size: 11px; color: var(--muted); line-height: 1.2; }
 @media (max-width: 720px) { .weekbar { gap: 3px; } .wk-day { padding: 6px 2px; } .wk-d { font-size: 15px; width: 26px; height: 26px; } .wk-t { font-size: 10px; } }
+
+/* customer request steps sit side by side, small */
+.rsteps { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0; }
+.rstep { border: 1px solid #e2e8f0; border-radius: 8px; padding: 4px 8px; gap: 6px; flex-wrap: wrap; }
+.rstep input { width: 16px; height: 16px; }
+.rstep.on { background: #f0fdf9; border-color: #99e0cf; }
+.rstep .stamp { font-size: 11px; }
+.rstep .btn.sm { padding: 2px 8px; font-size: 12px; }

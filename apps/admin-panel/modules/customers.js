@@ -6,6 +6,8 @@ const { str, nowISO } = require('../lib/util');
 const { applyFollowup, followStatus } = require('../lib/followups');
 
 const ID_RE = /^\d{1,30}$/;
+// a regular customer has been invoiced at least this many times; everybody else is occasional (or has never been invoiced)
+const REGULAR_MIN_INVOICES = 2;
 
 module.exports = function customers(app, ctx) {
   const states = () => ctx.col('customerstate');
@@ -22,6 +24,7 @@ module.exports = function customers(app, ctx) {
     const [c, inv] = await Promise.all([ctx.zoho.customers({ refresh }), ctx.zoho.invoices({ refresh }).catch(() => [])]);
     const by = new Map();
     for (const i of inv) {
+      if (i.status === 'void' || i.status === 'draft') continue;
       const b = by.get(i.customerId) || { count: 0, billed: 0, last: '', outstanding: 0 };
       b.count += 1; b.billed += i.total; if (i.date > b.last) b.last = i.date;
       if (i.balance > 0 && i.status !== 'void' && i.status !== 'draft') b.outstanding += i.balance;
@@ -35,7 +38,7 @@ module.exports = function customers(app, ctx) {
     const s = stateOf(c.id) || {};
     const b = by.get(c.id) || { count: 0, billed: 0, last: '', outstanding: 0 };
     const auto = b.count > 0;
-    return { id: c.id, name: c.name, company: c.company, phone: c.phone, email: c.email, invoices: b.count, billed: Math.round(b.billed), lastInvoice: b.last, outstanding: Math.round(b.outstanding || c.outstanding || 0), onboarded: s.onboarded === true || s.onboarded === false ? s.onboarded : auto, onboardedAuto: auto, onboardedManual: s.onboarded === true || s.onboarded === false,
+    return { id: c.id, name: c.name, company: c.company, phone: c.phone, email: c.email, invoices: b.count, regular: b.count >= REGULAR_MIN_INVOICES, billed: Math.round(b.billed), lastInvoice: b.last, outstanding: Math.round(b.outstanding || c.outstanding || 0), onboarded: s.onboarded === true || s.onboarded === false ? s.onboarded : auto, onboardedAuto: auto, onboardedManual: s.onboarded === true || s.onboarded === false,
       ownerId: s.ownerId || '', ownerName: ctx.userName(s.ownerId), nextDate: s.nextDate || '', lastAt: s.lastAt || '', lastByName: s.lastByName || '', lastOutcome: s.lastOutcome || '', lastNote: s.lastNote || '', followStatus: followStatus(s.nextDate, today) };
   }
 
@@ -80,21 +83,41 @@ module.exports = function customers(app, ctx) {
     res.json({ ok: true });
   });
 
-  // spread every customer without an owner evenly across the active team
+  // Share the customers between the active team so that nobody gets all or most of a kind: regular customers (invoiced
+  // REGULAR_MIN_INVOICES times or more) are split evenly among the team, and everybody else is split evenly among them
+  // separately. Inside each kind the biggest customers are handed out first, to whoever has fewer and then less business so far,
+  // so the valuable ones are spread too. { all: true } first clears every current owner and starts from scratch.
   app.post('/api/customers/auto-assign', ctx.requireAdmin, async (req, res) => {
     const team = ctx.employees();
     if (!team.length) return res.status(400).json({ error: 'Add team members first' });
     let data; try { data = await load(false); } catch (err) { return res.status(502).json({ error: err.message }); }
-    const loads = new Map(team.map((u) => [u.id, states().filter((s) => s.ownerId === u.id).length]));
-    let n = 0;
-    for (const c of data.list) {
-      if (stateOf(c.id) && stateOf(c.id).ownerId) continue;
-      const [id] = [...loads.entries()].sort((a, b) => a[1] - b[1])[0];
-      ensureState(c.id).ownerId = id; ensureState(c.id).updatedAt = nowISO(); loads.set(id, loads.get(id) + 1); n += 1;
+    const redo = Boolean(req.body && req.body.all);
+    const stat = (c) => data.by.get(c.id) || { count: 0, billed: 0 };
+    if (redo) for (const c of data.list) { const s = stateOf(c.id); if (s) s.ownerId = ''; }
+    const kinds = { regular: data.list.filter((c) => stat(c).count >= REGULAR_MIN_INVOICES), other: data.list.filter((c) => stat(c).count < REGULAR_MIN_INVOICES) };
+    const total = new Map(team.map((u) => [u.id, 0])); // how many customers each person has in all
+    const out = {}; let assigned = 0;
+    for (const kind of Object.keys(kinds)) {
+      const count = new Map(team.map((u) => [u.id, 0])); const value = new Map(team.map((u) => [u.id, 0]));
+      const todo = [];
+      for (const c of kinds[kind]) {
+        const s = stateOf(c.id);
+        if (s && s.ownerId && count.has(s.ownerId)) { count.set(s.ownerId, count.get(s.ownerId) + 1); value.set(s.ownerId, value.get(s.ownerId) + stat(c).billed); total.set(s.ownerId, total.get(s.ownerId) + 1); }
+        else if (!s || !s.ownerId) todo.push(c);
+      }
+      todo.sort((x, y) => stat(y).billed - stat(x).billed || x.name.localeCompare(y.name));
+      let n = 0;
+      for (const c of todo) {
+        const pick = team.slice().sort((x, y) => (count.get(x.id) - count.get(y.id)) || (value.get(x.id) - value.get(y.id)) || (total.get(x.id) - total.get(y.id)) || x.name.localeCompare(y.name))[0];
+        const st = ensureState(c.id); st.ownerId = pick.id; st.updatedAt = nowISO();
+        count.set(pick.id, count.get(pick.id) + 1); value.set(pick.id, value.get(pick.id) + stat(c).billed); total.set(pick.id, total.get(pick.id) + 1); n += 1;
+      }
+      assigned += n;
+      out[kind] = { customers: kinds[kind].length, assigned: n, perPerson: team.map((u) => ({ id: u.id, name: u.name, count: count.get(u.id), billed: Math.round(value.get(u.id)) })) };
     }
     ctx.save('customerstate');
-    ctx.log(req.user, 'Shared ' + n + ' customers evenly across the team');
-    res.json({ assigned: n });
+    ctx.log(req.user, (redo ? 'Re-split all customers' : 'Shared the customers without an owner') + ' between the team: ' + out.regular.customers + ' regular and ' + out.other.customers + ' others, ' + assigned + ' assigned');
+    res.json({ assigned, regularMinInvoices: REGULAR_MIN_INVOICES, groups: out });
   });
 
   app.patch('/api/customers/:id', (req, res) => {

@@ -137,7 +137,9 @@ module.exports = function requests(app, ctx) {
     let ownerId = '';
     if (req.user.role === 'employee') ownerId = req.user.id; // a request you log yourself is yours
     else if (req.body.ownerId) { if (!ctx.employees().some((u) => u.id === req.body.ownerId)) return res.status(400).json({ error: 'Choose a team member' }); ownerId = req.body.ownerId; }
-    res.json({ request: view(create({ user: req.user, fields: r.value, ownerId })) });
+    const made = create({ user: req.user, fields: r.value, ownerId });
+    if (/^d{4}-d{2}-d{2}$/.test(String(req.body.nextDate || ''))) { made.nextDate = req.body.nextDate; ctx.save('requests'); }
+    res.json({ request: view(made) });
   });
 
   app.patch('/api/requests/:id', (req, res) => {
