@@ -55,7 +55,7 @@
       var box = document.createElement('div'); box.className = 'chartgrid'; box.innerHTML = parts.map(function (x) { return typeof x === 'string' ? x : x.html; }).join('');
       parts.forEach(function (x) { if (typeof x !== 'string') x.wire(box); });
       C.wireSwitch(box);
-      var first = el.querySelector('.card'); if (first) first.after(box); else el.appendChild(box);
+      var anchor = el.querySelector(':scope > .grid2') || el.querySelector('.card'); if (anchor) anchor.after(box); else el.appendChild(box);
     }).catch(function () {});
   }
 
