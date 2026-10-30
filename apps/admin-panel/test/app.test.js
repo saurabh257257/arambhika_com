@@ -1143,3 +1143,26 @@ describe('customer master list', () => {
     } finally { delete process.env.ZOHO_WEBHOOK_SECRET; await s.stop(); }
   });
 });
+
+describe('invoices: the customer paid', () => {
+  test('owner marks it paid with a photo, it stops needing follow-up, undo works, others cannot', async () => {
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const { s, admin, ann, raj } = await team(pretendZoho());
+    try {
+      const annId = (await admin.get('/api/users')).data.users.find((u) => u.name === 'Ann').id;
+      await admin.post('/api/invoices/9001/assign', { ownerId: annId });
+      const before = (await ann.get('/api/invoices')).data.invoices.find((i) => i.id === '9001');
+      assert.equal(before.needs, true); assert.equal(before.paidClaim, null);
+      assert.equal((await ann.post('/api/invoices/9001/paid', { dataUrl: 'nonsense' })).status, 400, 'a photo is required');
+      assert.equal((await raj.post('/api/invoices/9001/paid', { dataUrl: PNG })).status, 404, 'only the invoice owner');
+      const r = await ann.post('/api/invoices/9001/paid', { dataUrl: PNG });
+      assert.equal(r.status, 200); assert.equal(r.data.paidClaim.proofs.length, 1);
+      const after = (await ann.get('/api/invoices')).data.invoices.find((i) => i.id === '9001');
+      assert.equal(after.paidClaim.byName, 'Ann'); assert.equal(after.needs, false); assert.equal(after.followStatus, 'paidclaim');
+      assert.equal((await ann.get('/api/files/' + after.paidClaim.proofs[0].name)).status, 200, 'the photo can be opened by a signed-in user');
+      assert.equal((await raj.del('/api/invoices/9001/paid')).status, 404);
+      assert.equal((await ann.del('/api/invoices/9001/paid')).status, 200);
+      assert.equal((await ann.get('/api/invoices')).data.invoices.find((i) => i.id === '9001').needs, true);
+    } finally { await s.stop(); }
+  });
+});

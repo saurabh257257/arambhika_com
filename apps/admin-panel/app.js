@@ -32,7 +32,7 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho, startSync = fa
   app.use(compression());
   // a photo arrives inside JSON, so the screenshot route may be big; everything else stays small
   const smallJson = express.json({ limit: '200kb' }); const bigJson = express.json({ limit: '7mb' });
-  app.use((req, res, next) => (/\/screenshot$/.test(req.path) ? bigJson : smallJson)(req, res, next));
+  app.use((req, res, next) => (/\/(screenshot|paid)$/.test(req.path) ? bigJson : smallJson)(req, res, next));
   app.use((req, res, next) => {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     res.setHeader('X-Content-Type-Options', 'nosniff');

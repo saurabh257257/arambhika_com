@@ -304,3 +304,10 @@ button.chip { border: 0; cursor: pointer; }
 .dfold > summary::before { content: "\25B8"; color: var(--muted); width: 12px; }
 .dfold[open] > summary::before { content: "\25BE"; }
 .dfold > .list { margin-top: 10px; }
+
+/* Invoices: customer paid */
+.paidnote { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.paidpanel { display: grid; gap: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 12px; background: #f8fafc; margin-top: 8px; }
+.paidpanel video { max-width: 100%; width: 340px; border-radius: 10px; background: #000; }
+.thumb { height: 44px; border-radius: 6px; border: 1px solid var(--line); vertical-align: middle; }
+.thumb.big { height: 140px; }
