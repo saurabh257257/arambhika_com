@@ -42,6 +42,8 @@ module.exports = function newCustomers(app, ctx) {
     return { list: out, zohoChecked, zohoError };
   }
 
+  ctx.newCustomers = { compute };
+
   app.get('/api/new-customers', wrap(async (req, res) => {
     const today = ctx.todayIST();
     const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : today.slice(0, 7);

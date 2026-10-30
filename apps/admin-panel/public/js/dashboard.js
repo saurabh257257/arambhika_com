@@ -35,6 +35,30 @@
     }).then(function () { return P.newCustomersTile(el); });
   } });
 
+
+  // the owner's charts: team performance, new customers against target, the request funnel and unpaid invoices by age
+  function drawCharts(el) {
+    return P.api('GET', '/api/dashboard-charts').then(function (d) {
+      var C = P.charts, parts = [];
+      var perf = d.performance, nc = d.newCustomers;
+      if (perf.people.length) {
+        parts.push(C.lines({ title: 'Team performance', sub: 'Share of the daily tasks that was done, last 14 days', labels: perf.days, series: perf.people.map(function (p) { return { name: p.name, values: p.values }; }) }));
+        parts.push(C.groups({ title: 'New customers sold', sub: 'Per month, last 6 months' + (nc.zohoChecked ? '' : ' (Zoho not checked)'), labels: nc.months, series: nc.people.map(function (p) { return { name: p.name, values: p.values, target: p.target }; }) }));
+      }
+      var f = d.funnel, hr = function (h) { return h === null ? 'no data' : h < 24 ? h + ' h' : Math.round(h / 2.4) / 10 + ' days'; };
+      parts.push(C.hbars({ title: 'Customer requests funnel', sub: 'How many requests reached each step, and the average wait for it', head: ['Step', 'Requests', 'Average time from the step before'],
+        rows: f.map(function (r) { return { label: r.label, value: r.count, text: r.count + (r.avgHours === null ? '' : '  (' + hr(r.avgHours) + ')'), note: r.count + ' requests, average ' + hr(r.avgHours) + ' after the step before', cells: [r.label, String(r.count), hr(r.avgHours)] }; }) }));
+      var iv = d.invoices, shades = ['#86b6ef', '#5b9be6', '#2a78d6', '#17488f'];
+      if (iv.error) parts.push('<div class="card chartcard"><h3>Unpaid invoices</h3><div class="banner">Could not load from Zoho: ' + P.esc(iv.error) + '</div></div>');
+      else parts.push(C.hbars({ title: 'Unpaid invoices by age', sub: P.money(iv.total) + ' unpaid across ' + iv.count + ' invoices', head: ['Age', 'Invoices', 'Amount'],
+        rows: iv.buckets.map(function (b, i) { return { label: b.label, value: b.amount, color: shades[i], text: P.money(b.amount) + '  (' + b.count + ')', note: b.count + ' invoice' + (b.count === 1 ? '' : 's') + ', ' + P.money(b.amount), cells: [b.label, String(b.count), P.money(b.amount)] }; }) }));
+      var box = document.createElement('div'); box.className = 'chartgrid'; box.innerHTML = parts.map(function (x) { return typeof x === 'string' ? x : x.html; }).join('');
+      parts.forEach(function (x) { if (typeof x !== 'string') x.wire(box); });
+      C.wireSwitch(box);
+      var first = el.querySelector('.card'); if (first) first.after(box); else el.appendChild(box);
+    }).catch(function () {});
+  }
+
   // ---------------- the owner's dashboard ----------------
   P.register({ id: 'dashboard', label: 'Dashboard', roles: ['admin'], order: 0, render: function (el) {
     return P.api('GET', '/api/dashboard').then(function (d) {
@@ -63,6 +87,6 @@
         var w = e.target.closest('[data-work]'); if (w) P.go('work', { viewAs: w.dataset.work });
         if (e.target.id === 'zr') { e.target.disabled = true; e.target.textContent = 'Refreshing...'; P.api('POST', '/api/zoho/refresh', {}).then(function () { P.toast('Refreshed from Zoho'); window.dispatchEvent(new Event('hashchange')); }).catch(P.fail); }
       });
-    }).then(function () { return P.newCustomersTile(el); });
+    }).then(function () { return drawCharts(el); });
   } });
 })();

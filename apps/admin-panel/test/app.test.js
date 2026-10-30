@@ -1054,3 +1054,19 @@ describe('new customers sold', () => {
     } finally { await s.stop(); }
   });
 });
+
+describe('dashboard charts', () => {
+  test('owner gets the four chart datasets; team members cannot', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      const r = await ann.post('/api/requests', { customerName: 'Chart Co', phone: '9800000001' });
+      await ann.put('/api/requests/' + r.data.request.id + '/steps/ask', { done: true });
+      const d = (await admin.get('/api/dashboard-charts')).data;
+      assert.equal(d.performance.days.length, 14); assert.equal(d.performance.people.length, 2);
+      assert.equal(d.newCustomers.months.length, 6);
+      assert.equal(d.funnel.length, 6); assert.equal(d.funnel[0].count, 1);
+      assert.equal(d.invoices.buckets.length, 4); assert.equal(d.invoices.count, 3);
+      assert.equal((await ann.get('/api/dashboard-charts')).status, 403);
+    } finally { await s.stop(); }
+  });
+});
