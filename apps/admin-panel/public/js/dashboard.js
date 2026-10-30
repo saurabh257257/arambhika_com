@@ -101,6 +101,6 @@
         var w = e.target.closest('[data-work]'); if (w) P.go('work', { viewAs: w.dataset.work });
         if (e.target.id === 'zr') { e.target.disabled = true; e.target.textContent = 'Refreshing...'; P.api('POST', '/api/zoho/refresh', {}).then(function () { P.toast('Refreshed from Zoho'); window.dispatchEvent(new Event('hashchange')); }).catch(P.fail); }
       });
-    }).then(function () { return drawCharts(el); }).then(function () { return drawMaster(el); });
+    }).then(function () { return drawCharts(el); }).then(function () { return P.newCustomersTile(el); }).then(function () { return drawMaster(el); });
   } });
 })();
