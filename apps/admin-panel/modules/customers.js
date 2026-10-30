@@ -192,24 +192,5 @@ module.exports = function customers(app, ctx) {
     res.json({ ok: true });
   });
 
-  app.post('/api/customers/:id/followup', async (req, res) => {
-    if (!idOk(req, res)) return;
-    const s = stateOf(req.params.id);
-    if (!s || s.ownerId !== req.user.id) return res.status(404).json({ error: 'Only the person who owns this customer can log a follow-up' });
-    let name = req.params.id;
-    try { const d = await load(false); const c = d.list.find((x) => x.id === req.params.id); if (c) name = c.name; } catch (e) { /* the log still works without the name */ }
-    try {
-      const entry = applyFollowup(s, { user: req.user, kind: 'customer', label: name, refId: req.params.id, outcome: req.body.outcome, note: req.body.note, nextDate: req.body.nextDate, cadence: ctx.cadence(), today: ctx.todayIST() });
-      if (req.body.outcome === 'ordered') s.onboarded = true;
-      logs().push(entry); ctx.save('followups'); ctx.save('customerstate');
-      ctx.log(req.user, 'Customer ' + name + ': ' + entry.outcomeLabel + (entry.nextDate ? ', next on ' + entry.nextDate : ''));
-      res.json({ ok: true, nextDate: entry.nextDate });
-    } catch (err) { res.status(400).json({ error: err.message }); }
-  });
 
-  app.get('/api/customers/:id/history', (req, res) => {
-    if (!idOk(req, res)) return;
-    const s = stateOf(req.params.id);
-    res.json({ history: logs().filter((e) => e.kind === 'customer' && e.refId === req.params.id).sort((a, b) => b.at.localeCompare(a.at)) });
-  });
 };

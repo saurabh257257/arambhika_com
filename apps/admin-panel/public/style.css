@@ -311,3 +311,11 @@ button.chip { border: 0; cursor: pointer; }
 .paidpanel video { max-width: 100%; width: 340px; border-radius: 10px; background: #000; }
 .thumb { height: 44px; border-radius: 6px; border: 1px solid var(--line); vertical-align: middle; }
 .thumb.big { height: 140px; }
+
+/* Follow up with existing customers */
+#cfCard.folded .reqbody { display: none; }
+.cfhead { display: flex; align-items: center; gap: 8px; cursor: pointer; flex-wrap: wrap; padding: 4px 0; user-select: none; }
+.cfhead .caret { color: var(--muted); width: 12px; }
+.cfhead .chips { margin-left: auto; }
+.cfbody { display: grid; gap: 8px; padding: 4px 0 8px; }
+.cfnote { margin: 0; padding: 10px 12px; background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; font: 13px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; }

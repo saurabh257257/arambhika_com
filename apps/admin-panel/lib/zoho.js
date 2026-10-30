@@ -90,6 +90,11 @@ function createZoho(env = process.env, fetchImpl = fetch) {
     estimates: (o) => cached('estimates', async () => (await pages('estimates', 'estimates', { sort_column: 'created_time', sort_order: 'D' })).map(normEstimate), o),
     bills: (o) => cached('bills', async () => (await pages('bills', 'bills', { sort_column: 'created_time', sort_order: 'D' })).map(normBill), o),
     items: (o) => cached('items', async () => (await pages('items', 'items')).map(normItem), o),
+    // the item lines of one invoice (the list does not include them)
+    async invoiceLines(id) {
+      const j = await books('invoices/' + encodeURIComponent(id));
+      return ((j.invoice || {}).line_items || []).map((l) => ({ itemId: String(l.item_id || ''), name: l.name || '', quantity: num(l.quantity), rate: num(l.rate), total: num(l.item_total) }));
+    },
     // the item lines of one sales order (the list does not include them)
     async orderLines(id) {
       const j = await books('salesorders/' + encodeURIComponent(id));

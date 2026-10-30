@@ -59,6 +59,7 @@
           }).join('') + '</div>';
         }).join('') +
         '<h4 style="margin-top:8px">Working days</h4><div class="muted small">Daily tasks only run on these days. A day off never adds to what is carried over.</div><div class="chips" id="wd">' + DAYS.map(function (d) { return '<label class="check"><input type="checkbox" value="' + d[0] + '"' + (s.workDays.indexOf(d[0]) >= 0 ? ' checked' : '') + '> ' + d[1] + '</label>'; }).join('') + '</div>' +
+        '<h4 style="margin-top:8px">Follow up with existing customers</h4><div class="row"><label>Customers each person gets every day<input type="number" id="cfPer" min="1" max="20" value="' + s.custFollow.perDay + '"></label><label>Only customers who have not ordered for this many days<input type="number" id="cfDays" min="1" max="365" value="' + s.custFollow.minDays + '"></label></div>' +
         '<h4 style="margin-top:8px">Invoices</h4><div class="row"><label>Start following up an invoice this many days before the due date<input type="number" id="lead" min="0" max="30" value="' + s.invoiceLeadDays + '"></label></div>' +
         '<div class="actions"><button class="btn" id="saveRules" type="button">Save rules</button></div></div>';
       el.querySelector('#saveRules').addEventListener('click', function () {
@@ -67,7 +68,7 @@
           var k = r.dataset.kind; cadence[k] = cadence[k] || []; var d = r.querySelector('[name=days]');
           cadence[k].push({ key: r.dataset.key, days: d ? (d.value === '' ? null : Number(d.value)) : null });
         });
-        P.api('PUT', '/api/settings', { cadence: cadence, invoiceLeadDays: el.querySelector('#lead').value, workDays: [].filter.call(el.querySelectorAll('#wd input'), function (c) { return c.checked; }).map(function (c) { return Number(c.value); }) }).then(function () { P.toast('Rules saved'); }).catch(P.fail);
+        P.api('PUT', '/api/settings', { cadence: cadence, invoiceLeadDays: el.querySelector('#lead').value, custFollow: { perDay: el.querySelector('#cfPer').value, minDays: el.querySelector('#cfDays').value }, workDays: [].filter.call(el.querySelectorAll('#wd input'), function (c) { return c.checked; }).map(function (c) { return Number(c.value); }) }).then(function () { P.toast('Rules saved'); }).catch(P.fail);
       });
     });
   } });

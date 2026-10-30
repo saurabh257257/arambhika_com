@@ -58,6 +58,7 @@ function pretendZoho() {
     estimates: () => guard(() => (data.estimates || []).map((e) => ({ ...e }))),
     bills: () => guard(() => (data.bills || []).map((b) => ({ ...b }))),
     items: () => guard(() => [{ id: 'i1', name: 'Nickel strip', category: 'Nickel strip plated' }]),
+    invoiceLines: () => guard(() => [{ itemId: 'i1', name: 'Nickel strip', quantity: 2, rate: 480, total: 960 }]),
     orderLines: () => guard(() => [{ itemId: 'i1', name: 'Nickel strip', quantity: 4, rate: 480, total: 1920 }]),
     customers: () => guard(() => {
       if (data.contactsAllowed) return { source: 'contacts', list: data.contacts.map((c) => ({ ...c, outstanding: 0 })) };
@@ -511,30 +512,19 @@ describe('customers from Zoho: owner, cadence and onboarded', () => {
     assert.equal((await ann.post('/api/customers/auto-assign')).status, 403);
   });
 
-  test('a follow-up decides the next date; "order placed" onboards; the member can override onboarded', async () => {
+  test('customer follow-up logging was removed; the member can still override onboarded', async () => {
     const c = (await ann.get('/api/customers?filter=mine')).data.customers[0];
-    assert.equal((await raj.post('/api/customers/' + c.id + '/followup', { outcome: 'noanswer' })).status, 404, 'only the owner follows up');
-    const f = await ann.post('/api/customers/' + c.id + '/followup', { outcome: 'noanswer', note: 'Phone off' });
-    assert.equal(f.data.nextDate, addDays(today, 1));
-    let after = (await ann.get('/api/customers?filter=mine')).data.customers.find((x) => x.id === c.id);
-    assert.equal(after.followStatus, 'ok'); assert.equal(after.lastByName, 'Ann'); assert.ok(after.lastAt); assert.equal(after.lastOutcome, 'noanswer');
-    assert.equal((await ann.post('/api/customers/' + c.id + '/followup', { outcome: 'ordered' })).data.nextDate, addDays(today, 30));
-    after = (await ann.get('/api/customers?filter=mine')).data.customers.find((x) => x.id === c.id);
-    assert.equal(after.onboarded, true);
+    assert.equal((await ann.post('/api/customers/' + c.id + '/followup', { outcome: 'noanswer' })).status, 404, 'replaced by the daily customer list');
     assert.equal((await ann.patch('/api/customers/' + c.id, { onboarded: false })).status, 200);
     assert.equal((await ann.get('/api/customers?filter=mine')).data.customers.find((x) => x.id === c.id).onboarded, false);
     assert.equal((await ann.patch('/api/customers/' + c.id, { onboarded: null })).status, 200);
-    assert.equal((await ann.post('/api/customers/abc/followup', { outcome: 'noanswer' })).status, 400);
-    const h = (await ann.get('/api/customers/' + c.id + '/history')).data.history;
-    assert.equal(h.length, 2); assert.equal(h[0].outcome, 'ordered');
   });
 
   test('the owner changes the rules: "no answer" now means 2 days', async () => {
     const cad = (await admin.get('/api/settings')).data.cadence;
     cad.customer.find((r) => r.key === 'noanswer').days = 2;
     assert.equal((await admin.put('/api/settings', { cadence: cad })).status, 200);
-    const c = (await ann.get('/api/customers?filter=mine')).data.customers.find((x) => x.followStatus === 'none');
-    assert.equal((await ann.post('/api/customers/' + c.id + '/followup', { outcome: 'noanswer' })).data.nextDate, addDays(today, 2));
+    assert.equal((await admin.get('/api/settings')).data.cadence.customer.find((r) => r.key === 'noanswer').days, 2);
     cad.customer.find((r) => r.key === 'noanswer').days = 0;
     assert.equal((await admin.put('/api/settings', { cadence: cad })).status, 400);
     assert.equal((await admin.put('/api/settings', { invoiceLeadDays: 99 })).status, 400);
@@ -636,15 +626,14 @@ describe('"how much is done": the percentage, and the owner\'s dashboard', () =>
     for (let i = 3; i < 4; i++) await ann.put('/api/tasks/' + (await ann.get('/api/tasks')).data.tasks[0].id + '/rows/' + i, { values: { name: 'P' + i } });
     let p = (await ann.get('/api/my-day')).data.progress;
     assert.equal(p.tasks.total, 10 + 7, 'yesterday missed 7 of 10, so 7 carry'); assert.equal(p.tasks.done, 1);
-    assert.deepEqual(p.customers, { done: 0, total: 2 });
+    assert.deepEqual(p.customers, { done: 0, total: 0 }, 'the daily customer list is empty: nobody has bought before and gone quiet');
     assert.deepEqual(p.invoices, { done: 0, total: 2 }, 'her own invoice and one that belongs to a customer she owns (both overdue by this date)'); assert.deepEqual(p.requests, { done: 0, total: 1 }); assert.deepEqual(p.followups, { done: 0, total: 0 });
-    assert.deepEqual(p.overall, { done: 1, total: 22, percent: 5, left: 21 });
-    await ann.post('/api/customers/1001/followup', { outcome: 'interested' });
+    assert.deepEqual(p.overall, { done: 1, total: 20, percent: 5, left: 19 });
     await ann.post('/api/invoices/9001/followup', { outcome: 'reminded' });
     await ann.post('/api/requests/' + reqId + '/note', { text: 'Asked for their requirement' });
     p = (await ann.get('/api/my-day')).data.progress;
-    assert.deepEqual(p.customers, { done: 1, total: 2 }); assert.deepEqual(p.invoices, { done: 1, total: 2 }); assert.deepEqual(p.requests, { done: 1, total: 1 });
-    assert.deepEqual(p.overall, { done: 4, total: 22, percent: 18, left: 18 });
+    assert.deepEqual(p.customers, { done: 0, total: 0 }); assert.deepEqual(p.invoices, { done: 1, total: 2 }); assert.deepEqual(p.requests, { done: 1, total: 1 });
+    assert.deepEqual(p.overall, { done: 3, total: 20, percent: 15, left: 17 });
     assert.equal((await raj.get('/api/my-day')).data.progress.overall.done, 0, 'each person has their own figure');
     assert.equal((await admin.get('/api/my-day')).status, 403);
   });
@@ -1314,5 +1303,38 @@ describe('convert a lead to a customer by hand', () => {
       await admin.post('/api/master/sync');
       assert.ok(!(await admin.get('/api/master/customers?leads=1')).data.customers.some((c) => c.name === 'Aarnik'), 'no request, no lead');
     } finally { await s.stop(); }
+  });
+});
+
+
+describe('follow up with existing customers: 3 a day, rolled over until called', () => {
+  test('only customers who bought before and went quiet, ranked, with a purchase note; uncalled ones roll to tomorrow', async () => {
+    const z = pretendZoho();
+    const old = (id, name, days, total) => { z.data.contacts.push({ id, name, company: '', phone: '98' + id + '0000', email: '' }); z.data.invoices.push({ id: 'i' + id, number: 'INV-' + id, customerId: id, customerName: name, date: addDays('2026-12-14', -days), dueDate: addDays('2026-12-14', -days), total, balance: 0, status: 'paid', phone: '', email: '' }); };
+    old('2001', 'Quiet One', 45, 9000); old('2002', 'Quiet Two', 60, 7000); old('2003', 'Quiet Three', 35, 5000); old('2004', 'Quiet Four', 31, 3000); old('2005', 'Recent Buyer', 10, 20000);
+    const { s, admin, ann, raj } = await team(z);
+    try {
+      const annId = (await admin.get('/api/users')).data.users.find((u) => u.name === 'Ann').id;
+      for (const id of ['2001', '2002', '2003', '2004', '2005']) await admin.post('/api/customers/' + id + '/assign', { ownerId: annId });
+      await admin.post('/api/master/sync');
+      clock.date = '2026-12-14'; // a Monday
+      const first = (await ann.get('/api/cust-followups')).data;
+      assert.deepEqual(first.rows.map((r) => r.name), ['Quiet One', 'Quiet Two', 'Quiet Three'], 'three, biggest spenders first; the recent buyer is left out');
+      assert.match(first.rows[0].note, /INV-2001/); assert.match(first.rows[0].note, /Nickel strip @ Rs 480 = Rs 960/, 'what was bought, with the price');
+      assert.equal(first.summary.total, 3); assert.equal(first.summary.done, 0);
+      assert.equal((await admin.get('/api/cust-followups')).status, 400, 'the owner picks whose list');
+      assert.equal((await admin.get('/api/cust-followups?userId=' + annId)).data.rows.length, 3);
+      assert.equal((await raj.post('/api/cust-followups/' + first.rows[0].id + '/call', { outcome: 'interested' })).status, 404, 'only the owner of the list');
+      assert.equal((await ann.post('/api/cust-followups/' + first.rows[0].id + '/call', { outcome: 'nonsense' })).status, 400);
+      const called = (await ann.post('/api/cust-followups/' + first.rows[0].id + '/call', { outcome: 'interested', note: 'Wants a quote' })).data;
+      assert.equal(called.row.followUpDate, '2026-12-17', 'the date comes from the rules (3 days)'); assert.equal(called.summary.done, 1);
+      assert.equal((await ann.post('/api/cust-followups/' + first.rows[0].id + '/call', { outcome: 'interested' })).status, 400, 'logged once');
+      assert.deepEqual((await ann.get('/api/my-day')).data.progress.customers, { done: 1, total: 3 });
+      // tomorrow: the two not called come first, one new customer fills the list; the one called is not offered again
+      clock.date = '2026-12-15';
+      const next = (await ann.get('/api/cust-followups')).data;
+      assert.deepEqual(next.rows.map((r) => r.name), ['Quiet Two', 'Quiet Three', 'Quiet Four']);
+      assert.equal(next.rows[0].rolledFrom, '2026-12-14'); assert.equal(next.rows[2].rolledFrom, '');
+    } finally { clock.date = null; await s.stop(); }
   });
 });

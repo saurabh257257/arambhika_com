@@ -50,7 +50,7 @@ module.exports = function team(app, ctx) {
 
   // ---- follow-up rules: what happened -> days until the next follow-up ----
   const workDays = () => (Array.isArray(ctx.settings().workDays) && ctx.settings().workDays.length ? ctx.settings().workDays : [1, 2, 3, 4, 5, 6]);
-  app.get('/api/settings', (req, res) => res.json({ cadence: ctx.cadence(), invoiceLeadDays: ctx.settings().invoiceLeadDays || 3, workDays: workDays() }));
+  app.get('/api/settings', (req, res) => res.json({ cadence: ctx.cadence(), invoiceLeadDays: ctx.settings().invoiceLeadDays || 3, workDays: workDays(), custFollow: ctx.custFollow ? ctx.custFollow.cfg() : { perDay: 3, minDays: 30 } }));
   app.put('/api/settings', ctx.requireAdmin, (req, res) => {
     const s = ctx.settings();
     const incoming = req.body && req.body.cadence;
@@ -70,6 +70,12 @@ module.exports = function team(app, ctx) {
       const n = Number(req.body.invoiceLeadDays);
       if (!Number.isInteger(n) || n < 0 || n > 30) return res.status(400).json({ error: 'Days before the due date: 0 to 30' });
       s.invoiceLeadDays = n;
+    }
+    if (req.body.custFollow !== undefined) {
+      const perDay = Number(req.body.custFollow.perDay), minDays = Number(req.body.custFollow.minDays);
+      if (!Number.isInteger(perDay) || perDay < 1 || perDay > 20) return res.status(400).json({ error: 'Customers a day: 1 to 20' });
+      if (!Number.isInteger(minDays) || minDays < 1 || minDays > 365) return res.status(400).json({ error: 'Days without an order: 1 to 365' });
+      s.custFollow = { perDay, minDays };
     }
     if (req.body.workDays !== undefined) {
       const days = [...new Set((Array.isArray(req.body.workDays) ? req.body.workDays : []).map(Number))];

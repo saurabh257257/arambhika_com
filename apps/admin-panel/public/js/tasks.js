@@ -95,6 +95,35 @@
   // the customer requests still open: a short list with how far along each one is, and a way into the Customer requests tab
   // where they are worked on. The card folds up; with more than 3 requests it starts folded (a click remembers the choice).
   var reqFold = null;
+  // Follow up with existing customers: the day's list (3 customers who bought before and went quiet), what they bought with prices,
+  // and a small form to log the call and the next follow-up date. A customer not called today comes back tomorrow.
+  var cfOpen = {}, cfFold = null;
+  function cfRow(r, cf) {
+    var open = cfOpen[r.id] === true;
+    var head = '<div class="cfhead" data-cftog="' + r.id + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b>' + esc(r.name) + '</b><span class="chips">' + (r.calledAt ? P.pill('Called', 'ok') : P.pill('To call', 'due')) +
+      (r.rolledFrom ? P.pill('From ' + P.fmtDate(r.rolledFrom), 'overdue') : '') + P.pill('Last order ' + r.daysSince + ' days ago') + '</span></div>';
+    var min = P.addDays(P.today, 1);
+    var form = r.calledAt ? '<div class="stamp">Logged ' + P.stamp(r.calledAt, r.calledByName) + ': <b>' + esc(r.outcomeLabel) + '</b>' + (r.followUpDate ? ' &middot; next follow-up ' + P.fmtDate(r.followUpDate) : '') + (r.callNote ? ' &middot; ' + esc(r.callNote) : '') + '</div>' :
+      '<form class="fu" data-cfform="' + r.id + '"><div class="row"><label>What happened<select name="outcome" data-cfout><option value="">Choose...</option>' + cf.outcomes.map(function (o) { return '<option value="' + esc(o.key) + '">' + esc(o.label) + '</option>'; }).join('') + '</select></label>' +
+        '<label>Next follow-up<input type="date" name="nextDate" min="' + min + '"></label></div><label>Note<input name="note" maxlength="1000" placeholder="What was said"></label><div class="actions"><button class="btn sm" type="submit">Save call</button></div></form>';
+    return '<div class="item cfitem' + (open ? ' open' : '') + '" data-cfrow="' + r.id + '">' + head + '<div class="cfbody"' + (open ? '' : ' hidden') + '><div class="meta">' + (r.phone ? '<span>&#9742; <b>' + esc(r.phone) + '</b></span>' : '') + (r.company ? '<span>' + esc(r.company) + '</span>' : '') +
+      '<span>Last order <b>' + P.fmtDate(r.lastPurchaseOn) + '</b></span><span>Billed in all <b>' + P.money(r.billed) + '</b></span></div><div class="muted small">What they bought</div><pre class="cfnote">' + esc(r.note) + '</pre>' + form + '</div></div>';
+  }
+  function custCard(cf) {
+    if (!cf || cf.workDay === false) return '';
+    var rows = cf.rows, folded = cfFold === null ? false : cfFold;
+    if (!rows.length) return '<div class="card"><h3>Follow up with existing customers</h3><div class="muted small">Nobody to call today. None of the customers assigned to you who bought before has gone ' + cf.minDays + ' days without ordering (or no customers are assigned to you yet).</div></div>';
+    return '<div class="card' + (folded ? ' folded' : '') + '" id="cfCard"><div class="between reqhead" data-cffold role="button" tabindex="0"><div><h3><span class="caret">' + (folded ? '&#9656;' : '&#9662;') + '</span> Follow up with existing customers</h3><div class="muted small">' + cf.perDay + ' a day, customers who have not ordered for ' + cf.minDays + ' days. Anyone not called today comes back tomorrow.</div></div>' +
+      P.pill(cf.summary.done + ' of ' + rows.length + ' called', cf.summary.done >= rows.length ? 'ok' : 'due') + '</div><div class="reqbody list">' + rows.map(function (r) { return cfRow(r, cf); }).join('') + '</div></div>';
+  }
+  // the owner's read-only view of a person's list
+  function cfView(cf) {
+    if (!cf || !cf.rows || !cf.rows.length) return '';
+    return '<details class="card dfold"><summary><h3>Customer follow-ups (' + cf.summary.done + ' of ' + cf.rows.length + ' called)</h3></summary><div class="list">' + cf.rows.map(function (r) {
+      return '<div class="item ' + (r.calledAt ? '' : 'warn') + '"><div class="between"><b>' + esc(r.name) + '</b><span class="chips">' + (r.calledAt ? P.pill('Called', 'ok') : P.pill('Not called yet', 'due')) + (r.rolledFrom ? P.pill('From ' + P.fmtDate(r.rolledFrom), 'overdue') : '') + '</span></div>' +
+        (r.calledAt ? '<div class="stamp">' + esc(r.outcomeLabel) + (r.followUpDate ? ' &middot; next ' + P.fmtDate(r.followUpDate) : '') + (r.callNote ? ' &middot; ' + esc(r.callNote) : '') + '</div>' : '<div class="muted small">Last order ' + r.daysSince + ' days ago</div>') + '</div>';
+    }).join('') + '</div></details>';
+  }
   function requestsCard(list) {
     if (!list.length) return '';
     var folded = reqFold === null ? list.length > 3 : reqFold;
@@ -170,20 +199,35 @@
     }
     function load() {
       var date = state.date;
-      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today && !owner ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] }), date === P.today && !owner ? P.api('GET', '/api/requests?filter=mine').catch(function () { return { requests: [] }; }) : Promise.resolve({ requests: [] })]).then(function (res) {
+      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today && !owner ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] }), date === P.today && !owner ? P.api('GET', '/api/requests?filter=mine').catch(function () { return { requests: [] }; }) : Promise.resolve({ requests: [] }), date === P.today && !owner ? P.api('GET', '/api/cust-followups').catch(function () { return null; }) : Promise.resolve(null)]).then(function (res) {
         var r = res[0], w = res[1], fu = res[2].followups, rq = res[3].requests.filter(function (x) { return !x.complete; }); limits = { min: w.minDate, max: w.maxDate };
         seedOpen(r.tasks);
         el.innerHTML = '<div class="tasklayout"><aside>' + daySummary(r, date) + weekStrip(w, date, false) + '</aside><main>' +
-          requestsCard(rq) + followupsCard(fu) +
+          requestsCard(rq) + followupsCard(fu) + custCard(res[4]) +
           taskList(r.tasks, true, P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.')) + '</main></div>';
-        el.__fu = fu;
+        el.__fu = fu; el.__cf = res[4];
         if (!wired) { wired = true; wireTasks(el, true, r.tasks, refreshTop); wireWeek(el, state, { get min() { return limits.min; }, get max() { return limits.max; } }, function () { load().catch(P.fail); }); }
       });
     }
     el.addEventListener('click', function (e) {
+      var cfh = e.target.closest('[data-cffold]');
+      if (cfh) { var cc = cfh.closest('#cfCard'), now = !cc.classList.contains('folded'); cfFold = now; cc.classList.toggle('folded', now); cfh.querySelector('.caret').innerHTML = now ? '&#9656;' : '&#9662;'; return; }
+      var cft = e.target.closest('[data-cftog]');
+      if (cft) { var rid = cft.dataset.cftog, body = cft.nextElementSibling, on = body.hidden; cfOpen[rid] = on; body.hidden = !on; cft.querySelector('.caret').innerHTML = on ? '&#9662;' : '&#9656;'; return; }
       if (e.target.closest('[data-goreq]')) { P.go('requests'); return; }
       var h = e.target.closest('[data-reqfold]'); if (!h) return;
       var card = h.closest('#reqCard'), now = !card.classList.contains('folded'); reqFold = now; card.classList.toggle('folded', now); h.querySelector('.caret').innerHTML = now ? '&#9656;' : '&#9662;';
+    });
+    // choosing what happened suggests the next follow-up date from the rules; saving logs the call
+    el.addEventListener('change', function (e) {
+      var sel = e.target.closest('[data-cfout]'); if (!sel || !el.__cf) return;
+      var o = el.__cf.outcomes.filter(function (x) { return x.key === sel.value; })[0], f = sel.closest('form');
+      f.nextDate.value = o && o.days ? P.addDays(P.today, o.days) : '';
+    });
+    el.addEventListener('submit', function (e) {
+      var f = e.target.closest('[data-cfform]'); if (!f) return; e.preventDefault();
+      if (!f.outcome.value) { P.toast('Choose what happened'); return; }
+      P.api('POST', '/api/cust-followups/' + f.dataset.cfform + '/call', { outcome: f.outcome.value, nextDate: f.nextDate.value, note: f.note.value }).then(function () { P.toast('Call saved'); cfOpen[f.dataset.cfform] = true; return load(); }).catch(P.fail);
     });
     // the follow-up list changes after each save, so the handler reads the latest list from the element
     el.addEventListener('submit', function (e) {
@@ -214,19 +258,19 @@
       return '<div class="card colhead"><div class="between"><div><h3>' + esc(u.name) + '</h3><div class="muted small">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left' + (r.ahead ? ' &middot; working ahead' : '') + (r.workDay ? '' : ' &middot; day off') + '</div></div><div class="pct' + (pct >= 100 ? ' ok' : '') + '">' + pct + '%<span>completed</span></div></div>' + (total ? P.bar(done, total) : '') +
         (w.weekly.length ? '<div class="chips">' + w.weekly.map(function (x) { return '<span class="chip">' + esc(x.name) + ': <b>' + x.done + ' of ' + x.total + '</b></span>'; }).join('') + '</div>' : '') + '</div>';
     }
-    function column(u, r, w, fu) {
+    function column(u, r, w, fu, cf) {
       return '<section class="tcol">' + colHead(u, r, w) +
         (fu.length ? '<details class="card dfold"><summary><h3>Follow-up calls due (' + fu.length + ')</h3></summary><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></details>' : '') +
-        taskList(r.tasks, false, P.empty('No tasks for them on this day.')) + '</section>';
+        cfView(cf) + taskList(r.tasks, false, P.empty('No tasks for them on this day.')) + '</section>';
     }
     function load() {
       var people = P.users.filter(function (u) { return u.active !== false; });
       if (!people.length) { el.innerHTML = P.empty('Add team members first.'); return Promise.resolve(); }
       var date = state.date;
       return Promise.all(people.map(function (u) {
-        return Promise.all([P.api('GET', '/api/tasks?userId=' + u.id + '&date=' + date), P.api('GET', '/api/week?userId=' + u.id + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + u.id)]);
+        return Promise.all([P.api('GET', '/api/tasks?userId=' + u.id + '&date=' + date), P.api('GET', '/api/week?userId=' + u.id + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + u.id), P.api('GET', '/api/cust-followups?userId=' + u.id).catch(function () { return null; })]);
       })).then(function (all) {
-        el.innerHTML = miniWeek(all.map(function (x) { return x[1]; }), date) + '<div class="twgrid">' + people.map(function (u, i) { return column(u, all[i][0], all[i][1], all[i][2].followups); }).join('') + '</div>';
+        el.innerHTML = miniWeek(all.map(function (x) { return x[1]; }), date) + '<div class="twgrid">' + people.map(function (u, i) { return column(u, all[i][0], all[i][1], all[i][2].followups, all[i][3]); }).join('') + '</div>';
         if (!wired) { wired = true; wireTasks(el, false, [], null); wireWeek(el, state, {}, function () { load().catch(P.fail); }); }
       });
     }

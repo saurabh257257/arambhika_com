@@ -44,6 +44,10 @@ Read-only, from Zoho Books, kept in memory for 5 minutes ("Refresh from Zoho" fo
 What the panel itself stores (JSON files in `DATA_DIR`, plus payment screenshots in `DATA_DIR/uploads`): team members, task designs and the work done,
 customer requests, who owns which customer/invoice, follow-up history, transactions, the activity feed and settings.
 
+## Follow up with existing customers (daily list)
+
+Every working day each team member gets a list of 3 customers (setting: Follow-up rules). They come from the customers assigned to that person, only if they have bought before and have **not ordered in the last 30 days** (also a setting), biggest spenders first. Each comes with a note of what they bought and at what price (read from the Zoho invoices). The person logs what happened and the next follow-up date (suggested from the rules). A customer who is not called today comes back tomorrow ahead of new ones, so the list stays at 3. A customer who was called is not offered again before the follow-up date. The list counts as "Customer follow-ups" in the day's percentage. The old customer follow-up logging in the Customers tab was removed.
+
 ## The customer master list (customers.json)
 
 Every customer in Zoho Books, with quotes, invoices, bills, sales orders (with item lines) and item categories, plus the leads the team found. It is rebuilt into `customers.json`; the team's work is also written to `call10.json`, `find4.json` and `newrequests.json`. People are matched by mobile number (last 10 digits). A person not in Zoho is a lead; when a paid invoice for the same mobile appears (dated after the first contact) the lead is converted to a customer, credited to whoever found them. A mobile that already had a paid invoice earlier is only linked. People logged without a mobile stay as unmatched leads. Needs Zoho read access to estimates, bills, items and sales orders.

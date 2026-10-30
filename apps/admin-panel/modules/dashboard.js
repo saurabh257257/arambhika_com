@@ -24,14 +24,8 @@ module.exports = function dashboard(app, ctx) {
       // call follow-ups
       const due = ctx.tasks.followupsDue(userId).length; const doneF = ctx.tasks.followupsDoneToday(userId);
       out.followups = { done: doneF, total: due + doneF };
-      // customers
-      let fresh = 0;
-      for (const s of ctx.col('customerstate').filter((x) => x.ownerId === userId).sort((a, b) => a.id.localeCompare(b.id))) {
-        const doneToday = istDate(s.lastAt) === today;
-        const isDue = ['due', 'overdue'].includes(followStatus(s.nextDate, today));
-        const isNew = !s.lastAt && !s.nextDate && fresh < NEW_CUSTOMERS_PER_DAY && (fresh += 1);
-        if (doneToday) { out.customers.done += 1; out.customers.total += 1; } else if (isDue || isNew) out.customers.total += 1;
-      }
+      // customers: today's list of existing customers to follow up (3 a day, rolled over until called)
+      try { const list = await ctx.custFollow.today(userId); const sm = ctx.custFollow.summary(list, today); out.customers = { done: sm.done, total: sm.total }; } catch (e) { out.customers.error = e.message; }
       // invoices (only if Zoho answers)
       try {
         for (const i of await ctx.invoicesData(false)) {
