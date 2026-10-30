@@ -4,7 +4,7 @@ const { str, uid, hashPassword, nowISO } = require('../lib/util');
 const { KINDS, mergeCadence } = require('../lib/followups');
 
 module.exports = function team(app, ctx) {
-  const pub = (u) => ({ id: u.id, name: u.name, username: u.username, active: u.active, createdAt: u.createdAt });
+  const pub = (u) => ({ id: u.id, name: u.name, username: u.username, active: u.active, createdAt: u.createdAt, newCustomerTarget: Number.isFinite(u.newCustomerTarget) ? u.newCustomerTarget : null });
 
   app.get('/api/users', (req, res) => {
     // everyone may see the names (to know who is on the team); only the admin sees account details
@@ -36,6 +36,11 @@ module.exports = function team(app, ctx) {
       ctx.log(req.user, 'Changed the password of ' + u.name);
     }
     if (req.body.active !== undefined) { u.active = Boolean(req.body.active); ctx.log(req.user, (u.active ? 'Switched on ' : 'Switched off ') + u.name); }
+    if (req.body.newCustomerTarget !== undefined) {
+      const n = req.body.newCustomerTarget === '' || req.body.newCustomerTarget === null ? null : Math.round(Number(req.body.newCustomerTarget));
+      if (n !== null && !(n >= 0 && n <= 1000)) return res.status(400).json({ error: 'The target is a number of customers per month' });
+      if (n === null) delete u.newCustomerTarget; else u.newCustomerTarget = n;
+    }
     ctx.save('users');
     res.json({ user: pub(u) });
   });

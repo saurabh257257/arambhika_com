@@ -1020,3 +1020,37 @@ describe('admin tasks: the owner\'s own repeating to-do list', () => {
     } finally { await t.stop(); }
   });
 });
+
+describe('new customers sold', () => {
+  test('counts a customer once, for the owner of the first delivered request; Zoho and the owner can leave one out', async () => {
+    const z = pretendZoho();
+    const { s, admin, ann, raj } = await team(z);
+    try {
+      const sell = async (who, fields) => { const r = (await who.post('/api/requests', fields)).data.request; await who.put('/api/requests/' + r.id + '/steps/done', { done: true }); return r; };
+      const a1 = await sell(ann, { customerName: 'Fresh Cells', phone: '98 000 11111', amount: 5000 });
+      await sell(raj, { customerName: 'Fresh Cells Again', phone: '9800011111', amount: 700 });   // same phone: a repeat, not a second customer
+      await sell(raj, { customerName: 'Shakti Batteries', phone: '9811111111' });                  // has an older invoice in Zoho
+      const b1 = await sell(raj, { customerName: 'Walk In Co', phone: '9877700000' });
+      await ann.post('/api/requests', { customerName: 'Not Delivered', phone: '9855500000' });      // not delivered yet, not counted
+      let d = (await admin.get('/api/new-customers')).data;
+      const by = (n) => d.people.find((p) => p.name === n);
+      assert.equal(by('Ann').month, 1); assert.equal(by('Raj').month, 1);
+      assert.equal(d.customers.length, 2); assert.equal(d.zohoChecked, true);
+      assert.equal(d.skipped.length, 1); assert.match(d.skipped[0].skip, /Zoho/);
+      assert.equal(by('Ann').target, null);
+      assert.equal((await admin.patch('/api/users/' + (await admin.get('/api/users')).data.users.find((u) => u.name === 'Ann').id, { newCustomerTarget: 2 })).data.user.newCustomerTarget, 2);
+      // the owner leaves one out, then moves the credit of another
+      await admin.post('/api/new-customers/' + b1.id + '/override', { notNew: true });
+      d = (await admin.get('/api/new-customers')).data; assert.equal(by('Raj').month, 0);
+      const rajId = (await admin.get('/api/users')).data.users.find((u) => u.name === 'Raj').id;
+      await admin.post('/api/new-customers/' + a1.id + '/override', { creditTo: rajId });
+      d = (await admin.get('/api/new-customers')).data; assert.equal(d.people.find((p) => p.name === 'Raj').month, 1);
+      // a team member sees only their own numbers; only the owner can correct
+      const mine = (await ann.get('/api/new-customers')).data; assert.equal(mine.people.length, 1); assert.equal(mine.skipped.length, 0);
+      assert.equal((await ann.post('/api/new-customers/' + a1.id + '/override', { notNew: true })).status, 403);
+      // Zoho down: still counts, and says it could not check
+      z.data.fail = true;
+      assert.equal((await admin.get('/api/new-customers')).data.zohoChecked, false);
+    } finally { await s.stop(); }
+  });
+});

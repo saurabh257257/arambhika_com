@@ -18,7 +18,7 @@ const { createZoho } = require('./lib/zoho');
 const { mergeCadence } = require('./lib/followups');
 const { todayIST, str, uid, nowISO, safeEqual, checkPassword, clock } = require('./lib/util');
 
-const MODULES = ['team', 'tasks', 'admintasks', 'requests', 'customers', 'invoices', 'office', 'dashboard'];
+const MODULES = ['team', 'tasks', 'admintasks', 'requests', 'newcustomers', 'customers', 'invoices', 'office', 'dashboard'];
 
 function createApp({ dataDir, adminPassword, sessionSecret, zoho }) {
   if (!adminPassword) throw new Error('ADMIN_PASSWORD is not set. Refusing to start without a login password.');

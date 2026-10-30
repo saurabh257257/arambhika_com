@@ -32,7 +32,7 @@
           return '<a class="item" href="#tasks" style="text-decoration:none;color:inherit"><div class="between"><b>' + esc(t.name) + '</b><span class="chips">' + (t.schedule === 'weekly' ? P.pill('This week') : '') + (t.carried ? P.pill('+' + t.carried + ' carried over', 'doing') : '') + '<span class="muted">' + t.done + ' of ' + t.total + '</span></span></div>' + P.bar(t.done, t.total) + (t.updatedAt ? '<div class="stamp">Updated ' + P.fmtTime(t.updatedAt) + '</div>' : '') + '</a>';
         }).join('') + '</div>' : '<div class="muted">No tasks assigned to you today.</div>') + '</div>' +
         (d.available.requests ? '<div class="card"><h3>Waiting for somebody to pick</h3><div class="actions"><a class="btn ghost sm" href="#requests">' + d.available.requests + ' new request' + (d.available.requests === 1 ? '' : 's') + ' from the website</a></div></div>' : '');
-    });
+    }).then(function () { return P.newCustomersTile(el); });
   } });
 
   // ---------------- the owner's dashboard ----------------
@@ -63,6 +63,6 @@
         var w = e.target.closest('[data-work]'); if (w) P.go('work', { viewAs: w.dataset.work });
         if (e.target.id === 'zr') { e.target.disabled = true; e.target.textContent = 'Refreshing...'; P.api('POST', '/api/zoho/refresh', {}).then(function () { P.toast('Refreshed from Zoho'); window.dispatchEvent(new Event('hashchange')); }).catch(P.fail); }
       });
-    });
+    }).then(function () { return P.newCustomersTile(el); });
   } });
 })();
