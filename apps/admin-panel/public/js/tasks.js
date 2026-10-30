@@ -235,7 +235,7 @@
       '<label>Choices (comma separated)<input name="options" value="' + esc((c.options || []).join(', ')) + '" placeholder="only for type choice"></label><div class="chips"><label class="check"><input type="checkbox" name="required"' + (c.required ? ' checked' : '') + '> must fill</label><label class="check" data-fu-box><input type="checkbox" name="followUp"' + (c.followUp ? ' checked' : '') + '> this is the follow-up date</label></div><button class="btn ghost sm" type="button" data-del-col>Remove</button></div>';
   }
   function designForm(t, defaults) {
-    t = t || { kind: 'rows', schedule: 'daily', assignees: [], active: true, rowCount: 10, columns: defaults, steps: [], target: 1, unit: 'done', carry: true };
+    t = t || { kind: 'count', schedule: 'daily', assignees: [], active: true, rowCount: 10, columns: defaults, steps: [], target: 1, unit: 'done', carry: true };
     return '<form class="card" id="design"><div class="between"><h3>' + (t.id ? 'Change this task' : 'Design a new task') + '</h3>' + (t.id ? '<button class="btn ghost sm" type="button" data-cancel>Cancel</button>' : '') + '</div>' +
       '<div class="row"><label style="flex:3 1 240px">Task name<input name="name" value="' + esc(t.name || '') + '" maxlength="80" required placeholder="e.g. Call 10 people"></label>' +
       '<label>What kind of task<select name="kind"><option value="rows"' + (t.kind === 'rows' ? ' selected' : '') + '>Fill in rows (calls, visits, entries)</option><option value="checklist"' + (t.kind === 'checklist' ? ' selected' : '') + '>Checklist (steps to tick)</option><option value="count"' + (t.kind === 'count' ? ' selected' : '') + '>Counter (a number and a note)</option></select></label>' +
