@@ -259,3 +259,14 @@ textarea { min-height: 70px; resize: vertical; }
 
 /* the inner <main> of the Tasks layout must not pick up the page-level main rule (centred, shrink-to-fit) */
 .tasklayout > main { max-width: none; margin: 0; padding: 0; width: 100%; justify-self: stretch; }
+
+/* Admin tasks */
+.atcard.overdue { border-left: 4px solid var(--bad); }
+.atcard.today { border-left: 4px solid var(--warn); }
+.atcard.done { opacity: .65; }
+.atform { display: grid; gap: 10px; }
+.atform [hidden] { display: none !important; }
+.daychip { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px 9px; }
+.daychip input { width: auto; margin: 0; }
+button.chip { border: 0; cursor: pointer; }
+.empty-start { display: grid; gap: 8px; }

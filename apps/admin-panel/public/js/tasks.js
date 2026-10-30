@@ -7,9 +7,9 @@
   // ---------------- one task, drawn the same way for the team member and for the owner ----------------
   function cellInput(col, value, editable) {
     var dis = editable ? '' : ' disabled', v = esc(value || '');
-    if (col.type === 'choice') return '<select name="' + col.key + '"' + dis + '><option value="">' + esc(col.label) + '</option>' + col.options.map(function (o) { return '<option' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+    if (col.type === 'choice') return '<select name="' + col.key + '"' + dis + '><option value=""></option>' + col.options.map(function (o) { return '<option' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     var type = { phone: 'tel', date: 'date', number: 'number' }[col.type] || 'text';
-    return '<input name="' + col.key + '" type="' + type + '" value="' + v + '" placeholder="' + esc(col.label) + (col.required ? ' *' : '') + '" maxlength="200"' + dis + (col.followUp ? ' min="' + P.addDays(P.today, 1) + '"' : '') + '>';
+    return '<input name="' + col.key + '" type="' + type + '" value="' + v + '" aria-label="' + esc(col.label) + '" maxlength="200"' + dis + (col.followUp ? ' min="' + P.addDays(P.today, 1) + '"' : '') + '>';
   }
   function carryNote(t) {
     if (!t.carried) return '';

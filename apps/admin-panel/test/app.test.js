@@ -994,3 +994,29 @@ describe('deleting a customer request', () => {
     assert.ok(!(await admin.get('/api/requests?filter=all&refresh=1')).data.requests.some((r) => r.source === 'Website'));
   });
 });
+
+describe('admin tasks: the owner\'s own repeating to-do list', () => {
+  test('starter set, done moves the next date, weekly days, snooze, admin only', async () => {
+    const { s: t, admin, ann } = await team(pretendZoho());
+    try {
+      const s = await admin.post('/api/admin-tasks/starter');
+      assert.equal(s.data.added, 4);
+      assert.equal((await admin.post('/api/admin-tasks/starter')).data.added, 0);
+      const list = (await admin.get('/api/admin-tasks')).data.tasks;
+      const vikas = list.find((x) => x.title === 'Follow up with Vikas');
+      assert.equal(vikas.nextDue, today);
+      const done = (await admin.post('/api/admin-tasks/' + vikas.id + '/done')).data.task;
+      assert.equal(done.nextDue, addDays(today, 1));
+      assert.equal(done.lastDone, today);
+      const wk = (await admin.post('/api/admin-tasks', { title: 'Weekly check', repeat: 'weekly', days: [1] })).data.task;
+      assert.equal(new Date(wk.nextDue + 'T00:00:00Z').getUTCDay(), 1);
+      assert.equal((await admin.post('/api/admin-tasks', { title: 'x', repeat: 'weekly', days: [] })).status, 400);
+      assert.equal((await admin.post('/api/admin-tasks/' + wk.id + '/snooze', { date: today })).status, 400);
+      assert.equal((await admin.post('/api/admin-tasks/' + wk.id + '/snooze', { date: addDays(today, 10) })).status, 200);
+      const once = (await admin.post('/api/admin-tasks', { title: 'One off', repeat: 'once', dueDate: today })).data.task;
+      assert.equal((await admin.post('/api/admin-tasks/' + once.id + '/done')).data.task.state, 'done');
+      assert.equal((await admin.del('/api/admin-tasks/' + once.id)).status, 200);
+      assert.equal((await ann.get('/api/admin-tasks')).status, 403);
+    } finally { await t.stop(); }
+  });
+});
