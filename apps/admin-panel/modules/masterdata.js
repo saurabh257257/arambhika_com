@@ -41,7 +41,8 @@ module.exports = function masterdata(app, ctx) {
     replace('call10', named(s.call10)); replace('find4', named(s.find4)); replace('newrequests', named(s.requests));
     const z = snapshot || {};
     const lines = {}; for (const l of lineStore()) lines[l.id] = l.items;
-    const records = M.buildMaster({ ...z, lines, sources: [...s.call10, ...s.find4, ...s.requests], userName: ctx.userName });
+    const manual = {}; for (const c of ctx.col('leadconv')) manual[c.id] = c.date;
+    const records = M.buildMaster({ ...z, lines, sources: [...s.call10, ...s.find4, ...s.requests], manual, userName: ctx.userName });
     replace('customers', records);
     status.lastBuildAt = nowISO(); status.counts = { ...M.summary(records), call10: s.call10.length, find4: s.find4.length, requests: s.requests.length };
   }
@@ -110,6 +111,18 @@ module.exports = function masterdata(app, ctx) {
     if (!['customers', 'call10', 'find4', 'newrequests'].includes(req.params.name)) return res.status(404).json({ error: 'Not found' });
     res.set({ 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': 'attachment; filename="' + req.params.name + '.json"' });
     res.send(JSON.stringify(ctx.col(req.params.name), null, 1));
+  });
+  // the owner turns a lead into a customer by hand (or undoes it)
+  app.post('/api/master/convert', ctx.requireAdmin, (req, res) => {
+    const id = String((req.body && req.body.id) || '');
+    const rec = ctx.col('customers').find((r) => r.id === id);
+    if (!rec || !rec.lead) return res.status(404).json({ error: 'That lead was not found' });
+    const list = ctx.col('leadconv');
+    if (req.body.undo) { const at = list.findIndex((c) => c.id === id); if (at >= 0) list.splice(at, 1); }
+    else if (!list.some((c) => c.id === id)) list.push({ id, date: ctx.todayIST(), at: nowISO(), byName: req.user.name });
+    ctx.save('leadconv'); rebuild();
+    ctx.log(req.user, (req.body.undo ? 'Turned ' : 'Converted ') + rec.name + (req.body.undo ? ' back into a lead' : ' from a lead to a customer'));
+    res.json({ ok: true });
   });
   app.get('/api/master/customers', (req, res) => {
     let list = ctx.col('customers');

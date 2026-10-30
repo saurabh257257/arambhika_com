@@ -1293,3 +1293,26 @@ describe('leads view and file downloads', () => {
     } finally { await s.stop(); }
   });
 });
+
+
+describe('convert a lead to a customer by hand', () => {
+  test('the owner converts and undoes; deleting the request removes the lead', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      const made = (await ann.post('/api/requests', { customerName: 'Aarnik', request: 'Strip', phone: '9000000077' })).data.request;
+      await admin.post('/api/master/sync');
+      let lead = (await admin.get('/api/master/customers?leads=1')).data.customers.find((c) => c.name === 'Aarnik');
+      assert.equal(lead.stage, 'lead');
+      assert.equal((await ann.post('/api/master/convert', { id: lead.id })).status, 403);
+      assert.equal((await admin.post('/api/master/convert', { id: 'nope' })).status, 404);
+      assert.equal((await admin.post('/api/master/convert', { id: lead.id })).status, 200);
+      lead = (await admin.get('/api/master/customers?leads=1')).data.customers.find((c) => c.name === 'Aarnik');
+      assert.equal(lead.stage, 'customer'); assert.equal(lead.lead.manual, true); assert.equal(lead.lead.converted, true);
+      await admin.post('/api/master/convert', { id: lead.id, undo: true });
+      assert.equal((await admin.get('/api/master/customers?leads=1')).data.customers.find((c) => c.name === 'Aarnik').stage, 'lead');
+      assert.equal((await admin.del('/api/requests/' + made.id)).status, 200);
+      await admin.post('/api/master/sync');
+      assert.ok(!(await admin.get('/api/master/customers?leads=1')).data.customers.some((c) => c.name === 'Aarnik'), 'no request, no lead');
+    } finally { await s.stop(); }
+  });
+});

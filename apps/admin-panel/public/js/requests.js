@@ -55,7 +55,7 @@
     function card(r) {
       if (!isAdmin) return cardFull(r);
       var open = rOpen[r.id] === true;
-      return '<div class="rcard' + (open ? ' open' : '') + '" data-rc="' + r.id + '"><div class="rsum" data-rtoggle role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b class="rname">' + esc(r.customerName) + '</b>' + P.pill(r.progress.percent + '% completed', (r.complete ? 'ok ' : '') + 'pcr') + '</div><div class="rbody">' + cardFull(r) + '</div></div>';
+      return '<div class="rcard' + (open ? ' open' : '') + '" data-rc="' + r.id + '"><div class="rsum" data-rtoggle role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b class="rname">' + esc(r.customerName) + '</b>' + P.pill(r.progress.percent + '% completed', (r.complete ? 'ok ' : '') + 'pcr') + '<button class="btn ghost sm" data-rdel="' + r.id + '" type="button" style="color:#b91c1c">Delete</button></div><div class="rbody">' + cardFull(r) + '</div></div>';
     }
 
     // the owner sees everybody's requests side by side, one column per person (and one for requests nobody has picked yet)
@@ -108,6 +108,8 @@
     }
 
     el.addEventListener('click', function (e) {
+      var rd = e.target.closest('[data-rdel]');
+      if (rd) { e.stopPropagation(); if (!window.confirm('Delete this customer request for good? Its notes and screenshots are removed too. This cannot be undone.')) return; P.api('DELETE', '/api/requests/' + rd.dataset.rdel).then(function () { P.toast('Request deleted'); return load(); }).catch(P.fail); return; }
       var rt = e.target.closest('[data-rtoggle]');
       if (rt) { var rc = rt.parentNode, on = !rc.classList.contains('open'); rc.classList.toggle('open', on); rOpen[rc.dataset.rc] = on; rt.querySelector('.caret').innerHTML = on ? '&#9662;' : '&#9656;'; return; }
       var f = e.target.closest('[data-f]'); if (f) { filter = f.dataset.f; load().catch(P.fail); return; }

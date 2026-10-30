@@ -47,7 +47,7 @@ function requestRows(requests) {
   }));
 }
 
-function buildMaster({ contacts = [], invoices = [], estimates = [], bills = [], orders = [], lines = {}, items = [], sources = [], userName = () => '' }) {
+function buildMaster({ contacts = [], invoices = [], estimates = [], bills = [], orders = [], lines = {}, items = [], sources = [], manual = {}, userName = () => '' }) {
   const itemById = new Map(items.map((i) => [i.id, i]));
   const records = [];
   const byPhone = new Map();
@@ -105,6 +105,11 @@ function buildMaster({ contacts = [], invoices = [], estimates = [], bills = [],
         quotes: [], invoices: [], bills: [], orders: [], categories: [], totals: { billed: 0, paidInvoices: 0, firstPaidOn: '' }, lead: info,
       });
     }
+  }
+  // leads the owner has turned into customers by hand (the sale may not be in Zoho yet, or the person is already a customer)
+  for (const r of records) {
+    if (r.stage === 'lead' && r.lead && manual[r.id]) { r.stage = 'customer'; r.lead.converted = true; r.lead.manual = true; r.lead.convertedOn = manual[r.id]; }
+    else if (r.lead && manual[r.id]) r.lead.manual = true;
   }
   records.sort((a, b) => (a.stage === b.stage ? a.name.localeCompare(b.name) : a.stage === 'lead' ? -1 : 1));
   return records;
