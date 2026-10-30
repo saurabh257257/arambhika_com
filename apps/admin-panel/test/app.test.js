@@ -1233,3 +1233,26 @@ describe('customers by owner export', () => {
     } finally { await s.stop(); }
   });
 });
+
+
+describe('removing customers that have no owner', () => {
+  test('the owner reviews the list first, confirms, and can put customers back; Zoho is untouched', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      const rev = (await admin.get('/api/customers/no-owner')).data;
+      assert.equal(rev.candidates.length, 4); assert.equal(rev.withOwner, 0); assert.equal(rev.removed.length, 0);
+      assert.equal((await ann.get('/api/customers/no-owner')).status, 403);
+      const ids = rev.candidates.filter((c) => c.name === 'New Prospect' || c.name === 'Volt Works').map((c) => c.id);
+      assert.equal((await admin.post('/api/customers/remove', { ids })).status, 400, 'needs the typed word');
+      assert.equal((await ann.post('/api/customers/remove', { confirm: 'REMOVE', ids })).status, 403);
+      assert.equal((await admin.post('/api/customers/remove', { confirm: 'REMOVE', ids })).data.removed, 2);
+      assert.equal((await admin.get('/api/customers')).data.customers.length, 2, 'removed customers are gone from the list');
+      assert.equal((await admin.get('/api/customers/no-owner')).data.removed.length, 2);
+      // a customer that has an owner cannot be removed this way
+      await admin.post('/api/customers/auto-assign');
+      const owned = (await admin.get('/api/customers')).data.customers[0].id;
+      assert.equal((await admin.post('/api/customers/remove', { confirm: 'REMOVE', ids: [owned] })).data.removed, 0);
+      assert.equal((await admin.post('/api/customers/restore', { ids })).data.restored, 2);
+    } finally { await s.stop(); }
+  });
+});

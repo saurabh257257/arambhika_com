@@ -62,7 +62,7 @@
           [['all', 'All customers (' + (c.total || 0) + ')'], ['mine', 'My customers (' + (c.mine || 0) + ')'], ['unassigned', 'Waiting for an owner (' + (c.unassigned || 0) + ')']];
         var focus = document.activeElement && document.activeElement.id === 'cq';
         el.innerHTML = '<div class="card"><div class="between"><div class="seg">' + seg.map(function (s) { return '<button class="btn ' + (filter === s[0] ? '' : 'ghost') + '" data-f="' + s[0] + '" type="button">' + s[1] + '</button>'; }).join('') + '</div>' +
-          '<div class="actions">' + (isAdmin ? '<button class="btn ghost sm" id="share" type="button">Share unowned customers evenly</button><button class="btn ghost sm" id="resplit" type="button">Re-split all customers</button><a class="btn ghost sm" href="/api/customers/export" download>Download list by owner (CSV)</a>' : '') + '<button class="btn ghost sm" id="rf" type="button">Refresh from Zoho</button></div></div>' +
+          '<div class="actions">' + (isAdmin ? '<button class="btn ghost sm" id="share" type="button">Share unowned customers evenly</button><button class="btn ghost sm" id="resplit" type="button">Re-split all customers</button><a class="btn ghost sm" href="/api/customers/export" download>Download list by owner (CSV)</a><button class="btn ghost sm" id="noOwner" type="button">Review customers with no owner</button>' : '') + '<button class="btn ghost sm" id="rf" type="button">Refresh from Zoho</button></div></div>' +
           '<div class="row">' + (isAdmin ? '<label>Team member<select id="cw"><option value="">Everyone</option>' + P.userOptions(who) + '</select></label>' : '') + '<label style="flex:3 1 240px">Search<input id="cq" value="' + esc(q) + '" placeholder="Name, phone or email"></label></div></div>' +
           (isAdmin ? (owners = c.owners || [], pieCard()) : '') +
           (lastSplit ? '<div class="banner info">' + esc(lastSplit) + '</div>' : '') +
@@ -71,6 +71,32 @@
           (r.customers.length ? '<div class="list">' + r.customers.map(item).join('') + '</div>' : P.empty(r.error ? 'Customers could not be loaded.' : 'No customers match.'));
         if (focus) { var i = el.querySelector('#cq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
       });
+    }
+    // the customers nobody owns: shown in full first, the owner unticks any to keep, types REMOVE, and only then are they hidden
+    function reviewNoOwner() {
+      P.api('GET', '/api/customers/no-owner').then(function (r) {
+        var box = document.createElement('div'); box.className = 'card'; box.id = 'reviewCard';
+        var rows = r.candidates.map(function (c) { return '<tr><td><input type="checkbox" name="rid" value="' + esc(c.id) + '"' + (c.outstanding ? '' : ' checked') + '></td><td><b>' + esc(c.name) + '</b>' + (c.company && c.company !== c.name ? '<div class="muted small">' + esc(c.company) + '</div>' : '') + '</td><td>' + esc(c.phone) + '</td><td>' + c.invoices + '</td><td>' + (c.outstanding ? '<span class="err">' + P.money(c.outstanding) + ' unpaid</span>' : '') + '</td></tr>'; }).join('');
+        box.innerHTML = '<div class="between"><h3>Customers with no owner (' + r.candidates.length + ')</h3><button class="btn ghost sm" id="rvClose" type="button">Close</button></div>' +
+          '<div class="muted small">' + r.withOwner + ' customers have an owner and are not in this list. Removing hides a customer from this panel only; Zoho is not changed and you can put them back below. Customers with an unpaid invoice start unticked.</div>' +
+          (r.candidates.length ? '<table class="table"><thead><tr><th></th><th>Customer</th><th>Phone</th><th>Invoices</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>' +
+            '<div class="row"><label>Type REMOVE to confirm<input id="rvConfirm" autocomplete="off"></label><button class="btn bad fit" id="rvGo" type="button">Remove the ticked customers</button></div>' : '<div class="muted">Every customer has an owner.</div>') +
+          (r.removed.length ? '<h4>Removed earlier (' + r.removed.length + ')</h4><div class="list">' + r.removed.map(function (c) { return '<div class="item"><div class="between"><span>' + esc(c.name) + ' <span class="muted small">' + esc(c.phone) + '</span></span><button class="btn ghost sm" data-restore="' + esc(c.id) + '" type="button">Put back</button></div></div>'; }).join('') + '</div>' : '');
+        var old = el.querySelector('#reviewCard'); if (old) old.remove();
+        el.insertBefore(box, el.firstChild);
+        box.addEventListener('click', function (ev) {
+          if (ev.target.id === 'rvClose') { box.remove(); return; }
+          var rs = ev.target.closest('[data-restore]');
+          if (rs) { P.api('POST', '/api/customers/restore', { ids: [rs.dataset.restore] }).then(function () { P.toast('Put back'); return load(); }).then(reviewNoOwner).catch(P.fail); return; }
+          if (ev.target.id === 'rvGo') {
+            var ids = [].filter.call(box.querySelectorAll('[name=rid]'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+            if (!ids.length) { P.toast('Tick the customers to remove'); return; }
+            if (box.querySelector('#rvConfirm').value !== 'REMOVE') { P.toast('Type REMOVE to confirm'); return; }
+            P.api('POST', '/api/customers/remove', { confirm: 'REMOVE', ids: ids }).then(function (x) { P.toast(x.removed + ' customers removed from the list'); return load(); }).then(reviewNoOwner).catch(P.fail);
+          }
+        });
+        box.scrollIntoView();
+      }).catch(P.fail);
     }
     // regular and other customers are shared out separately, so nobody ends up with most of either kind
     function split(all) {
@@ -89,6 +115,7 @@
         split(true); return;
       }
       if (e.target.id === 'share') { split(false); return; }
+      if (e.target.id === 'noOwner') { reviewNoOwner(); return; }
     });
     el.addEventListener('input', function (e) { if (e.target.id !== 'cq') return; q = e.target.value; clearTimeout(timer); timer = setTimeout(function () { load().catch(P.fail); }, 350); });
     el.addEventListener('change', function (e) {

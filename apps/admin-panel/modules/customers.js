@@ -30,7 +30,8 @@ module.exports = function customers(app, ctx) {
       if (i.balance > 0 && i.status !== 'void' && i.status !== 'draft') b.outstanding += i.balance;
       by.set(i.customerId, b);
     }
-    return { source: c.source, note: c.note || '', by, list: c.list };
+    // customers the owner removed from the list (not real customers) are left out everywhere; Zoho itself is never changed
+    return { source: c.source, note: c.note || '', by, list: c.list.filter((x) => !(stateOf(x.id) || {}).excluded), allList: c.list };
   }
   ctx.customersData = load;
 
@@ -41,6 +42,35 @@ module.exports = function customers(app, ctx) {
     return { id: c.id, name: c.name, company: c.company, phone: c.phone, email: c.email, invoices: b.count, regular: b.count >= REGULAR_MIN_INVOICES, billed: Math.round(b.billed), lastInvoice: b.last, outstanding: Math.round(b.outstanding || c.outstanding || 0), onboarded: s.onboarded === true || s.onboarded === false ? s.onboarded : auto, onboardedAuto: auto, onboardedManual: s.onboarded === true || s.onboarded === false,
       ownerId: s.ownerId || '', ownerName: ctx.userName(s.ownerId), nextDate: s.nextDate || '', lastAt: s.lastAt || '', lastByName: s.lastByName || '', lastOutcome: s.lastOutcome || '', lastNote: s.lastNote || '', followStatus: followStatus(s.nextDate, today) };
   }
+
+  // ---- removing "customers" nobody owns (owner only): review the list first, then confirm. Hidden here only; Zoho is not touched. ----
+  const brief = (r) => ({ id: r.id, name: r.name, company: r.company, phone: r.phone, email: r.email, invoices: r.invoices, billed: r.billed, outstanding: r.outstanding, lastInvoice: r.lastInvoice });
+  app.get('/api/customers/no-owner', ctx.requireAdmin, async (req, res) => {
+    let data;
+    try { data = await load(req.query.refresh === '1'); } catch (err) { return res.status(502).json({ error: err.message }); }
+    const today = ctx.todayIST();
+    const rows = data.list.map((c) => view(c, data.by, today));
+    const removed = data.allList.filter((c) => (stateOf(c.id) || {}).excluded).map((c) => view(c, data.by, today));
+    res.json({ candidates: rows.filter((r) => !r.ownerId).map(brief).sort((a, b) => a.name.localeCompare(b.name)), withOwner: rows.length - rows.filter((r) => !r.ownerId).length, removed: removed.map(brief) });
+  });
+  app.post('/api/customers/remove', ctx.requireAdmin, async (req, res) => {
+    if ((req.body && req.body.confirm) !== 'REMOVE') return res.status(400).json({ error: 'Type REMOVE to confirm' });
+    const ids = Array.isArray(req.body.ids) ? req.body.ids.map(String).filter((i) => ID_RE.test(i)) : [];
+    if (!ids.length) return res.status(400).json({ error: 'Choose the customers to remove' });
+    let data;
+    try { data = await load(false); } catch (err) { return res.status(502).json({ error: err.message }); }
+    const ok = new Set(data.list.filter((c) => !(stateOf(c.id) || {}).ownerId).map((c) => c.id)); // only customers that really have no owner
+    let n = 0;
+    for (const id of ids) if (ok.has(id)) { const s = ensureState(id); s.excluded = true; s.excludedAt = nowISO(); s.updatedAt = nowISO(); n += 1; }
+    ctx.save('customerstate'); ctx.log(req.user, 'Removed ' + n + ' customers without an owner from the customer list');
+    res.json({ ok: true, removed: n });
+  });
+  app.post('/api/customers/restore', ctx.requireAdmin, (req, res) => {
+    const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(String) : []; let n = 0;
+    for (const id of ids) { const s = stateOf(id); if (s && s.excluded) { s.excluded = false; s.updatedAt = nowISO(); n += 1; } }
+    ctx.save('customerstate'); ctx.log(req.user, 'Put ' + n + ' customers back on the customer list');
+    res.json({ ok: true, restored: n });
+  });
 
   // every customer that has an owner, as a spreadsheet file, grouped by owner (owner only)
   app.get('/api/customers/export', ctx.requireAdmin, async (req, res) => {
