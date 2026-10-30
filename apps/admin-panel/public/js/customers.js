@@ -62,7 +62,7 @@
           [['all', 'All customers (' + (c.total || 0) + ')'], ['mine', 'My customers (' + (c.mine || 0) + ')'], ['unassigned', 'Waiting for an owner (' + (c.unassigned || 0) + ')']];
         var focus = document.activeElement && document.activeElement.id === 'cq';
         el.innerHTML = '<div class="card"><div class="between"><div class="seg">' + seg.map(function (s) { return '<button class="btn ' + (filter === s[0] ? '' : 'ghost') + '" data-f="' + s[0] + '" type="button">' + s[1] + '</button>'; }).join('') + '</div>' +
-          '<div class="actions">' + (isAdmin ? '<button class="btn ghost sm" id="share" type="button">Share unowned customers evenly</button><button class="btn ghost sm" id="resplit" type="button">Re-split all customers</button><a class="btn ghost sm" href="/api/customers/export" download>Download list by owner (CSV)</a><button class="btn ghost sm" id="noOwner" type="button">Review customers with no owner</button>' : '') + '<button class="btn ghost sm" id="rf" type="button">Refresh from Zoho</button></div></div>' +
+          '<div class="actions">' + (isAdmin ? '<button class="btn ghost sm" id="share" type="button">Share unowned customers evenly</button><button class="btn ghost sm" id="resplit" type="button">Re-split all customers</button><a class="btn ghost sm" href="/api/customers/export" download>Download list by owner (CSV)</a><button class="btn ghost sm" id="noOwner" type="button">Review customers with no owner</button><button class="btn ghost sm" id="byName" type="button">Hide customers by name</button>' : '') + '<button class="btn ghost sm" id="rf" type="button">Refresh from Zoho</button></div></div>' +
           '<div class="row">' + (isAdmin ? '<label>Team member<select id="cw"><option value="">Everyone</option>' + P.userOptions(who) + '</select></label>' : '') + '<label style="flex:3 1 240px">Search<input id="cq" value="' + esc(q) + '" placeholder="Name, phone or email"></label></div></div>' +
           (isAdmin ? (owners = c.owners || [], pieCard()) : '') +
           (lastSplit ? '<div class="banner info">' + esc(lastSplit) + '</div>' : '') +
@@ -71,6 +71,34 @@
           (r.customers.length ? '<div class="list">' + r.customers.map(item).join('') + '</div>' : P.empty(r.error ? 'Customers could not be loaded.' : 'No customers match.'));
         if (focus) { var i = el.querySelector('#cq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
       });
+    }
+    // hide customers by name: type the names, see exactly who matches, untick any, type REMOVE. Hidden in the panel only; they can be put back.
+    function hideByName() {
+      var old = el.querySelector('#nameCard'); if (old) old.remove();
+      var box = document.createElement('div'); box.className = 'card'; box.id = 'nameCard';
+      box.innerHTML = '<div class="between"><h3>Hide customers by name</h3><button class="btn ghost sm" id="nmClose" type="button">Close</button></div>' +
+        '<div class="muted small">Type the names, one per line or separated by commas. A customer matches when its name contains the text, so "test" also finds "Test User". You see the list before anything is hidden. Zoho is not changed.</div>' +
+        '<label>Names<textarea id="nmText" placeholder=""></textarea></label><div class="actions"><button class="btn sm" id="nmFind" type="button">Find them</button></div><div id="nmOut"></div>';
+      el.insertBefore(box, el.firstChild);
+      box.addEventListener('click', function (ev) {
+        if (ev.target.id === 'nmClose') { box.remove(); return; }
+        if (ev.target.id === 'nmFind') {
+          P.api('GET', '/api/customers/find-names?names=' + encodeURIComponent(box.querySelector('#nmText').value)).then(function (r) {
+            var rows = r.matches.map(function (c) { return '<tr><td><input type="checkbox" name="nid" value="' + esc(c.id) + '"' + (c.outstanding ? '' : ' checked') + '></td><td><b>' + esc(c.name) + '</b><div class="muted small">matched "' + esc(c.matched) + '"</div></td><td>' + esc(c.phone) + '</td><td>' + esc(c.ownerName || 'no owner') + '</td><td>' + c.invoices + '</td><td>' + (c.outstanding ? '<span class="err">' + P.money(c.outstanding) + ' unpaid</span>' : '') + '</td></tr>'; }).join('');
+            box.querySelector('#nmOut').innerHTML = (r.matches.length ? '<table class="table"><thead><tr><th></th><th>Customer</th><th>Phone</th><th>Owner</th><th>Invoices</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>' +
+              '<div class="row"><label>Type REMOVE to confirm<input id="nmConfirm" autocomplete="off"></label><button class="btn bad fit" id="nmGo" type="button">Hide the ticked customers</button></div>' : '<div class="muted">Nobody matches.</div>') +
+              (r.notFound.length ? '<div class="muted small">Not found: ' + r.notFound.map(esc).join(', ') + '</div>' : '');
+          }).catch(P.fail);
+          return;
+        }
+        if (ev.target.id === 'nmGo') {
+          var ids = [].filter.call(box.querySelectorAll('[name=nid]'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+          if (!ids.length) { P.toast('Tick the customers to hide'); return; }
+          if (box.querySelector('#nmConfirm').value !== 'REMOVE') { P.toast('Type REMOVE to confirm'); return; }
+          P.api('POST', '/api/customers/remove', { confirm: 'REMOVE', ids: ids, anyOwner: true }).then(function (x) { P.toast(x.removed + ' customers hidden'); return load(); }).catch(P.fail);
+        }
+      });
+      box.querySelector('#nmText').focus();
     }
     // the customers nobody owns: shown in full first, the owner unticks any to keep, types REMOVE, and only then are they hidden
     function reviewNoOwner() {
@@ -116,6 +144,7 @@
       }
       if (e.target.id === 'share') { split(false); return; }
       if (e.target.id === 'noOwner') { reviewNoOwner(); return; }
+      if (e.target.id === 'byName') { hideByName(); return; }
     });
     el.addEventListener('input', function (e) { if (e.target.id !== 'cq') return; q = e.target.value; clearTimeout(timer); timer = setTimeout(function () { load().catch(P.fail); }, 350); });
     el.addEventListener('change', function (e) {

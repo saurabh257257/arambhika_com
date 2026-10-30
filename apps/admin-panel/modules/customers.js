@@ -53,13 +53,26 @@ module.exports = function customers(app, ctx) {
     const removed = data.allList.filter((c) => (stateOf(c.id) || {}).excluded).map((c) => view(c, data.by, today));
     res.json({ candidates: rows.filter((r) => !r.ownerId).map(brief).sort((a, b) => a.name.localeCompare(b.name)), withOwner: rows.length - rows.filter((r) => !r.ownerId).length, removed: removed.map(brief) });
   });
+  // find customers by the names the owner types (one per line or separated by commas); a customer matches when its name contains the text
+  app.get('/api/customers/find-names', ctx.requireAdmin, async (req, res) => {
+    const names = String(req.query.names || '').split(/[\n,;]+/).map((x) => x.trim().toLowerCase()).filter(Boolean).slice(0, 30);
+    if (!names.length) return res.status(400).json({ error: 'Type at least one name' });
+    let data;
+    try { data = await load(req.query.refresh === '1'); } catch (err) { return res.status(502).json({ error: err.message }); }
+    const today = ctx.todayIST();
+    const rows = data.list.map((c) => view(c, data.by, today));
+    const matches = rows.map((r) => ({ r, hit: names.find((n) => (r.name + ' ' + r.company).toLowerCase().includes(n)) })).filter((x) => x.hit)
+      .map((x) => ({ ...brief(x.r), ownerName: x.r.ownerName, matched: x.hit })).sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ matches, notFound: names.filter((n) => !matches.some((m) => m.matched === n)) });
+  });
   app.post('/api/customers/remove', ctx.requireAdmin, async (req, res) => {
     if ((req.body && req.body.confirm) !== 'REMOVE') return res.status(400).json({ error: 'Type REMOVE to confirm' });
     const ids = Array.isArray(req.body.ids) ? req.body.ids.map(String).filter((i) => ID_RE.test(i)) : [];
     if (!ids.length) return res.status(400).json({ error: 'Choose the customers to remove' });
     let data;
     try { data = await load(false); } catch (err) { return res.status(502).json({ error: err.message }); }
-    const ok = new Set(data.list.filter((c) => !(stateOf(c.id) || {}).ownerId).map((c) => c.id)); // only customers that really have no owner
+    const anyOwner = Boolean(req.body.anyOwner); // chosen by name: any customer; otherwise only customers that really have no owner
+    const ok = new Set(data.list.filter((c) => anyOwner || !(stateOf(c.id) || {}).ownerId).map((c) => c.id));
     let n = 0;
     for (const id of ids) if (ok.has(id)) { const s = ensureState(id); s.excluded = true; s.excludedAt = nowISO(); s.updatedAt = nowISO(); n += 1; }
     ctx.save('customerstate'); ctx.log(req.user, 'Removed ' + n + ' customers without an owner from the customer list');

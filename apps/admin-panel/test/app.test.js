@@ -1256,3 +1256,23 @@ describe('removing customers that have no owner', () => {
     } finally { await s.stop(); }
   });
 });
+
+
+describe('hide customers by name', () => {
+  test('names are matched by text, the list comes first, owned customers can be hidden, and they can be put back', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      await admin.post('/api/customers/auto-assign');
+      const find = (await admin.get('/api/customers/find-names?names=' + encodeURIComponent('volt, green cells\nnobody here'))).data;
+      assert.deepEqual(find.matches.map((m) => m.name).sort(), ['Green Cells', 'Volt Works']);
+      assert.deepEqual(find.notFound, ['nobody here']);
+      assert.equal((await admin.get('/api/customers/find-names?names=')).status, 400);
+      assert.equal((await ann.get('/api/customers/find-names?names=volt')).status, 403);
+      const ids = find.matches.map((m) => m.id);
+      assert.equal((await admin.post('/api/customers/remove', { confirm: 'REMOVE', ids })).data.removed, 0, 'they have owners, so the no-owner review leaves them');
+      assert.equal((await admin.post('/api/customers/remove', { confirm: 'REMOVE', ids, anyOwner: true })).data.removed, 2);
+      assert.deepEqual((await admin.get('/api/customers')).data.customers.map((c) => c.name).sort(), ['New Prospect', 'Shakti Batteries']);
+      assert.equal((await admin.post('/api/customers/restore', { ids })).data.restored, 2);
+    } finally { await s.stop(); }
+  });
+});
