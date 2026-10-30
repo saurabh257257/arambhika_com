@@ -7,13 +7,13 @@
 //
 // Keeping it fresh without running into Zoho's daily call limit:
 //   - Zoho can call POST /hooks/zoho?token=... when something changes; the panel then looks again within 30 seconds
-//   - a full safety check runs every 5 minutes, and the team's own work is folded in a second after it is saved
+//   - a full safety check runs every 30 minutes (MASTER_SYNC_MINUTES changes it), and the team's own work is folded in a second after it is saved
 // All of it is read only: nothing is ever written to Zoho.
 'use strict';
 const M = require('../lib/master');
 const { nowISO } = require('../lib/util');
 
-const FULL_EVERY_MS = 5 * 60 * 1000;
+const FULL_EVERY_MS = (Math.max(Number(process.env.MASTER_SYNC_MINUTES) || 30, 1)) * 60 * 1000;
 const QUICK_GAP_MS = 30 * 1000;
 const LINES_PER_CYCLE = 10; // sales orders whose item lines are fetched in one pass (each needs its own Zoho call)
 

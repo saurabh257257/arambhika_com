@@ -44,7 +44,7 @@
       box.innerHTML = '<div class="between"><h3>Customer data (customers.json)</h3><button class="btn ghost sm" id="mdsync" type="button">Update now</button></div>' +
         '<div class="stats">' + stat(c.customers, 'customers from Zoho') + stat(c.leads, 'leads from the team') + stat(c.converted, 'leads converted') + stat(c.unmatchedLeads, 'leads without a mobile') + stat(c.call10, 'Call 10 rows') + stat(c.find4, 'Find 4 rows') + stat(c.requests, 'logged in requests') + '</div>' +
         '<div class="muted small">' + (m.lastFullAt ? 'Last full check from Zoho ' + P.fmtTime(m.lastFullAt) : 'Not read from Zoho yet') + (m.lastWebhookAt ? ' &middot; Zoho last said something changed ' + P.fmtTime(m.lastWebhookAt) : '') + '. ' +
-        (m.webhookOn ? 'Zoho changes arrive within 30 seconds.' : 'Zoho changes are picked up every 5 minutes (the instant link is not switched on yet).') + '</div>' + (m.error ? '<div class="banner">' + P.esc(m.error) + '</div>' : '');
+        (m.webhookOn ? 'Zoho changes arrive within 30 seconds.' : 'Zoho changes are picked up every 30 minutes (the instant link is not switched on yet).') + '</div>' + (m.error ? '<div class="banner">' + P.esc(m.error) + '</div>' : '');
       el.appendChild(box);
       box.querySelector('#mdsync').addEventListener('click', function (e) { e.target.disabled = true; e.target.textContent = 'Updating...'; P.api('POST', '/api/master/sync', {}).then(function () { P.toast('Customer data updated'); window.dispatchEvent(new Event('hashchange')); }).catch(function (err) { e.target.disabled = false; e.target.textContent = 'Update now'; P.fail(err); }); });
     }).catch(function () {});

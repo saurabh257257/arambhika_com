@@ -48,7 +48,7 @@ customer requests, who owns which customer/invoice, follow-up history, transacti
 
 Every customer in Zoho Books, with quotes, invoices, bills, sales orders (with item lines) and item categories, plus the leads the team found. It is rebuilt into `customers.json`; the team's work is also written to `call10.json`, `find4.json` and `newrequests.json`. People are matched by mobile number (last 10 digits). A person not in Zoho is a lead; when a paid invoice for the same mobile appears (dated after the first contact) the lead is converted to a customer, credited to whoever found them. A mobile that already had a paid invoice earlier is only linked. People logged without a mobile stay as unmatched leads. Needs Zoho read access to estimates, bills, items and sales orders.
 
-Freshness without hitting Zoho's daily call limit: a full check every 5 minutes, and an instant refresh (at most every 30 seconds) when Zoho calls `POST /hooks/zoho?token=...`. Switch the instant link on by setting `ZOHO_WEBHOOK_SECRET` on the server and pointing a Zoho Books workflow rule webhook at `https://admin.arambhika.com/hooks/zoho?token=<the secret>`.
+Freshness without hitting Zoho's daily call limit: a full check every 30 minutes (set MASTER_SYNC_MINUTES to change it), and an instant refresh (at most every 30 seconds) when Zoho calls `POST /hooks/zoho?token=...`. Switch the instant link on by setting `ZOHO_WEBHOOK_SECRET` on the server and pointing a Zoho Books workflow rule webhook at `https://admin.arambhika.com/hooks/zoho?token=<the secret>`.
 
 ## How "done" is counted
 Today's work = every row, step or target of today's tasks (including what carried over) + call follow-ups due + customer and invoice follow-ups
