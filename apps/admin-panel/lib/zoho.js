@@ -71,17 +71,30 @@ function createZoho(env = process.env, fetchImpl = fetch) {
     phone: i.phone || '', email: i.email || '', paymentExpected: i.payment_expected_date || '', lastPayment: i.last_payment_date || '',
   });
   const normOrder = (o) => ({
-    id: String(o.salesorder_id), number: o.salesorder_number || '', customerName: o.customer_name || o.company_name || '', date: o.date || '',
+    id: String(o.salesorder_id), number: o.salesorder_number || '', customerId: String(o.customer_id || ''), customerName: o.customer_name || o.company_name || '', date: o.date || '',
     createdTime: o.created_time || '', total: num(o.total), status: String(o.order_status || o.status || '').toLowerCase(),
     invoiced: String(o.invoiced_status || '').toLowerCase(), paid: String(o.paid_status || '').toLowerCase(), shipped: String(o.shipped_status || '').toLowerCase(),
   });
   const normContact = (c) => ({
-    id: String(c.contact_id), name: c.contact_name || c.company_name || '', company: c.company_name || '', phone: c.mobile || c.phone || '', email: c.email || '',
+    id: String(c.contact_id), name: c.contact_name || c.company_name || '', company: c.company_name || '', phone: c.mobile || c.phone || '', phones: [c.mobile, c.phone].filter(Boolean), email: c.email || '',
     outstanding: num(c.outstanding_receivable_amount), createdTime: c.created_time || '',
   });
 
+  const normEstimate = (e) => ({ id: String(e.estimate_id), number: e.estimate_number || '', customerId: String(e.customer_id || ''), customerName: e.customer_name || '', date: e.date || '', expiry: e.expiry_date || '', total: num(e.total), status: String(e.status || '').toLowerCase() });
+  const normBill = (b) => ({ id: String(b.bill_id), number: b.bill_number || '', vendorId: String(b.vendor_id || ''), vendorName: b.vendor_name || '', date: b.date || '', dueDate: b.due_date || '', total: num(b.total), balance: num(b.balance), status: String(b.status || '').toLowerCase() });
+  const normItem = (i) => ({ id: String(i.item_id), name: i.name || '', sku: i.sku || '', rate: num(i.rate), status: String(i.status || '').toLowerCase(), category: i.category_name || i.category || i.group_name || '' });
+
   const api = {
     configured,
+    // quotes, vendor bills and the item list (with categories) are read for the customer master list
+    estimates: (o) => cached('estimates', async () => (await pages('estimates', 'estimates', { sort_column: 'created_time', sort_order: 'D' })).map(normEstimate), o),
+    bills: (o) => cached('bills', async () => (await pages('bills', 'bills', { sort_column: 'created_time', sort_order: 'D' })).map(normBill), o),
+    items: (o) => cached('items', async () => (await pages('items', 'items')).map(normItem), o),
+    // the item lines of one sales order (the list does not include them)
+    async orderLines(id) {
+      const j = await books('salesorders/' + encodeURIComponent(id));
+      return ((j.salesorder || {}).line_items || []).map((l) => ({ itemId: String(l.item_id || ''), name: l.name || '', quantity: num(l.quantity), rate: num(l.rate), total: num(l.item_total) }));
+    },
     // every invoice (paid or not, newest first): used for "who owes us" and to know who has bought before
     invoices: (o) => cached('invoices', async () => (await pages('invoices', 'invoices', { sort_column: 'created_time', sort_order: 'D' })).map(normInvoice), o),
     salesOrders: (o) => cached('salesorders', async () => (await pages('salesorders', 'salesorders', { sort_column: 'created_time', sort_order: 'D' })).map(normOrder), o),

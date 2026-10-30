@@ -55,6 +55,10 @@ function pretendZoho() {
     data, configured: true,
     invoices: () => guard(() => data.invoices.map((i) => ({ ...i }))),
     salesOrders: () => guard(() => data.salesOrders.map((o) => ({ ...o }))),
+    estimates: () => guard(() => (data.estimates || []).map((e) => ({ ...e }))),
+    bills: () => guard(() => (data.bills || []).map((b) => ({ ...b }))),
+    items: () => guard(() => [{ id: 'i1', name: 'Nickel strip', category: 'Nickel strip plated' }]),
+    orderLines: () => guard(() => [{ itemId: 'i1', name: 'Nickel strip', quantity: 4, rate: 480, total: 1920 }]),
     customers: () => guard(() => {
       if (data.contactsAllowed) return { source: 'contacts', list: data.contacts.map((c) => ({ ...c, outstanding: 0 })) };
       const by = new Map();
@@ -1090,5 +1094,52 @@ describe('task designer: the owner can assign tasks to themselves', () => {
       }
       assert.equal((await admin.post('/api/templates', { name: 'Bad', kind: 'checklist', steps: ['x'], schedule: 'daily', assignees: ['nobody'] })).status, 400);
     } finally { await s.stop(); }
+  });
+});
+
+describe('customer master list', () => {
+  test('team work becomes leads, matched by mobile; a paid invoice converts a lead; Zoho webhook', async () => {
+    process.env.ZOHO_WEBHOOK_SECRET = 'hook-secret-1';
+    const z = pretendZoho(); z.data.estimates = [{ id: 'e1', number: 'EST-1', customerId: '1001', customerName: 'Shakti Batteries', date: today, total: 500, status: 'sent' }];
+    z.data.salesOrders[0].customerId = '1001';
+    const { s, admin, ann } = await team(z);
+    try {
+      const tpl = (await admin.post('/api/templates', { name: 'Call 10 people', kind: 'rows', schedule: 'daily', rowCount: 4, assignees: [(await admin.get('/api/users')).data.users.find((u) => u.name === 'Ann').id],
+        columns: [{ label: 'Name', type: 'text', required: true }, { label: 'Phone', type: 'phone' }, { label: 'Category', type: 'choice', options: ['Nickel', 'Copper'] }, { label: 'Follow-up date', type: 'date', followUp: true }] })).data;
+      const mine = (await ann.get('/api/tasks')).data.tasks.find((t) => t.name === 'Call 10 people');
+      const fill = (i, v) => ann.put('/api/tasks/' + mine.id + '/rows/' + i, { values: v });
+      assert.equal((await fill(0, { name: 'Old Friend', phone: '+91 98111 11111', category: 'Nickel' })).status, 200);   // already a paying customer in Zoho
+      assert.equal((await fill(1, { name: 'New Prospect', phone: '9844444444', category: 'Copper' })).status, 200);      // in Zoho, nothing paid yet
+      assert.equal((await fill(2, { name: 'Fresh Lead', phone: '9000000001' })).status, 200);                            // not in Zoho
+      assert.equal((await fill(3, { name: 'No Phone Co' })).status, 200);                                               // no mobile number
+      await ann.post('/api/requests', { customerName: 'Fresh Lead Again', phone: '90000 00001', request: 'Needs strip' }); // same mobile, another source
+      assert.equal((await admin.post('/api/master/sync')).status, 200);
+      const list = (await admin.get('/api/master/customers')).data.customers;
+      const by = (n) => list.find((r) => r.name === n);
+      assert.equal(by('Shakti Batteries').lead.linkedOnly, true, 'a paying customer is linked, not a lead');
+      assert.equal(by('Shakti Batteries').stage, 'customer'); assert.equal(by('Shakti Batteries').quotes.length, 1);
+      assert.deepEqual(by('Shakti Batteries').categories, ['Nickel strip plated']);
+      assert.equal(by('New Prospect').stage, 'lead'); assert.equal(by('New Prospect').zohoId, '1004');
+      const fresh = list.find((r) => r.id === 'lead:p9000000001');
+      assert.equal(fresh.stage, 'lead'); assert.equal(fresh.lead.sources.length, 2, 'the call and the request are one person');
+      const none = list.find((r) => r.name === 'No Phone Co'); assert.equal(none.unmatched, true); assert.equal(none.stage, 'lead');
+      const dir = s.dir;
+      for (const f of ['customers', 'call10', 'find4', 'newrequests']) assert.ok(fs.existsSync(path.join(dir, f + '.json')), f + '.json is written');
+      assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'call10.json'), 'utf8')).length, 4);
+      // a paid invoice for the lead's mobile converts it
+      z.data.invoices.push({ id: '9100', number: 'INV-9', customerId: '1004', customerName: 'New Prospect', date: today, dueDate: today, total: 700, balance: 0, status: 'paid', phone: '9844444444', email: '' });
+      await admin.post('/api/master/sync');
+      const conv = (await admin.get('/api/master/customers')).data.customers.find((r) => r.name === 'New Prospect');
+      assert.equal(conv.stage, 'customer'); assert.equal(conv.lead.converted, true); assert.equal(conv.lead.ownerName, 'Ann');
+      // Zoho down: the team's work still reaches the files
+      z.data.fail = true; assert.equal((await admin.post('/api/master/sync')).status, 200);
+      assert.match((await admin.get('/api/master/status')).data.error, /down/);
+      // the webhook: wrong token refused, right token accepted, no login needed
+      const anon = client(s.base);
+      assert.equal((await anon.post('/hooks/zoho?token=nope')).status, 401);
+      assert.equal((await anon.post('/hooks/zoho?token=hook-secret-1')).status, 200);
+      assert.equal((await ann.get('/api/master/status')).status, 403);
+      assert.ok(tpl);
+    } finally { delete process.env.ZOHO_WEBHOOK_SECRET; await s.stop(); }
   });
 });

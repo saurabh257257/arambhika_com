@@ -10,6 +10,7 @@ try {
     dataDir: process.env.DATA_DIR || path.join(__dirname, 'data'),
     adminPassword: process.env.ADMIN_PASSWORD || '',
     sessionSecret: process.env.SESSION_SECRET || '',
+    startSync: true,
   });
 } catch (err) {
   console.error(err.message);

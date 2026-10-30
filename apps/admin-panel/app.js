@@ -18,9 +18,9 @@ const { createZoho } = require('./lib/zoho');
 const { mergeCadence } = require('./lib/followups');
 const { todayIST, str, uid, nowISO, safeEqual, checkPassword, clock } = require('./lib/util');
 
-const MODULES = ['team', 'tasks', 'admintasks', 'requests', 'newcustomers', 'customers', 'invoices', 'office', 'dashboard', 'charts'];
+const MODULES = ['team', 'tasks', 'admintasks', 'requests', 'newcustomers', 'customers', 'invoices', 'office', 'dashboard', 'charts', 'masterdata'];
 
-function createApp({ dataDir, adminPassword, sessionSecret, zoho }) {
+function createApp({ dataDir, adminPassword, sessionSecret, zoho, startSync = false, webhookSecret = process.env.ZOHO_WEBHOOK_SECRET || '' }) {
   if (!adminPassword) throw new Error('ADMIN_PASSWORD is not set. Refusing to start without a login password.');
   const secret = sessionSecret || crypto.randomBytes(32).toString('hex');
   const store = new Store(dataDir);
@@ -45,7 +45,9 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho }) {
   const ctx = {
     store, zoho: zohoClient, todayIST,
     col: (name, defaults = []) => store.list(name, defaults),
-    save: (name) => store.save(name),
+    saveHooks: [], // functions called with the collection name after every save (the master list rebuilds itself from work saved)
+    save: (name) => { store.save(name); for (const f of ctx.saveHooks) f(name); },
+    hooks: {},
     users: () => store.list('users'),
     employees: () => store.list('users').filter((u) => u.active),
     userName: (id) => (id === 'admin' ? 'Admin' : ((store.list('users').find((u) => u.id === id) || {}).name || '')),
@@ -123,11 +125,21 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho }) {
   app.get('/', requireUser, send('index.html'));
   app.get('/index.html', requireUser, (req, res) => res.redirect('/'));
   app.use('/js', requireUser, express.static(path.join(pub, 'js'), { index: false, dotfiles: 'deny', setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') }));
+  // Zoho calls this when something changes (a workflow rule). It carries no data: it only asks the panel to look again, and only
+  // with the shared secret, so a stranger cannot do more than nothing. Off unless ZOHO_WEBHOOK_SECRET is set.
+  app.post('/hooks/zoho', (req, res) => {
+    if (!webhookSecret) return res.status(404).type('text').send('Not found');
+    const given = String(req.query.token || req.headers['x-webhook-token'] || '');
+    if (!safeEqual(given, webhookSecret)) return res.status(401).json({ error: 'Wrong token' });
+    if (ctx.hooks.zoho) ctx.hooks.zoho();
+    res.json({ ok: true });
+  });
   app.use('/api', requireUser);
 
   app.get('/api/me', (req, res) => res.json({ user: req.user, today: todayIST() }));
 
   for (const name of MODULES) require('./modules/' + name)(app, ctx);
+  if (startSync && ctx.master) ctx.master.start();
 
   app.use((req, res) => (req.originalUrl.startsWith('/api/') ? res.status(404).json({ error: 'Not found' }) : res.status(404).type('text').send('Not found')));
   return app;
