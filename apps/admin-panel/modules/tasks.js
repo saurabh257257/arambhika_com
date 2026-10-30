@@ -87,7 +87,8 @@ module.exports = function tasks(app, ctx) {
     if (date === today) ensureToday(userId);
     else if (date > today && date <= addDays(today, FUTURE_DAYS)) for (const t of templates()) ensureFor(t, userId, date); // working ahead
     const monday = weekStart(date);
-    return instances().filter((i) => i.userId === userId && (i.schedule === 'once' ? (!i.completedAt || istDate(i.completedAt) === date) : i.schedule === 'weekly' ? i.date === monday : i.date === date));
+    const stale = (i) => { const t = templates().find((x) => x.id === i.templateId); return Boolean(t) && t.schedule !== i.schedule && !i.updatedAt && T.units(i).done === 0; };
+    return instances().filter((i) => i.userId === userId && !stale(i) && (i.schedule === 'once' ? (!i.completedAt || istDate(i.completedAt) === date) : i.schedule === 'weekly' ? i.date === monday : i.date === date));
   }
   const view = (i) => { const u = T.units(i); return { ...i, progress: { done: u.done, total: u.total, percent: u.total ? Math.round(u.done / u.total * 100) : 100 }, rowsDone: i.kind === 'rows' ? i.rows.map((r) => T.rowDone(i, r)) : undefined }; };
 
@@ -137,7 +138,13 @@ module.exports = function tasks(app, ctx) {
     if (!t) return res.status(404).json({ error: 'Not found' });
     const r = T.validateTemplate({ ...t, ...(req.body || {}) }, employeeIds());
     if (r.error) return res.status(400).json({ error: r.error });
+    const oldSchedule = t.schedule;
     Object.assign(t, r.value); ctx.save('templates');
+    if (oldSchedule !== t.schedule) { // copies of the old kind that nobody started are removed, so the task is not listed twice
+      const all = instances();
+      for (let n = all.length - 1; n >= 0; n -= 1) if (all[n].templateId === t.id && all[n].schedule === oldSchedule && !all[n].updatedAt && T.units(all[n]).done === 0) all.splice(n, 1);
+      ctx.save('tasks');
+    }
     for (const id of t.assignees) ensureFor(t, id, ctx.todayIST());
     ctx.log(req.user, 'Changed the task "' + t.name + '"' + (t.active ? '' : ' (switched off)'));
     res.json({ template: t });

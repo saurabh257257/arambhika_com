@@ -1189,3 +1189,17 @@ describe('hand-over reset', () => {
     } finally { await s.stop(); }
   });
 });
+
+describe('a task changed from daily to weekly is listed once', () => {
+  test('the untouched daily copy disappears, so the person sees it only under weekly', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      const annId = (await admin.get('/api/users')).data.users.find((u) => u.name === 'Ann').id;
+      const t = (await admin.post('/api/templates', { name: 'Schedule 8 Instagram posts', kind: 'count', target: 8, unit: 'posts', schedule: 'daily', assignees: [annId] })).data.template;
+      assert.equal((await ann.get('/api/tasks')).data.tasks.filter((x) => x.schedule === 'daily').length, 1);
+      assert.equal((await admin.put('/api/templates/' + t.id, { schedule: 'weekly' })).status, 200);
+      const list = (await ann.get('/api/tasks')).data.tasks.filter((x) => x.name === 'Schedule 8 Instagram posts');
+      assert.equal(list.length, 1); assert.equal(list[0].schedule, 'weekly');
+    } finally { await s.stop(); }
+  });
+});
