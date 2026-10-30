@@ -280,3 +280,27 @@ button.chip { border: 0; cursor: pointer; }
 .ctip b { display: block; margin-bottom: 2px; }
 .chartgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
 .ctable { font-size: 13px; }
+
+/* Task designer tiles */
+.dtile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.dthead { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; user-select: none; }
+.dthead:hover { background: #f8fafc; }
+.dthead .caret, .dtih .caret { color: var(--muted); width: 12px; }
+.dthead .muted { margin-left: auto; text-align: right; }
+.dtbody { padding: 4px 16px 16px; display: grid; gap: 12px; }
+.dtbody > .card, .dtbody > form.card { box-shadow: none; }
+.dtile.small { border-radius: 12px; }
+.dtile.small .dthead { padding: 9px 12px; background: #f8fafc; }
+.dtile.small .dtbody { padding: 8px 10px 12px; }
+.dcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+.dti { padding: 0 !important; }
+.dtih { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; flex-wrap: wrap; }
+.dtih:hover { background: #f8fafc; }
+.dtih .chips { margin-left: auto; }
+.dtib { padding: 4px 12px 12px; display: grid; gap: 8px; }
+
+.dfold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+.dfold > summary::-webkit-details-marker { display: none; }
+.dfold > summary::before { content: "\25B8"; color: var(--muted); width: 12px; }
+.dfold[open] > summary::before { content: "\25BE"; }
+.dfold > .list { margin-top: 10px; }

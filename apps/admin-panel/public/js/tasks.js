@@ -190,7 +190,6 @@
     return load();
   }; }
   P.register({ id: 'tasks', label: 'Tasks', roles: ['employee'], order: 1, render: tasksScreen(false) });
-  P.register({ id: 'mytasks', label: 'My tasks', roles: ['admin'], order: 0.6, render: tasksScreen(true) });
 
   // ---------------- the owner looks at somebody's work ----------------
   P.register({ id: 'work', label: 'Team work', roles: ['admin'], order: 2, render: function (el) {
@@ -212,9 +211,8 @@
         (w.weekly.length ? '<div class="chips">' + w.weekly.map(function (x) { return '<span class="chip">' + esc(x.name) + ': <b>' + x.done + ' of ' + x.total + '</b></span>'; }).join('') + '</div>' : '') + '</div>';
     }
     function column(u, r, w, fu) {
-      seedOpen(r.tasks, u.id);
       return '<section class="tcol">' + colHead(u, r, w) +
-        (fu.length ? '<div class="card"><h3>Follow-up calls due (' + fu.length + ')</h3><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></div>' : '') +
+        (fu.length ? '<details class="card dfold"><summary><h3>Follow-up calls due (' + fu.length + ')</h3></summary><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></details>' : '') +
         taskList(r.tasks, false, P.empty('No tasks for them on this day.')) + '</section>';
     }
     function load() {
@@ -269,9 +267,16 @@
   }
   function templateItem(t) {
     var names = t.assignees.map(function (id) { return esc((people().filter(function (u) { return u.id === id; })[0] || {}).name || '?'); }).join(', ') || 'nobody';
-    return '<div class="item ' + (t.active ? '' : 'warn') + '"><div class="between"><b>' + esc(t.name) + '</b><span class="chips">' + P.pill(KIND[t.kind]) + P.pill(SCHED[t.schedule]) + (t.carry ? P.pill('carries over') : '') + (t.active ? '' : P.pill('Switched off', 'overdue')) + '</span></div>' +
-      '<div class="meta"><span>' + (t.kind === 'rows' ? t.rowCount + ' rows: ' + t.columns.map(function (c) { return esc(c.label); }).join(', ') : t.kind === 'checklist' ? t.steps.length + ' steps' : 'target ' + t.target + ' ' + esc(t.unit)) + '</span><span>For: <b>' + names + '</b></span>' + (t.dueDate ? '<span>Due ' + P.fmtDate(t.dueDate) + '</span>' : '') + '</div>' +
-      '<div class="actions">' + (t.adhoc ? '' : '<button class="btn ghost sm" data-edit="' + t.id + '" type="button">Change</button>') + (t.active ? '<button class="btn ghost sm" data-off="' + t.id + '" type="button">Switch off</button>' : '<button class="btn ghost sm" data-on="' + t.id + '" type="button">Switch on</button>') + '<button class="btn ghost sm" style="color:#b91c1c" data-delete="' + t.id + '" data-name="' + esc(t.name) + '" type="button">Delete</button></div></div>';
+    var open = Boolean(openItems[t.id]);
+    return '<div class="item dti ' + (t.active ? '' : 'warn') + '"><div class="dtih" data-itog="' + t.id + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b>' + esc(t.name) + '</b><span class="chips">' + P.pill(KIND[t.kind]) + P.pill(SCHED[t.schedule]) + (t.carry ? P.pill('carries over') : '') + (t.active ? '' : P.pill('Switched off', 'overdue')) + '</span></div>' +
+      '<div class="dtib"' + (open ? '' : ' hidden') + '><div class="meta"><span>' + (t.kind === 'rows' ? t.rowCount + ' rows: ' + t.columns.map(function (c) { return esc(c.label); }).join(', ') : t.kind === 'checklist' ? t.steps.length + ' steps' : 'target ' + t.target + ' ' + esc(t.unit)) + '</span><span>For: <b>' + names + '</b></span>' + (t.dueDate ? '<span>Due ' + P.fmtDate(t.dueDate) + '</span>' : '') + '</div>' +
+      '<div class="actions">' + (t.adhoc ? '' : '<button class="btn ghost sm" data-edit="' + t.id + '" type="button">Change</button>') + (t.active ? '<button class="btn ghost sm" data-off="' + t.id + '" type="button">Switch off</button>' : '<button class="btn ghost sm" data-on="' + t.id + '" type="button">Switch on</button>') + '<button class="btn ghost sm" style="color:#b91c1c" data-delete="' + t.id + '" data-name="' + esc(t.name) + '" type="button">Delete</button></div></div></div>';
+  }
+  // every block of the designer is a tile that folds to its title; what is open is remembered while the screen is on
+  var openTiles = { create: true, designed: true }, openItems = {};
+  function tile(id, title, sub, body, small) {
+    var open = openTiles[id] !== undefined ? openTiles[id] : true;
+    return '<section class="dtile' + (small ? ' small' : '') + '"><div class="dthead" data-tog="' + id + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><h3>' + title + '</h3><span class="muted small">' + (sub || '') + '</span></div><div class="dtbody"' + (open ? '' : ' hidden') + '>' + body + '</div></section>';
   }
 
   P.register({ id: 'designer', label: 'Task designer', roles: ['admin'], order: 1, render: function (el) {
@@ -281,7 +286,12 @@
         P.users = r[1].users;
         var list = r[0].templates, defaults = r[0].defaultColumns; state.list = list; state.presets = r[0].presets;
         var designed = list.filter(function (t) { return !t.adhoc && t.active; }), oneTime = list.filter(function (t) { return t.adhoc && t.active; }), switchedOff = list.filter(function (t) { return !t.active; });
-        el.innerHTML =
+        var perPerson = function (u) { return list.filter(function (t) { return t.active && t.assignees.indexOf(u.id) >= 0; }); };
+        var columns = people().filter(function (u) { return u.active; }).map(function (u) {
+          var mine = perPerson(u);
+          return tile('col-' + u.id, esc(u.name) + ' <span class="muted small">(' + mine.length + ')</span>', '', mine.length ? '<div class="list">' + mine.map(templateItem).join('') + '</div>' : '<div class="muted small">Nothing assigned.</div>', true);
+        }).join('');
+        el.innerHTML = tile('create', 'Create new tasks', 'for you and your team', 
           '<div class="card"><h3>Give a quick task</h3><div class="muted small">To your team or to yourself: one time (stays on the list until done), every day, or every week.</div>' +
           '<form id="quick" class="list"><div class="row"><label style="flex:3 1 240px">What needs to be done<input name="title" required maxlength="80" placeholder="e.g. Send the new price list to dealers"></label><label>How often<select name="schedule"><option value="once">One time (stays until done)</option><option value="daily">Every day (working days)</option><option value="weekly">Every week</option></select></label><label data-qdue>Due date<input type="date" name="due" min="' + P.today + '"></label></div>' +
           '<label>Steps (optional, one per line)<textarea name="steps" style="min-height:56px" placeholder="Prepare the PDF&#10;Send on WhatsApp"></textarea></label>' +
@@ -290,10 +300,9 @@
             var made = list.some(function (t) { return t.name === p.name && t.active; });
             return '<form class="item" data-preset="' + p.id + '"><div class="between"><b>' + esc(p.name) + '</b><span class="chips">' + P.pill(SCHED[p.schedule]) + (made ? P.pill('already created', 'ok') : '') + '</span></div><div class="muted small">' + esc(p.instructions) + '</div><div class="chips">' + memberChecks('passignee', function (u) { return p.for === 'both' || u.name.toLowerCase().indexOf(String(p.for).toLowerCase()) === 0; }) + '<button class="btn sm" type="submit">Create</button></div></form>';
           }).join('') + '</div></div>' +
-          designForm(editing, defaults) +
-          '<div class="card"><h3>Your designed tasks</h3>' + (designed.length ? '<div class="list">' + designed.map(templateItem).join('') + '</div>' : '<div class="muted">Nothing designed yet. Use Quick start above, or design your own.</div>') + '<div class="muted small">A change applies from the next day or week. Work people already started keeps its old shape.</div></div>' +
-          (oneTime.length ? '<div class="card"><h3>Quick tasks still open</h3><div class="list">' + oneTime.map(templateItem).join('') + '</div></div>' : '') +
-          (switchedOff.length ? '<div class="card"><h3>Switched off (' + switchedOff.length + ')</h3><div class="muted small">These no longer appear for anybody. Switch one on to bring it back, or delete it for good (this also erases the work done under it).</div><div class="list">' + switchedOff.map(templateItem).join('') + '</div></div>' : '');
+          designForm(editing, defaults)) +
+          tile('designed', 'Designed tasks', 'one column per person; a task for two people shows in both', '<div class="dcols">' + columns + '</div><div class="muted small">A change applies from the next day or week. Work people already started keeps its old shape.</div>') +
+          (switchedOff.length ? tile('off', 'Switched off (' + switchedOff.length + ')', 'no longer shown to anybody', '<div class="muted small">Switch one on to bring it back, or delete it for good (this also erases the work done under it).</div><div class="list">' + switchedOff.map(templateItem).join('') + '</div>') : '');
         var f = el.querySelector('#design'); syncKind(f);
         f.kind.addEventListener('change', function () { syncKind(f); }); f.schedule.addEventListener('change', function () { syncKind(f); });
         f.addEventListener('change', function (e) { if (e.target.name === 'type') syncKind(f); });
@@ -323,7 +332,9 @@
           if (t.closest('[data-add-col]')) { var d = document.createElement('div'); d.innerHTML = colRow({ type: 'text' }); ff.querySelector('#cols').appendChild(d.firstChild); syncKind(ff); return; }
           var dc = t.closest('[data-del-col]'); if (dc) { dc.closest('[data-col]').remove(); return; }
           if (t.closest('[data-cancel]')) { editing = null; load().catch(P.fail); return; }
-          var ed = t.closest('[data-edit]'); if (ed) { editing = state.list.filter(function (x) { return x.id === ed.dataset.edit; })[0]; load().then(function () { window.scrollTo(0, 0); }).catch(P.fail); return; }
+          var tg = t.closest('[data-tog]'); if (tg) { var k = tg.dataset.tog, now = openTiles[k] === undefined ? false : !openTiles[k]; openTiles[k] = now; tg.nextElementSibling.hidden = !now; tg.querySelector('.caret').innerHTML = now ? '&#9662;' : '&#9656;'; return; }
+          var ig = t.closest('[data-itog]'); if (ig) { var open = ig.nextElementSibling.hidden; openItems[ig.dataset.itog] = open; ig.nextElementSibling.hidden = !open; ig.querySelector('.caret').innerHTML = open ? '&#9662;' : '&#9656;'; return; }
+          var ed = t.closest('[data-edit]'); if (ed) { openTiles.create = true; editing = state.list.filter(function (x) { return x.id === ed.dataset.edit; })[0]; load().then(function () { window.scrollTo(0, 0); }).catch(P.fail); return; }
           var del = t.closest('[data-delete]');
           if (del) {
             if (!window.confirm('Delete "' + del.dataset.name + '" for good?\n\nThis also erases all the work your team has done under it (every day, for everybody) and cannot be undone.\n\nTo keep the history and just stop it, use "Switch off" instead.')) return;
