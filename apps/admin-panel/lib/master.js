@@ -86,7 +86,7 @@ function buildMaster({ contacts = [], invoices = [], estimates = [], bills = [],
     const info = {
       sources: list.map((s) => ({ type: s.type, refId: s.id, date: s.date, userId: s.userId, userName: userName(s.userId), category: s.category || '', note: s.talk || s.request || '', followUp: s.followUp || '' })),
       ownerId: first.userId, ownerName: userName(first.userId), firstContactOn: first.date, lastContactOn: last.date,
-      nextFollowUp: list.map((s) => s.followUp).filter(Boolean).sort().pop() || '', categories: uniq(list.map((s) => s.category)), converted: false, convertedOn: '', linkedOnly: false,
+      nextFollowUp: list.map((s) => s.followUp).filter(Boolean).sort().pop() || '', categories: uniq(list.flatMap((s) => String(s.category || '').split(',').map((x) => x.trim()))), converted: false, convertedOn: '', linkedOnly: false,
     };
     const match = first.phoneKey ? byPhone.get(first.phoneKey) : null;
     if (match) {

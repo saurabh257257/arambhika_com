@@ -13,7 +13,7 @@ const { str, text, uid, nowISO, isDate, slug, PHONE_RE } = require('./util');
 
 const KINDS = ['rows', 'checklist', 'count'];
 const SCHEDULES = ['daily', 'weekly', 'once'];
-const COL_TYPES = ['text', 'phone', 'choice', 'date', 'number'];
+const COL_TYPES = ['text', 'phone', 'choice', 'multi', 'date', 'number']; // multi: pick one or more of the choices (stored as "A, B")
 
 const DEFAULT_COLUMNS = [
   { key: 'name', label: 'Name', type: 'text', required: true },
@@ -28,7 +28,7 @@ const DESIGNER_COLUMNS = [
   { key: 'name', label: 'Name', type: 'text', required: true },
   { key: 'phone', label: 'Phone', type: 'phone', required: true },
   { key: 'company', label: 'Company', type: 'text', required: false },
-  { key: 'category', label: 'Category', type: 'choice', options: CATEGORIES, required: false },
+  { key: 'interested_category', label: 'Interested category', type: 'multi', options: CATEGORIES, required: false },
   { key: 'talk', label: 'What did you talk about', type: 'text', required: true },
   { key: 'followup', label: 'Follow-up date', type: 'date', required: false, followUp: true },
 ];
@@ -39,7 +39,7 @@ const PRESETS = [
     instructions: 'Call 10 new people. Write down who you spoke to, what you talked about, and when to follow up. On that date the call comes back by itself.',
     columns: [
       { label: 'Name', type: 'text', required: true }, { label: 'Phone', type: 'phone', required: true }, { label: 'Company', type: 'text' },
-      { label: 'Category', type: 'choice', options: CATEGORIES },
+      { label: 'Interested category', type: 'multi', options: CATEGORIES },
       { label: 'What did you talk about', type: 'text', required: true }, { label: 'Follow-up date', type: 'date', followUp: true },
     ] },
   { id: 'find', for: 'both', name: 'Find 4 customers', kind: 'rows', schedule: 'daily', rowCount: 4, carry: true,
@@ -78,7 +78,7 @@ function validateTemplate(body, employeeIds) {
       let key = slug(label); while (seen.has(key)) key += '_'; seen.add(key);
       const type = COL_TYPES.includes(c.type) ? c.type : 'text';
       const col = { key, label, type, required: Boolean(c.required) };
-      if (type === 'choice') {
+      if (type === 'choice' || type === 'multi') {
         col.options = (Array.isArray(c.options) ? c.options : String(c.options || '').split(',')).map((o) => str(o, 40)).filter(Boolean).slice(0, 12);
         if (!col.options.length) return { error: 'Column "' + label + '" needs its choices' };
       }
@@ -159,6 +159,11 @@ function readCell(col, value) {
   if (col.type === 'date' && !isDate(v)) return { error: col.label + ' must be a date' };
   if (col.type === 'number' && !Number.isFinite(Number(v))) return { error: col.label + ' must be a number' };
   if (col.type === 'choice' && !col.options.includes(v)) return { error: 'Pick one of the choices for ' + col.label };
+  if (col.type === 'multi') {
+    const picked = [...new Set(v.split(',').map((x) => x.trim()).filter(Boolean))];
+    if (picked.some((x) => !col.options.includes(x))) return { error: 'Pick from the choices for ' + col.label };
+    return { value: picked.join(', ') };
+  }
   return { value: v };
 }
 

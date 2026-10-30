@@ -8,6 +8,11 @@
   function cellInput(col, value, editable) {
     var dis = editable ? '' : ' disabled', v = esc(value || '');
     if (col.type === 'choice') return '<select name="' + col.key + '"' + dis + '><option value=""></option>' + col.options.map(function (o) { return '<option' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+    if (col.type === 'multi') {
+      var chosen = String(value || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!editable) return '<span class="multitxt">' + esc(chosen.join(', ')) + '</span>';
+      return '<details class="multi"><summary>' + (chosen.length ? esc(chosen.join(', ')) : '<span class="muted">Select...</span>') + '</summary><div class="multibox">' + col.options.map(function (o) { return '<label class="check"><input type="checkbox" data-multi-opt value="' + esc(o) + '"' + (chosen.indexOf(o) >= 0 ? ' checked' : '') + '> ' + esc(o) + '</label>'; }).join('') + '</div><input type="hidden" name="' + col.key + '" value="' + esc(chosen.join(', ')) + '"></details>';
+    }
     var type = { phone: 'tel', date: 'date', number: 'number' }[col.type] || 'text';
     return '<input name="' + col.key + '" type="' + type + '" value="' + v + '" aria-label="' + esc(col.label) + '" maxlength="200"' + dis + (col.followUp ? ' data-fu="1" min="' + P.addDays(P.today, 1) + '"' : '') + '>';
   }
@@ -73,9 +78,16 @@
     el.addEventListener('click', function (e) {
       var b = e.target.closest('[data-save-row]'); if (!b) return;
       var row = b.closest('.cellrow'), values = {};
-      [].forEach.call(row.querySelectorAll('input,select'), function (i) { values[i.name] = i.value; });
+      [].forEach.call(row.querySelectorAll('input,select'), function (i) { if (i.name) values[i.name] = i.value; });
       b.disabled = true;
       P.api('PUT', '/api/tasks/' + row.dataset.task + '/rows/' + row.dataset.i, { values: values }).then(function (r) { replace(r.task); P.toast('Saved ' + P.fmtTime(r.task.updatedAt)); if (reload) reload(true); }).catch(function (err) { b.disabled = false; P.fail(err); });
+    });
+    el.addEventListener('change', function (e) {
+      if (!e.target.hasAttribute('data-multi-opt')) return;
+      var box = e.target.closest('details'), picked = [].filter.call(box.querySelectorAll('[data-multi-opt]'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+      box.querySelector('input[type=hidden]').value = picked.join(', ');
+      box.querySelector('summary').innerHTML = picked.length ? picked.map(function (x) { return x.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }).join(', ') : '<span class="muted">Select...</span>';
+      var row = e.target.closest('.cellrow'), d = row.querySelector('[data-fu]'); if (d && !d.value && !d.dataset.suggested) { d.value = P.addDays(P.today, 7); d.dataset.suggested = '1'; }
     });
     el.addEventListener('input', function (e) {
       var row = e.target.closest('.cellrow'); if (!row || e.target.hasAttribute('data-fu')) return;
@@ -279,8 +291,8 @@
 
   // ---------------- the task designer (owner) ----------------
   function colRow(c) {
-    return '<div class="col-edit" data-col><label>Column name<input name="label" value="' + esc(c.label || '') + '" maxlength="30"></label><label>Type<select name="type">' + ['text', 'phone', 'choice', 'date', 'number'].map(function (t) { return '<option' + (c.type === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label>' +
-      '<label>Choices (comma separated)<input name="options" value="' + esc((c.options || []).join(', ')) + '" placeholder="only for type choice"></label><div class="chips"><label class="check"><input type="checkbox" name="required"' + (c.required ? ' checked' : '') + '> must fill</label><label class="check" data-fu-box><input type="checkbox" name="followUp"' + (c.followUp ? ' checked' : '') + '> this is the follow-up date</label></div><button class="btn ghost sm" type="button" data-del-col>Remove</button></div>';
+    return '<div class="col-edit" data-col><label>Column name<input name="label" value="' + esc(c.label || '') + '" maxlength="30"></label><label>Type<select name="type">' + [['text', 'text'], ['phone', 'phone'], ['choice', 'choice (pick one)'], ['multi', 'multi-choice (pick several)'], ['date', 'date'], ['number', 'number']].map(function (t) { return '<option value="' + t[0] + '"' + (c.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></label>' +
+      '<label>Choices (comma separated)<input name="options" value="' + esc((c.options || []).join(', ')) + '" placeholder="only for the choice types"></label><div class="chips"><label class="check"><input type="checkbox" name="required"' + (c.required ? ' checked' : '') + '> must fill</label><label class="check" data-fu-box><input type="checkbox" name="followUp"' + (c.followUp ? ' checked' : '') + '> this is the follow-up date</label></div><button class="btn ghost sm" type="button" data-del-col>Remove</button></div>';
   }
   function designForm(t, defaults) {
     t = t || { kind: 'count', schedule: 'daily', assignees: [], active: true, rowCount: 10, columns: defaults, steps: [], target: 1, unit: 'done', carry: true };

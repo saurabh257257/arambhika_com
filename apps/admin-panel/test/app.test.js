@@ -241,7 +241,7 @@ describe('daily and weekly work that carries forward', () => {
   test('the quick-start presets are the tasks the owner asked for', async () => {
     assert.deepEqual(presets.map((p) => p.name), ['Call 10 people', 'Find 4 customers', 'Schedule 6 Instagram posts']);
     const calls = presets[0];
-    assert.deepEqual(calls.columns.map((c) => c.label), ['Name', 'Phone', 'Company', 'Category', 'What did you talk about', 'Follow-up date']);
+    assert.deepEqual(calls.columns.map((c) => c.label), ['Name', 'Phone', 'Company', 'Interested category', 'What did you talk about', 'Follow-up date']);
     assert.ok(calls.columns.find((c) => c.label === 'Follow-up date').followUp);
     assert.equal(presets[2].schedule, 'weekly'); assert.equal(presets[2].rowCount, 6);
     assert.equal((await admin.post('/api/templates', { name: 'x', kind: 'rows', rowCount: 3, assignees: [annId], columns: [{ label: 'A', type: 'date', followUp: true }, { label: 'B', type: 'date', followUp: true }] })).status, 400, 'only one follow-up date column');
@@ -1336,5 +1336,27 @@ describe('follow up with existing customers: 3 a day, rolled over until called',
       assert.deepEqual(next.rows.map((r) => r.name), ['Quiet Two', 'Quiet Three', 'Quiet Four']);
       assert.equal(next.rows[0].rolledFrom, '2026-12-14'); assert.equal(next.rows[2].rolledFrom, '');
     } finally { clock.date = null; await s.stop(); }
+  });
+});
+
+
+describe('multi-choice column (interested categories)', () => {
+  test('several choices can be picked in one cell; anything outside the choices is refused; leads split them', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      const annId = (await admin.get('/api/users')).data.users.find((u) => u.name === 'Ann').id;
+      const cols = [{ label: 'Name', type: 'text', required: true }, { label: 'Phone', type: 'phone' }, { label: 'Interested category', type: 'multi', options: ['Nickel strip', 'Copper busbar', 'Aluminium busbar'] }];
+      assert.equal((await admin.post('/api/templates', { name: 'Call 10 people', kind: 'rows', schedule: 'daily', rowCount: 2, columns: cols, assignees: [annId] })).status, 200);
+      assert.equal((await admin.post('/api/templates', { name: 'No choices', kind: 'rows', rowCount: 1, columns: [{ label: 'X', type: 'multi' }], assignees: [annId] })).status, 400, 'a multi column needs its choices');
+      const t = (await ann.get('/api/tasks')).data.tasks.find((x) => x.name === 'Call 10 people');
+      const put = (v) => ann.put('/api/tasks/' + t.id + '/rows/0', { values: { name: 'Mr Rao', phone: '9000000099', ...v } });
+      assert.equal((await put({ interested_category: 'Nickel strip, Copper busbar' })).status, 200);
+      assert.equal((await put({ interested_category: 'Nickel strip, Gold' })).status, 400, 'only the listed choices');
+      const saved = (await ann.get('/api/tasks')).data.tasks.find((x) => x.name === 'Call 10 people').rows[0].values.interested_category;
+      assert.equal(saved, 'Nickel strip, Copper busbar');
+      await admin.post('/api/master/sync');
+      const lead = (await admin.get('/api/master/customers?leads=1')).data.customers.find((c) => c.name === 'Mr Rao');
+      assert.deepEqual(lead.lead.categories, ['Nickel strip', 'Copper busbar']);
+    } finally { await s.stop(); }
   });
 });
