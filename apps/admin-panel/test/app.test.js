@@ -192,7 +192,7 @@ describe('the team, the task designer and the daily work', () => {
     assert.equal((await admin.post('/api/templates', { name: 'x', kind: 'rows', rowCount: 3, assignees: [annId], columns: [{ label: 'Result', type: 'choice' }] })).status, 400, 'a choice column needs its choices');
     assert.equal((await admin.del('/api/templates/' + tpl.id)).status, 200);
     assert.equal((await admin.get('/api/templates')).data.templates.find((t) => t.id === tpl.id).active, false);
-    assert.ok((await ann.get('/api/tasks')).data.tasks.some((t) => t.name === 'Call 10 people'), 'today\'s work stays visible');
+    assert.ok(!(await ann.get('/api/tasks')).data.tasks.some((t) => t.name === 'Call 10 people'), 'a switched-off task leaves the list for today and later (the record stays in the data and on past days)');
   });
 
   test('custom columns, and a day-by-day history', async () => {
@@ -872,7 +872,7 @@ describe('deleting a task', () => {
     // switching off keeps the template and the work
     assert.equal((await admin.del('/api/templates/' + gone.id)).data.ok, true);
     assert.equal((await admin.get('/api/templates')).data.templates.find((t) => t.id === gone.id).active, false);
-    assert.ok((await ann.get('/api/tasks')).data.tasks.some((t) => t.name === 'Delete me'));
+    assert.ok(!(await ann.get('/api/tasks')).data.tasks.some((t) => t.name === 'Delete me'), 'switched off: gone from the list');
     // deleting is for good
     const d = (await admin.del('/api/templates/' + gone.id + '?permanent=1')).data;
     assert.equal(d.deleted, true); assert.equal(d.removedWork, 2, 'one day of work for each of the two people');
@@ -1200,6 +1200,22 @@ describe('a task changed from daily to weekly is listed once', () => {
       assert.equal((await admin.put('/api/templates/' + t.id, { schedule: 'weekly' })).status, 200);
       const list = (await ann.get('/api/tasks')).data.tasks.filter((x) => x.name === 'Schedule 8 Instagram posts');
       assert.equal(list.length, 1); assert.equal(list[0].schedule, 'weekly');
+    } finally { await s.stop(); }
+  });
+});
+
+describe('a switched-off task disappears from the person\'s list', () => {
+  test('switching a task off removes today\'s copy from the daily list and the week', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      const annId = (await admin.get('/api/users')).data.users.find((u) => u.name === 'Ann').id;
+      const t = (await admin.post('/api/templates', { name: 'Old daily', kind: 'count', target: 8, unit: 'posts', schedule: 'daily', assignees: [annId] })).data.template;
+      const mine = (await ann.get('/api/tasks')).data.tasks[0];
+      await ann.put('/api/tasks/' + mine.id + '/count', { count: 2, notes: '' });   // even with work done in it
+      assert.equal((await ann.get('/api/tasks')).data.tasks.length, 1);
+      assert.equal((await admin.del('/api/templates/' + t.id)).status, 200);
+      assert.equal((await ann.get('/api/tasks')).data.tasks.length, 0);
+      assert.equal((await ann.get('/api/week')).data.days.find((d) => d.isToday).tasks.length, 0);
     } finally { await s.stop(); }
   });
 });

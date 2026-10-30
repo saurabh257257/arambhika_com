@@ -82,13 +82,18 @@ module.exports = function tasks(app, ctx) {
   }
 
   // the work one person sees for a day: that day's daily tasks, this week's weekly tasks, and one-time tasks still open
+  // A copy whose design is gone, switched off, or now runs on another schedule no longer shows for today or later (days gone by keep their record).
+  function retired(i, onDate) {
+    if (onDate < ctx.todayIST()) return false;
+    const t = templates().find((x) => x.id === i.templateId);
+    return !t || !t.active || t.schedule !== i.schedule;
+  }
   function forUser(userId, date) {
     const today = ctx.todayIST();
     if (date === today) ensureToday(userId);
     else if (date > today && date <= addDays(today, FUTURE_DAYS)) for (const t of templates()) ensureFor(t, userId, date); // working ahead
     const monday = weekStart(date);
-    const stale = (i) => { const t = templates().find((x) => x.id === i.templateId); return Boolean(t) && t.schedule !== i.schedule && !i.updatedAt && T.units(i).done === 0; };
-    return instances().filter((i) => i.userId === userId && !stale(i) && (i.schedule === 'once' ? (!i.completedAt || istDate(i.completedAt) === date) : i.schedule === 'weekly' ? i.date === monday : i.date === date));
+    return instances().filter((i) => i.userId === userId && !retired(i, date) && (i.schedule === 'once' ? (!i.completedAt || istDate(i.completedAt) === date) : i.schedule === 'weekly' ? i.date === monday : i.date === date));
   }
   const view = (i) => { const u = T.units(i); return { ...i, progress: { done: u.done, total: u.total, percent: u.total ? Math.round(u.done / u.total * 100) : 100 }, rowsDone: i.kind === 'rows' ? i.rows.map((r) => T.rowDone(i, r)) : undefined }; };
 
@@ -192,14 +197,14 @@ module.exports = function tasks(app, ctx) {
     const days = [];
     for (let n = 0; n < 7; n += 1) {
       const d = addDays(monday, n);
-      const insts = instances().filter((i) => i.userId === userId && i.schedule === 'daily' && i.date === d);
+      const insts = instances().filter((i) => i.userId === userId && i.schedule === 'daily' && i.date === d && !retired(i, d));
       let tasksOf = summary(insts); let planned = false;
       if (!insts.length && d > today && isWorkDay(d)) { tasksOf = mineT.filter((t) => t.schedule === 'daily' && baseOf(t)).map((t) => ({ name: t.name, done: 0, total: baseOf(t), carried: 0, ahead: false })); planned = true; }
       const done = tasksOf.reduce((s, x) => s + x.done, 0); const total = tasksOf.reduce((s, x) => s + x.total, 0);
       days.push({ date: d, dow: dayOfWeek(d), isToday: d === today, isFuture: d > today, isWorkDay: isWorkDay(d), tasks: tasksOf, done, total, percent: total ? Math.round(done / total * 100) : null, planned,
         editable: d >= addDays(today, -EDIT_WINDOW_DAYS) && d <= addDays(today, FUTURE_DAYS) });
     }
-    let weekly = summary(instances().filter((i) => i.userId === userId && i.schedule === 'weekly' && i.date === monday));
+    let weekly = summary(instances().filter((i) => i.userId === userId && i.schedule === 'weekly' && i.date === monday && !retired(i, addDays(monday, 6) >= today ? today : monday)));
     if (!weekly.length && monday > weekStart(today)) weekly = mineT.filter((t) => t.schedule === 'weekly' && baseOf(t)).map((t) => ({ name: t.name, done: 0, total: baseOf(t), carried: 0, ahead: false, planned: true }));
     const sum = days.reduce((s, x) => ({ done: s.done + x.done, total: s.total + x.total }), { done: 0, total: 0 });
     res.json({ weekStart: monday, weekEnd: addDays(monday, 6), today, days, weekly, totals: sum, minDate: addDays(today, -EDIT_WINDOW_DAYS), maxDate: addDays(today, FUTURE_DAYS) });
