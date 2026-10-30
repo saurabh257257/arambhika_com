@@ -1276,3 +1276,20 @@ describe('hide customers by name', () => {
     } finally { await s.stop(); }
   });
 });
+
+
+describe('leads view and file downloads', () => {
+  test('leads can be listed (only those with a lead record), and the owner can download the four files', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      await ann.post('/api/requests', { customerName: 'Lead One', phone: '9000000002' });
+      await admin.post('/api/master/sync');
+      const r = (await ann.get('/api/master/customers?leads=1')).data;
+      assert.equal(r.customers.length, 1); assert.equal(r.customers[0].name, 'Lead One');
+      const f = await admin.raw('GET', '/api/master/file/customers');
+      assert.equal(f.status, 200); assert.ok(f.data.length >= 5);
+      assert.equal((await admin.get('/api/master/file/users')).status, 404, 'only the four files');
+      assert.equal((await ann.raw('GET', '/api/master/file/customers')).status, 403);
+    } finally { await s.stop(); }
+  });
+});

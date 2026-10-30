@@ -105,10 +105,17 @@ module.exports = function masterdata(app, ctx) {
     await sync('full'); ctx.log(req.user, 'Refreshed the customer master list');
     res.json({ ...status });
   }));
+  // the four files themselves, for the owner to download
+  app.get('/api/master/file/:name', ctx.requireAdmin, (req, res) => {
+    if (!['customers', 'call10', 'find4', 'newrequests'].includes(req.params.name)) return res.status(404).json({ error: 'Not found' });
+    res.set({ 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': 'attachment; filename="' + req.params.name + '.json"' });
+    res.send(JSON.stringify(ctx.col(req.params.name), null, 1));
+  });
   app.get('/api/master/customers', (req, res) => {
     let list = ctx.col('customers');
     if (['lead', 'customer'].includes(req.query.stage)) list = list.filter((r) => r.stage === req.query.stage);
     if (req.query.unmatched === '1') list = list.filter((r) => r.unmatched);
+    if (req.query.leads === '1') list = list.filter((r) => r.lead);
     const q = String(req.query.q || '').trim().toLowerCase();
     if (q) list = list.filter((r) => (r.name + ' ' + r.company + ' ' + r.phone + ' ' + r.email).toLowerCase().includes(q));
     res.json({ total: list.length, customers: list.slice(0, 500) });
