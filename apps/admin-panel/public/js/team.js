@@ -2,6 +2,23 @@
   'use strict';
   var P = window.Panel, esc = P.esc;
 
+  // ---------------- start fresh: clear test or old work for the hand-over ----------------
+  function drawReset(el) {
+    return P.api('GET', '/api/reset/preview').then(function (r) {
+      var box = document.createElement('div'); box.className = 'card';
+      box.innerHTML = '<h3>Start fresh (hand-over)</h3><div class="muted small">Clears the work done so far, so Lokesh and Vikas begin today with nothing carried over. Your designed tasks, team members, customers and rules stay. A copy of what is cleared is kept on the server.</div>' +
+        '<div class="chips">' + r.items.map(function (i) { return '<label class="check"><input type="checkbox" name="rs" value="' + i.key + '" checked> ' + esc(i.label) + ' (' + i.count + ')</label>'; }).join('') + '</div>' +
+        '<div class="row"><label>Type RESET to confirm<input id="rsConfirm" autocomplete="off"></label><button class="btn bad fit" id="rsGo" type="button">Clear and start fresh</button></div>';
+      el.appendChild(box);
+      box.querySelector('#rsGo').addEventListener('click', function () {
+        var what = [].filter.call(box.querySelectorAll('[name=rs]'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+        if (!what.length) { P.toast('Choose what to clear'); return; }
+        if (box.querySelector('#rsConfirm').value !== 'RESET') { P.toast('Type RESET to confirm'); return; }
+        P.api('POST', '/api/reset', { confirm: 'RESET', what: what }).then(function () { P.toast('Cleared. Everyone starts fresh.'); return drawReset(el); }).then(function () { box.remove(); }).catch(P.fail);
+      });
+    }).catch(function () {});
+  }
+
   // ---------------- team members and passwords ----------------
   P.register({ id: 'team', label: 'Team', roles: ['admin'], order: 8, render: function (el) {
     function load() {
@@ -12,6 +29,7 @@
           '<div class="card"><h3>Your team</h3><div class="list">' + (r.users.map(function (u) {
             return '<div class="item"><div class="head"><b>' + esc(u.name) + ' <span class="muted">@' + esc(u.username) + '</span></b>' + P.pill(u.active ? 'Active' : 'Switched off', u.active ? 'ok' : 'none') + '</div><div class="actions"><button class="btn ghost sm" data-toggle="' + u.id + '" data-active="' + (u.active ? 1 : 0) + '" type="button">' + (u.active ? 'Switch off' : 'Switch on') + '</button><button class="btn ghost sm" data-reset="' + u.id + '" type="button">Set a new password</button><button class="btn ghost sm" data-rename="' + u.id + '" data-name="' + esc(u.name) + '" type="button">Rename</button></div></div>';
           }).join('') || '<div class="muted">No team members yet.</div>') + '</div></div>';
+        drawReset(el);
         el.querySelector('#newUser').addEventListener('submit', function (e) {
           e.preventDefault(); var f = e.target;
           P.api('POST', '/api/users', { name: f.name.value, username: f.username.value, password: f.password.value }).then(function () { P.toast('Team member added'); return load(); }).catch(P.fail);

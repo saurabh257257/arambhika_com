@@ -1,5 +1,8 @@
 // Team members (the owner creates them and sets their passwords), the follow-up rules, and the activity feed.
 'use strict';
+const fs = require('fs');
+const path = require('path');
+const files = require('../lib/files');
 const { str, uid, hashPassword, nowISO } = require('../lib/util');
 const { KINDS, mergeCadence } = require('../lib/followups');
 
@@ -76,6 +79,29 @@ module.exports = function team(app, ctx) {
     ctx.saveSettings();
     ctx.log(req.user, 'Changed the follow-up rules and working days');
     res.json({ cadence: mergeCadence(s.cadence), invoiceLeadDays: s.invoiceLeadDays || 3, workDays: workDays() });
+  });
+
+  // ---- hand-over reset (owner only): clear test or old work so the team starts clean ----
+  // What can be cleared. The designed tasks, team members, customers, rules and Zoho data are never touched.
+  const RESETTABLE = { tasks: { label: 'Task work and history', collections: ['tasks'] }, requests: { label: 'Customer requests', collections: ['requests'] }, activity: { label: 'Activity feed and office transactions', collections: ['activity', 'transactions'] } };
+  app.get('/api/reset/preview', ctx.requireAdmin, (req, res) => {
+    res.json({ items: Object.entries(RESETTABLE).map(([key, r]) => ({ key, label: r.label, count: r.collections.reduce((n, c) => n + ctx.col(c).length, 0) })) });
+  });
+  app.post('/api/reset', ctx.requireAdmin, (req, res) => {
+    if ((req.body && req.body.confirm) !== 'RESET') return res.status(400).json({ error: 'Type RESET to confirm' });
+    const what = (Array.isArray(req.body.what) ? req.body.what : []).filter((k) => RESETTABLE[k]);
+    if (!what.length) return res.status(400).json({ error: 'Choose what to clear' });
+    // a copy of every file about to be emptied is kept, so a mistake can be undone by hand
+    const dir = path.join(ctx.store.dir, 'backups', nowISO().replace(/[:.]/g, '-'));
+    fs.mkdirSync(dir, { recursive: true });
+    const names = what.flatMap((k) => RESETTABLE[k].collections);
+    for (const n of names) { try { fs.copyFileSync(ctx.store.file(n), path.join(dir, n + '.json')); } catch (e) { /* nothing saved yet */ } }
+    const cleared = {};
+    if (what.includes('requests')) for (const r of ctx.col('requests')) for (const p of r.screenshots || []) { const f = files.filePath(ctx.store.dir, p.name); if (f) { try { fs.renameSync(f, path.join(dir, p.name)); } catch (e) { /* already gone */ } } }
+    for (const n of names) { const c = ctx.col(n); cleared[n] = c.length; c.length = 0; ctx.save(n); }
+    if (ctx.master) ctx.master.rebuild();
+    ctx.log(req.user, 'Reset for the hand-over: cleared ' + what.map((k) => RESETTABLE[k].label.toLowerCase()).join(', '));
+    res.json({ ok: true, cleared, backup: path.basename(dir) });
   });
 
   // ---- activity feed (admin): who updated what, and when ----

@@ -1166,3 +1166,26 @@ describe('invoices: the customer paid', () => {
     } finally { await s.stop(); }
   });
 });
+
+describe('hand-over reset', () => {
+  test('owner clears work with a typed confirmation; a backup is kept; designed tasks stay', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      const annId = (await admin.get('/api/users')).data.users.find((u) => u.name === 'Ann').id;
+      await admin.post('/api/templates', { name: 'Daily check', kind: 'checklist', steps: ['One'], schedule: 'daily', assignees: [annId] });
+      assert.equal((await ann.get('/api/tasks')).data.tasks.length, 1);
+      await ann.post('/api/requests', { customerName: 'Test Co' });
+      const pre = (await admin.get('/api/reset/preview')).data.items;
+      assert.ok(pre.find((i) => i.key === 'tasks').count >= 1); assert.equal(pre.find((i) => i.key === 'requests').count, 1);
+      assert.equal((await admin.post('/api/reset', { what: ['tasks'] })).status, 400, 'needs the typed word');
+      assert.equal((await admin.post('/api/reset', { confirm: 'RESET', what: [] })).status, 400);
+      assert.equal((await ann.post('/api/reset', { confirm: 'RESET', what: ['tasks'] })).status, 403);
+      const r = await admin.post('/api/reset', { confirm: 'RESET', what: ['tasks', 'requests', 'activity'] });
+      assert.equal(r.status, 200); assert.ok(fs.existsSync(path.join(s.dir, 'backups', r.data.backup, 'tasks.json')));
+      assert.equal((await admin.get('/api/requests')).data.requests.filter((x) => x.customerName === 'Test Co').length, 0, 'the logged request is gone (a website order from Zoho may sync back)');
+      assert.equal((await admin.get('/api/templates')).data.templates.length, 1, 'the designed task stays');
+      assert.equal((await ann.get('/api/tasks')).data.tasks[0].carried || 0, 0, 'a fresh copy for today, nothing carried over');
+      assert.ok((await admin.get('/api/activity')).data.activity[0].text.startsWith('Reset'), 'the reset itself is logged');
+    } finally { await s.stop(); }
+  });
+});
