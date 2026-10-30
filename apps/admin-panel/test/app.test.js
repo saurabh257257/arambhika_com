@@ -236,7 +236,7 @@ describe('daily and weekly work that carries forward', () => {
   test('the quick-start presets are the tasks the owner asked for', async () => {
     assert.deepEqual(presets.map((p) => p.name), ['Call 10 people', 'Find 4 customers', 'Schedule 6 Instagram posts']);
     const calls = presets[0];
-    assert.deepEqual(calls.columns.map((c) => c.label), ['Name', 'Phone', 'Company', 'What did you talk about', 'Follow-up date']);
+    assert.deepEqual(calls.columns.map((c) => c.label), ['Name', 'Phone', 'Company', 'Category', 'What did you talk about', 'Follow-up date']);
     assert.ok(calls.columns.find((c) => c.label === 'Follow-up date').followUp);
     assert.equal(presets[2].schedule, 'weekly'); assert.equal(presets[2].rowCount, 6);
     assert.equal((await admin.post('/api/templates', { name: 'x', kind: 'rows', rowCount: 3, assignees: [annId], columns: [{ label: 'A', type: 'date', followUp: true }, { label: 'B', type: 'date', followUp: true }] })).status, 400, 'only one follow-up date column');
@@ -499,7 +499,8 @@ describe('customers from Zoho: owner, cadence and onboarded', () => {
   test('the owner shares customers evenly; each member sees their own', async () => {
     const r = (await admin.post('/api/customers/auto-assign')).data;
     assert.equal(r.assigned, 5);
-    const a = (await ann.get('/api/customers')).data; const b = (await raj.get('/api/customers')).data;
+    const a = (await ann.get('/api/customers?filter=mine')).data; const b = (await raj.get('/api/customers?filter=mine')).data;
+    assert.equal((await ann.get('/api/customers')).data.customers.length, 5, 'team members can see every customer');
     assert.equal(a.customers.length + b.customers.length, 5);
     assert.ok(Math.abs(a.customers.length - b.customers.length) <= 1);
     assert.equal((await admin.post('/api/customers/auto-assign')).data.assigned, 0, 'nothing left to share');

@@ -120,7 +120,7 @@ module.exports = function tasks(app, ctx) {
   ctx.tasks = { forUser, units: T.units, followupsDue, followupsDoneToday, isWorkDay, workDays };
 
   // ---- the designer (owner only) ----
-  app.get('/api/templates', ctx.requireAdmin, (req, res) => res.json({ templates: templates(), defaultColumns: T.DEFAULT_COLUMNS, presets: T.PRESETS }));
+  app.get('/api/templates', ctx.requireAdmin, (req, res) => res.json({ templates: templates(), defaultColumns: T.DESIGNER_COLUMNS, presets: T.PRESETS }));
 
   app.post('/api/templates', ctx.requireAdmin, (req, res) => {
     const r = T.validateTemplate(req.body || {}, employeeIds());

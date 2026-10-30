@@ -22,12 +22,24 @@ const DEFAULT_COLUMNS = [
   { key: 'note', label: 'Note', type: 'text', required: false },
 ];
 
+// What the designer offers as the columns of a new "fill in rows" task (a call log): the owner edits them freely.
+const CATEGORIES = ['Nickel strip plated', 'Pure nickel strip', 'Copper busbar', 'Aluminium busbar', 'Other'];
+const DESIGNER_COLUMNS = [
+  { key: 'name', label: 'Name', type: 'text', required: true },
+  { key: 'phone', label: 'Phone', type: 'phone', required: true },
+  { key: 'company', label: 'Company', type: 'text', required: false },
+  { key: 'category', label: 'Category', type: 'choice', options: CATEGORIES, required: false },
+  { key: 'talk', label: 'What did you talk about', type: 'text', required: true },
+  { key: 'followup', label: 'Follow-up date', type: 'date', required: false, followUp: true },
+];
+
 // The tasks the owner asked for, ready to create with one click.
 const PRESETS = [
   { id: 'calls', for: 'both', name: 'Call 10 people', kind: 'rows', schedule: 'daily', rowCount: 10, carry: true,
     instructions: 'Call 10 new people. Write down who you spoke to, what you talked about, and when to follow up. On that date the call comes back by itself.',
     columns: [
       { label: 'Name', type: 'text', required: true }, { label: 'Phone', type: 'phone', required: true }, { label: 'Company', type: 'text' },
+      { label: 'Category', type: 'choice', options: CATEGORIES },
       { label: 'What did you talk about', type: 'text', required: true }, { label: 'Follow-up date', type: 'date', followUp: true },
     ] },
   { id: 'find', for: 'both', name: 'Find 4 customers', kind: 'rows', schedule: 'daily', rowCount: 4, carry: true,
@@ -150,4 +162,4 @@ function readCell(col, value) {
   return { value: v };
 }
 
-module.exports = { KINDS, SCHEDULES, DEFAULT_COLUMNS, PRESETS, validateTemplate, makeInstance, rowDone, units, readCell, followUpKey, blankRow, topUp };
+module.exports = { KINDS, SCHEDULES, DEFAULT_COLUMNS, DESIGNER_COLUMNS, PRESETS, validateTemplate, makeInstance, rowDone, units, readCell, followUpKey, blankRow, topUp };

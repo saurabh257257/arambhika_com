@@ -55,7 +55,6 @@ module.exports = function customers(app, ctx) {
       for (const r of rows) { const p = per.get(r.ownerId) || per.get(''); p[r.regular ? 'regular' : 'other'] += 1; }
       counts.owners = [...per.values()];
     }
-    if (req.user.role !== 'admin') rows = rows.filter((r) => !r.ownerId || r.ownerId === req.user.id);
     const f = req.query.filter;
     if (f === 'mine') rows = rows.filter((r) => r.ownerId === req.user.id);
     if (f === 'unassigned') rows = rows.filter((r) => !r.ownerId);
@@ -155,7 +154,6 @@ module.exports = function customers(app, ctx) {
   app.get('/api/customers/:id/history', (req, res) => {
     if (!idOk(req, res)) return;
     const s = stateOf(req.params.id);
-    if (req.user.role !== 'admin' && !(s && (!s.ownerId || s.ownerId === req.user.id))) return res.json({ history: [] });
     res.json({ history: logs().filter((e) => e.kind === 'customer' && e.refId === req.params.id).sort((a, b) => b.at.localeCompare(a.at)) });
   });
 };

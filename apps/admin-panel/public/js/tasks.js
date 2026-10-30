@@ -9,7 +9,7 @@
     var dis = editable ? '' : ' disabled', v = esc(value || '');
     if (col.type === 'choice') return '<select name="' + col.key + '"' + dis + '><option value=""></option>' + col.options.map(function (o) { return '<option' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     var type = { phone: 'tel', date: 'date', number: 'number' }[col.type] || 'text';
-    return '<input name="' + col.key + '" type="' + type + '" value="' + v + '" aria-label="' + esc(col.label) + '" maxlength="200"' + dis + (col.followUp ? ' min="' + P.addDays(P.today, 1) + '"' : '') + '>';
+    return '<input name="' + col.key + '" type="' + type + '" value="' + v + '" aria-label="' + esc(col.label) + '" maxlength="200"' + dis + (col.followUp ? ' data-fu="1" min="' + P.addDays(P.today, 1) + '"' : '') + '>';
   }
   function carryNote(t) {
     if (!t.carried) return '';
@@ -76,6 +76,10 @@
       [].forEach.call(row.querySelectorAll('input,select'), function (i) { values[i.name] = i.value; });
       b.disabled = true;
       P.api('PUT', '/api/tasks/' + row.dataset.task + '/rows/' + row.dataset.i, { values: values }).then(function (r) { replace(r.task); P.toast('Saved ' + P.fmtTime(r.task.updatedAt)); if (reload) reload(true); }).catch(function (err) { b.disabled = false; P.fail(err); });
+    });
+    el.addEventListener('input', function (e) {
+      var row = e.target.closest('.cellrow'); if (!row || e.target.hasAttribute('data-fu')) return;
+      var d = row.querySelector('[data-fu]'); if (d && !d.value && !d.dataset.suggested) { d.value = P.addDays(P.today, 7); d.dataset.suggested = '1'; }
     });
     el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('.cellrow') && e.target.tagName === 'INPUT') { e.preventDefault(); e.target.closest('.cellrow').querySelector('[data-save-row]').click(); } });
     el.addEventListener('change', function (e) {

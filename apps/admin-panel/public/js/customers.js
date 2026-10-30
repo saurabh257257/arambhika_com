@@ -3,7 +3,7 @@
   var P = window.Panel, esc = P.esc;
 
   P.register({ id: 'customers', label: 'Customers', roles: ['admin', 'employee'], order: 11, render: function (el) {
-    var isAdmin = P.me.role === 'admin', filter = isAdmin ? 'all' : 'mine', who = '', q = '', outcomes = [], timer, lastSplit = '';
+    var isAdmin = P.me.role === 'admin', filter = 'all', who = '', q = '', outcomes = [], timer, lastSplit = '';
 
     function item(c) {
       var mine = c.ownerId === P.me.id, tone = c.followStatus === 'overdue' ? 'hot' : c.followStatus === 'due' ? 'warn' : '';
@@ -59,7 +59,7 @@
       return P.api('GET', url).then(function (r) {
         outcomes = r.outcomes; var c = r.counts || {};
         var seg = isAdmin ? [['all', 'All (' + (c.total || 0) + ')'], ['due', 'Follow-up due (' + (c.due || 0) + ')'], ['unassigned', 'No owner (' + (c.unassigned || 0) + ')'], ['notonboarded', 'Not onboarded']] :
-          [['mine', 'My customers (' + (c.mine || 0) + ')'], ['due', 'Due today (' + (c.due || 0) + ')'], ['unassigned', 'Waiting for an owner (' + (c.unassigned || 0) + ')']];
+          [['all', 'All customers (' + (c.total || 0) + ')'], ['mine', 'My customers (' + (c.mine || 0) + ')'], ['unassigned', 'Waiting for an owner (' + (c.unassigned || 0) + ')']];
         var focus = document.activeElement && document.activeElement.id === 'cq';
         el.innerHTML = '<div class="card"><div class="between"><div class="seg">' + seg.map(function (s) { return '<button class="btn ' + (filter === s[0] ? '' : 'ghost') + '" data-f="' + s[0] + '" type="button">' + s[1] + '</button>'; }).join('') + '</div>' +
           '<div class="actions">' + (isAdmin ? '<button class="btn ghost sm" id="share" type="button">Share unowned customers evenly</button><button class="btn ghost sm" id="resplit" type="button">Re-split all customers</button>' : '') + '<button class="btn ghost sm" id="rf" type="button">Refresh from Zoho</button></div></div>' +
