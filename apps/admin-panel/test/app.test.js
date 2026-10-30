@@ -136,7 +136,7 @@ describe('the team, the task designer and the daily work', () => {
     assert.equal(mine[0].rows.length, 10);
     assert.deepEqual(mine[0].progress, { done: 0, total: 10, percent: 0 });
     assert.equal((await raj.get('/api/tasks')).data.tasks[0].rows.length, 10, 'each person gets their own copy');
-    assert.equal((await admin.get('/api/tasks')).status, 400, 'the owner picks whose work to look at');
+    assert.equal((await admin.get('/api/tasks')).data.tasks.length, 0, 'with nobody chosen the owner sees their own list, which is empty here');
     assert.equal((await admin.get('/api/tasks?userId=' + annId)).data.tasks.length, 1);
   });
 
@@ -830,7 +830,7 @@ describe('working ahead, and the week view', () => {
     await getDay(ann, '2026-11-04'); // open Wednesday: the planned sheet becomes a real one
     assert.equal((await ann.get('/api/week')).data.days[2].planned, false);
     assert.equal((await ann.get('/api/week?userId=' + rajId)).data.days[1].total, 12, 'asking for another person\'s week still returns your own');
-    assert.equal((await admin.get('/api/week')).status, 400, 'the owner chooses whose week');
+    assert.equal((await admin.get('/api/week')).status, 200, 'with nobody chosen the owner sees their own week');
     assert.equal((await admin.get('/api/week?userId=' + rajId)).data.days[1].total, 20);
     assert.equal((await ann.get('/api/week?date=2026-11-09')).data.weekStart, '2026-11-09', 'next week');
   });
@@ -1067,6 +1067,27 @@ describe('dashboard charts', () => {
       assert.equal(d.funnel.length, 6); assert.equal(d.funnel[0].count, 1);
       assert.equal(d.invoices.buckets.length, 4); assert.equal(d.invoices.count, 3);
       assert.equal((await ann.get('/api/dashboard-charts')).status, 403);
+    } finally { await s.stop(); }
+  });
+});
+
+describe('task designer: the owner can assign tasks to themselves', () => {
+  test('Admin as an assignee, own list, quick tasks daily/weekly/one time', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      const t = (await admin.post('/api/templates', { name: 'Review stock', kind: 'checklist', steps: 'Count\nUpdate Zoho', schedule: 'daily', assignees: ['admin'] })).data.template;
+      assert.ok(t);
+      const mine = (await admin.get('/api/tasks')).data.tasks;            // no userId: the owner's own list
+      assert.equal(mine.length, 1); assert.equal(mine[0].name, 'Review stock');
+      const step = await admin.put('/api/tasks/' + mine[0].id + '/steps/0', { done: true });
+      assert.equal(step.status, 200);
+      assert.equal((await admin.get('/api/week')).status, 200);
+      assert.equal((await ann.get('/api/tasks')).data.tasks.length, 0);   // the team does not see it
+      for (const schedule of ['once', 'daily', 'weekly']) {
+        const r = await admin.post('/api/templates', { name: 'Quick ' + schedule, kind: 'checklist', steps: ['Do it'], schedule, adhoc: schedule === 'once', assignees: ['admin'] });
+        assert.equal(r.status, 200);
+      }
+      assert.equal((await admin.post('/api/templates', { name: 'Bad', kind: 'checklist', steps: ['x'], schedule: 'daily', assignees: ['nobody'] })).status, 400);
     } finally { await s.stop(); }
   });
 });

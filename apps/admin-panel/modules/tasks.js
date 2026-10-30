@@ -16,7 +16,7 @@ const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5, 6]; // Monday to Saturday
 module.exports = function tasks(app, ctx) {
   const templates = () => ctx.col('templates');
   const instances = () => ctx.col('tasks');
-  const employeeIds = () => ctx.employees().map((u) => u.id);
+  const employeeIds = () => ['admin', ...ctx.employees().map((u) => u.id)]; // the owner can give tasks to themselves too
   const workDays = () => { const w = ctx.settings().workDays; return Array.isArray(w) && w.length ? w : DEFAULT_WORK_DAYS; };
   const isWorkDay = (date) => workDays().includes(dayOfWeek(date));
   const mineOf = (template, userId) => instances().filter((i) => i.templateId === template.id && i.userId === userId);
@@ -166,8 +166,7 @@ module.exports = function tasks(app, ctx) {
     const date = req.query.date && isDate(req.query.date) ? req.query.date : ctx.todayIST();
     let userId = req.user.id;
     if (req.user.role === 'admin') {
-      userId = String(req.query.userId || '');
-      if (!userId) return res.status(400).json({ error: 'Choose a team member' });
+      userId = String(req.query.userId || 'admin'); // no person chosen: the owner's own tasks
     }
     if (req.user.role !== 'admin' && date > addDays(ctx.todayIST(), FUTURE_DAYS)) return res.status(400).json({ error: 'You can work up to a week ahead, no further' });
     res.json({ date, tasks: forUser(userId, date).map(view), workDay: isWorkDay(date), ahead: date > ctx.todayIST() });
@@ -176,7 +175,7 @@ module.exports = function tasks(app, ctx) {
   // the week at a glance (Monday to Sunday): each day's progress, and this week's weekly tasks. Days ahead show what is planned.
   app.get('/api/week', (req, res) => {
     let userId = req.user.id;
-    if (req.user.role === 'admin') { userId = String(req.query.userId || ''); if (!userId) return res.status(400).json({ error: 'Choose a team member' }); }
+    if (req.user.role === 'admin') userId = String(req.query.userId || 'admin');
     const today = ctx.todayIST();
     const monday = weekStart(req.query.date && isDate(req.query.date) ? req.query.date : today);
     if (monday <= today && addDays(monday, 6) >= today) ensureToday(userId);

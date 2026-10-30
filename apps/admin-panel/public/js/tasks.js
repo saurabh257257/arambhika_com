@@ -153,7 +153,7 @@
   }
 
   // ---------------- the team member's tasks ----------------
-  P.register({ id: 'tasks', label: 'Tasks', roles: ['employee'], order: 1, render: function (el) {
+  function tasksScreen(owner) { return function (el) {
     var state = { date: P.today }, wired = false, limits = {};
     // after each save, the week strip and the day's totals are brought up to date without redrawing the rows being typed in
     function refreshTop() {
@@ -166,7 +166,7 @@
     }
     function load() {
       var date = state.date;
-      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] }), date === P.today ? P.api('GET', '/api/requests?filter=mine').catch(function () { return { requests: [] }; }) : Promise.resolve({ requests: [] })]).then(function (res) {
+      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today && !owner ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] }), date === P.today && !owner ? P.api('GET', '/api/requests?filter=mine').catch(function () { return { requests: [] }; }) : Promise.resolve({ requests: [] })]).then(function (res) {
         var r = res[0], w = res[1], fu = res[2].followups, rq = res[3].requests.filter(function (x) { return !x.complete; }); limits = { min: w.minDate, max: w.maxDate };
         seedOpen(r.tasks);
         el.innerHTML = '<div class="tasklayout"><aside>' + daySummary(r, date) + weekStrip(w, date, false) + '</aside><main>' +
@@ -188,7 +188,9 @@
       P.api('POST', '/api/tasks/' + item.taskId + '/rows/' + item.rowIndex + '/followup', { notes: f.notes.value, nextDate: f.nextDate.value }).then(function (r) { P.toast(r.nextDate ? 'Saved. Next follow-up on ' + P.fmtDate(r.nextDate) : 'Saved. No more follow-up needed.'); return load(); }).catch(P.fail);
     });
     return load();
-  } });
+  }; }
+  P.register({ id: 'tasks', label: 'Tasks', roles: ['employee'], order: 1, render: tasksScreen(false) });
+  P.register({ id: 'mytasks', label: 'My tasks', roles: ['admin'], order: 0.6, render: tasksScreen(true) });
 
   // ---------------- the owner looks at somebody's work ----------------
   P.register({ id: 'work', label: 'Team work', roles: ['admin'], order: 2, render: function (el) {
@@ -247,7 +249,7 @@
       '<div data-kind="count"><div class="row"><label>Target number<input type="number" name="target" min="1" value="' + (t.target || 1) + '"></label><label>Unit<input name="unit" maxlength="20" value="' + esc(t.unit || 'done') + '" placeholder="photos, posts, calls"></label></div></div>' +
       '<div data-carry class="row"><label class="check"><input type="checkbox" name="carry"' + (t.carry !== false ? ' checked' : '') + '> Carry forward what was missed (8 of 10 done means 12 next time)</label><label>Most that can carry over each time<input type="number" name="maxCarry" min="0" max="1000" value="' + (t.maxCarry === undefined ? '' : t.maxCarry) + '" placeholder="same as the target"></label></div>' +
       '<label>Instructions for the team (optional)<textarea name="instructions" maxlength="1000">' + esc(t.instructions || '') + '</textarea></label>' +
-      '<div><div class="muted small" style="margin-bottom:6px">Who does this task</div><div class="chips">' + P.users.filter(function (u) { return u.active; }).map(function (u) { return '<label class="check"><input type="checkbox" name="assignee" value="' + esc(u.id) + '"' + ((t.assignees || []).indexOf(u.id) >= 0 ? ' checked' : '') + '> ' + esc(u.name) + '</label>'; }).join('') + '</div></div>' +
+      '<div><div class="muted small" style="margin-bottom:6px">Who does this task</div><div class="chips">' + people().filter(function (u) { return u.active; }).map(function (u) { return '<label class="check"><input type="checkbox" name="assignee" value="' + esc(u.id) + '"' + ((t.assignees || []).indexOf(u.id) >= 0 ? ' checked' : '') + '> ' + esc(u.name) + '</label>'; }).join('') + '</div></div>' +
       '<div class="actions"><button class="btn" type="submit">' + (t.id ? 'Save changes' : 'Create task') + '</button></div></form>';
   }
   function readDesign(f) {
@@ -261,11 +263,12 @@
     f.querySelector('[data-carry]').hidden = f.schedule.value === 'once' || f.kind.value === 'checklist';
     [].forEach.call(f.querySelectorAll('[data-col]'), function (r) { r.querySelector('[data-fu-box]').hidden = r.querySelector('[name=type]').value !== 'date'; });
   }
+  function people() { return [{ id: 'admin', name: 'Admin (me)', active: true }].concat(P.users); }
   function memberChecks(name, pre) {
-    return P.users.filter(function (u) { return u.active; }).map(function (u) { return '<label class="check"><input type="checkbox" name="' + name + '" value="' + esc(u.id) + '"' + (pre(u) ? ' checked' : '') + '> ' + esc(u.name) + '</label>'; }).join('');
+    return people().filter(function (u) { return u.active; }).map(function (u) { return '<label class="check"><input type="checkbox" name="' + name + '" value="' + esc(u.id) + '"' + (u.id !== 'admin' && pre(u) ? ' checked' : '') + '> ' + esc(u.name) + '</label>'; }).join('');
   }
   function templateItem(t) {
-    var names = t.assignees.map(function (id) { return esc((P.users.filter(function (u) { return u.id === id; })[0] || {}).name || '?'); }).join(', ') || 'nobody';
+    var names = t.assignees.map(function (id) { return esc((people().filter(function (u) { return u.id === id; })[0] || {}).name || '?'); }).join(', ') || 'nobody';
     return '<div class="item ' + (t.active ? '' : 'warn') + '"><div class="between"><b>' + esc(t.name) + '</b><span class="chips">' + P.pill(KIND[t.kind]) + P.pill(SCHED[t.schedule]) + (t.carry ? P.pill('carries over') : '') + (t.active ? '' : P.pill('Switched off', 'overdue')) + '</span></div>' +
       '<div class="meta"><span>' + (t.kind === 'rows' ? t.rowCount + ' rows: ' + t.columns.map(function (c) { return esc(c.label); }).join(', ') : t.kind === 'checklist' ? t.steps.length + ' steps' : 'target ' + t.target + ' ' + esc(t.unit)) + '</span><span>For: <b>' + names + '</b></span>' + (t.dueDate ? '<span>Due ' + P.fmtDate(t.dueDate) + '</span>' : '') + '</div>' +
       '<div class="actions">' + (t.adhoc ? '' : '<button class="btn ghost sm" data-edit="' + t.id + '" type="button">Change</button>') + (t.active ? '<button class="btn ghost sm" data-off="' + t.id + '" type="button">Switch off</button>' : '<button class="btn ghost sm" data-on="' + t.id + '" type="button">Switch on</button>') + '<button class="btn ghost sm" style="color:#b91c1c" data-delete="' + t.id + '" data-name="' + esc(t.name) + '" type="button">Delete</button></div></div>';
@@ -279,8 +282,8 @@
         var list = r[0].templates, defaults = r[0].defaultColumns; state.list = list; state.presets = r[0].presets;
         var designed = list.filter(function (t) { return !t.adhoc && t.active; }), oneTime = list.filter(function (t) { return t.adhoc && t.active; }), switchedOff = list.filter(function (t) { return !t.active; });
         el.innerHTML =
-          '<div class="card"><h3>Give a quick task to your team</h3><div class="muted small">For something that comes up today: a one-time task that stays on their list until it is done.</div>' +
-          '<form id="quick" class="list"><div class="row"><label style="flex:3 1 240px">What needs to be done<input name="title" required maxlength="80" placeholder="e.g. Send the new price list to dealers"></label><label>Due date<input type="date" name="due" min="' + P.today + '"></label></div>' +
+          '<div class="card"><h3>Give a quick task</h3><div class="muted small">To your team or to yourself: one time (stays on the list until done), every day, or every week.</div>' +
+          '<form id="quick" class="list"><div class="row"><label style="flex:3 1 240px">What needs to be done<input name="title" required maxlength="80" placeholder="e.g. Send the new price list to dealers"></label><label>How often<select name="schedule"><option value="once">One time (stays until done)</option><option value="daily">Every day (working days)</option><option value="weekly">Every week</option></select></label><label data-qdue>Due date<input type="date" name="due" min="' + P.today + '"></label></div>' +
           '<label>Steps (optional, one per line)<textarea name="steps" style="min-height:56px" placeholder="Prepare the PDF&#10;Send on WhatsApp"></textarea></label>' +
           '<div class="chips">' + memberChecks('qassignee', function () { return true; }) + '</div><div class="actions"><button class="btn" type="submit">Give this task</button></div></form></div>' +
           '<div class="card"><h3>Quick start: the usual tasks</h3><div class="muted small">One click creates the task for the people you tick. You can change it afterwards.</div><div class="list">' + state.presets.map(function (p) {
@@ -298,10 +301,11 @@
           e.preventDefault();
           P.api(editing ? 'PUT' : 'POST', '/api/templates' + (editing ? '/' + editing.id : ''), readDesign(f)).then(function () { P.toast(editing ? 'Saved' : 'Task created and given to the team'); editing = null; return load(); }).catch(P.fail);
         });
+        var qf = el.querySelector('#quick'); qf.schedule.addEventListener('change', function () { qf.querySelector('[data-qdue]').hidden = qf.schedule.value !== 'once'; });
         el.querySelector('#quick').addEventListener('submit', function (e) {
           e.preventDefault(); var q = e.target;
           var steps = q.steps.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
-          P.api('POST', '/api/templates', { name: q.title.value, kind: 'checklist', steps: steps.length ? steps : [q.title.value], schedule: 'once', dueDate: q.due.value, adhoc: true, assignees: [].filter.call(q.querySelectorAll('[name=qassignee]'), function (c) { return c.checked; }).map(function (c) { return c.value; }) })
+          P.api('POST', '/api/templates', { name: q.title.value, kind: 'checklist', steps: steps.length ? steps : [q.title.value], schedule: q.schedule.value, dueDate: q.schedule.value === 'once' ? q.due.value : '', adhoc: q.schedule.value === 'once', assignees: [].filter.call(q.querySelectorAll('[name=qassignee]'), function (c) { return c.checked; }).map(function (c) { return c.value; }) })
             .then(function () { P.toast('Task given. It is on their list now.'); return load(); }).catch(P.fail);
         });
         [].forEach.call(el.querySelectorAll('[data-preset]'), function (form) {
