@@ -1219,3 +1219,17 @@ describe('a switched-off task disappears from the person\'s list', () => {
     } finally { await s.stop(); }
   });
 });
+
+describe('customers by owner export', () => {
+  test('owner downloads a CSV of every customer that has an owner, grouped by owner', async () => {
+    const { s, admin, ann } = await team(pretendZoho());
+    try {
+      await admin.post('/api/customers/auto-assign');
+      const r = await admin.raw('GET', '/api/customers/export');
+      assert.equal(r.status, 200); assert.match(String(r.data), /^"Owner","Customer"/);
+      const lines = String(r.data).trim().split('\r\n'); assert.equal(lines.length, 1 + 4);   // header + the four customers
+      assert.ok(lines.slice(1).every((l) => l.startsWith('"Ann"') || l.startsWith('"Raj"')));
+      assert.equal((await ann.raw('GET', '/api/customers/export')).status, 403);
+    } finally { await s.stop(); }
+  });
+});

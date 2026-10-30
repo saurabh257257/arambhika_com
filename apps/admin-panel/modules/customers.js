@@ -42,6 +42,19 @@ module.exports = function customers(app, ctx) {
       ownerId: s.ownerId || '', ownerName: ctx.userName(s.ownerId), nextDate: s.nextDate || '', lastAt: s.lastAt || '', lastByName: s.lastByName || '', lastOutcome: s.lastOutcome || '', lastNote: s.lastNote || '', followStatus: followStatus(s.nextDate, today) };
   }
 
+  // every customer that has an owner, as a spreadsheet file, grouped by owner (owner only)
+  app.get('/api/customers/export', ctx.requireAdmin, async (req, res) => {
+    let data;
+    try { data = await load(req.query.refresh === '1'); } catch (err) { return res.status(502).json({ error: err.message }); }
+    const today = ctx.todayIST();
+    const rows = data.list.map((c) => view(c, data.by, today)).filter((r) => r.ownerId).sort((a, b) => a.ownerName.localeCompare(b.ownerName) || a.name.localeCompare(b.name));
+    const cell = (v) => { let t = String(v == null ? '' : v); if (/^[=+@\-\t\r]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
+    const head = ['Owner', 'Customer', 'Company', 'Phone', 'Email', 'Regular customer', 'Invoices', 'Billed (Rs)', 'Outstanding (Rs)', 'Last invoice', 'Last follow-up', 'Next follow-up'];
+    const lines = [head.map(cell).join(',')].concat(rows.map((r) => [r.ownerName, r.name, r.company, r.phone, r.email, r.regular ? 'Yes' : 'No', r.invoices, r.billed, r.outstanding, r.lastInvoice, r.lastAt ? r.lastAt.slice(0, 10) : '', r.nextDate].map(cell).join(',')));
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="customers-by-owner-' + today + '.csv"' });
+    res.send('\ufeff' + lines.join('\r\n') + '\r\n');
+  });
+
   app.get('/api/customers', async (req, res) => {
     const today = ctx.todayIST();
     let data;
