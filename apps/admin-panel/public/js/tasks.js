@@ -265,6 +265,13 @@
   function memberChecks(name, pre) {
     return people().filter(function (u) { return u.active; }).map(function (u) { return '<label class="check"><input type="checkbox" name="' + name + '" value="' + esc(u.id) + '"' + (u.id !== 'admin' && pre(u) ? ' checked' : '') + '> ' + esc(u.name) + '</label>'; }).join('');
   }
+  // a task from the owner's own Admin tasks list, shown in the Admin column (it is edited in the Admin tasks tab)
+  function adminTaskItem(a) {
+    var key = 'a' + a.id, open = Boolean(openItems[key]);
+    var rep = a.repeat === 'daily' ? 'Every day' : a.repeat === 'weekly' ? 'Every week' : a.repeat === 'monthly' ? 'Every month' : 'One time';
+    return '<div class="item dti"><div class="dtih" data-itog="' + key + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b>' + esc(a.title) + '</b><span class="chips">' + P.pill('Admin task') + P.pill(rep) + (a.state === 'overdue' ? P.pill(a.daysLate + ' day' + (a.daysLate === 1 ? '' : 's') + ' late', 'overdue') : a.state === 'today' ? P.pill('Due today', 'due') : P.pill('Next ' + P.fmtDate(a.nextDue))) + '</span></div>' +
+      '<div class="dtib"' + (open ? '' : ' hidden') + '>' + (a.notes ? '<div class="muted">' + esc(a.notes) + '</div>' : '') + '<div class="actions"><a class="btn ghost sm" href="#admintasks">Open in Admin tasks</a></div></div></div>';
+  }
   function templateItem(t) {
     var names = t.assignees.map(function (id) { return esc((people().filter(function (u) { return u.id === id; })[0] || {}).name || '?'); }).join(', ') || 'nobody';
     var open = Boolean(openItems[t.id]);
@@ -282,49 +289,24 @@
   P.register({ id: 'designer', label: 'Task designer', roles: ['admin'], order: 1, render: function (el) {
     var editing = null, state = { list: [], presets: [] };
     function load() {
-      return Promise.all([P.api('GET', '/api/templates'), P.api('GET', '/api/users')]).then(function (r) {
-        P.users = r[1].users;
+      return Promise.all([P.api('GET', '/api/templates'), P.api('GET', '/api/users'), P.api('GET', '/api/admin-tasks').catch(function () { return { tasks: [] }; })]).then(function (r) {
+        P.users = r[1].users; var adminTasks = r[2].tasks.filter(function (a) { return a.state !== 'done'; });
         var list = r[0].templates, defaults = r[0].defaultColumns; state.list = list; state.presets = r[0].presets;
         var designed = list.filter(function (t) { return !t.adhoc && t.active; }), oneTime = list.filter(function (t) { return t.adhoc && t.active; }), switchedOff = list.filter(function (t) { return !t.active; });
         var perPerson = function (u) { return list.filter(function (t) { return t.active && t.assignees.indexOf(u.id) >= 0; }); };
         var columns = people().filter(function (u) { return u.active; }).map(function (u) {
-          var mine = perPerson(u);
-          return tile('col-' + u.id, esc(u.name) + ' <span class="muted small">(' + mine.length + ')</span>', '', mine.length ? '<div class="list">' + mine.map(templateItem).join('') + '</div>' : '<div class="muted small">Nothing assigned.</div>', true);
+          var mine = perPerson(u), own = u.id === 'admin' ? adminTasks : [];
+          return tile('col-' + u.id, esc(u.name) + ' <span class="muted small">(' + (mine.length + own.length) + ')</span>', '', (mine.length || own.length) ? '<div class="list">' + mine.map(templateItem).join('') + own.map(adminTaskItem).join('') + '</div>' : '<div class="muted small">Nothing assigned.</div>', true);
         }).join('');
-        el.innerHTML = tile('create', 'Create new tasks', 'for you and your team', 
-          '<div class="card"><h3>Give a quick task</h3><div class="muted small">To your team or to yourself: one time (stays on the list until done), every day, or every week.</div>' +
-          '<form id="quick" class="list"><div class="row"><label style="flex:3 1 240px">What needs to be done<input name="title" required maxlength="80" placeholder="e.g. Send the new price list to dealers"></label><label>How often<select name="schedule"><option value="once">One time (stays until done)</option><option value="daily">Every day (working days)</option><option value="weekly">Every week</option></select></label><label data-qdue>Due date<input type="date" name="due" min="' + P.today + '"></label></div>' +
-          '<label>Steps (optional, one per line)<textarea name="steps" style="min-height:56px" placeholder="Prepare the PDF&#10;Send on WhatsApp"></textarea></label>' +
-          '<div class="chips">' + memberChecks('qassignee', function () { return true; }) + '</div><div class="actions"><button class="btn" type="submit">Give this task</button></div></form></div>' +
-          '<div class="card"><h3>Quick start: the usual tasks</h3><div class="muted small">One click creates the task for the people you tick. You can change it afterwards.</div><div class="list">' + state.presets.map(function (p) {
-            var made = list.some(function (t) { return t.name === p.name && t.active; });
-            return '<form class="item" data-preset="' + p.id + '"><div class="between"><b>' + esc(p.name) + '</b><span class="chips">' + P.pill(SCHED[p.schedule]) + (made ? P.pill('already created', 'ok') : '') + '</span></div><div class="muted small">' + esc(p.instructions) + '</div><div class="chips">' + memberChecks('passignee', function (u) { return p.for === 'both' || u.name.toLowerCase().indexOf(String(p.for).toLowerCase()) === 0; }) + '<button class="btn sm" type="submit">Create</button></div></form>';
-          }).join('') + '</div></div>' +
-          designForm(editing, defaults)) +
-          tile('designed', 'Designed tasks', 'one column per person; a task for two people shows in both', '<div class="dcols">' + columns + '</div><div class="muted small">A change applies from the next day or week. Work people already started keeps its old shape.</div>') +
-          (switchedOff.length ? tile('off', 'Switched off (' + switchedOff.length + ')', 'no longer shown to anybody', '<div class="muted small">Switch one on to bring it back, or delete it for good (this also erases the work done under it).</div><div class="list">' + switchedOff.map(templateItem).join('') + '</div>') : '');
+        var createTile = tile('create', 'Create new tasks', 'for you and your team', designForm(editing, defaults));
+        el.innerHTML = tile('designed', 'Designed tasks', 'one column per person; a task for two people shows in both', '<div class="dcols">' + columns + '</div><div class="muted small">A change applies from the next day or week. Work people already started keeps its old shape.</div>') +
+          createTile + (switchedOff.length ? tile('off', 'Switched off (' + switchedOff.length + ')', 'no longer shown to anybody', '<div class="muted small">Switch one on to bring it back, or delete it for good (this also erases the work done under it).</div><div class="list">' + switchedOff.map(templateItem).join('') + '</div>') : '');
         var f = el.querySelector('#design'); syncKind(f);
         f.kind.addEventListener('change', function () { syncKind(f); }); f.schedule.addEventListener('change', function () { syncKind(f); });
         f.addEventListener('change', function (e) { if (e.target.name === 'type') syncKind(f); });
         f.addEventListener('submit', function (e) {
           e.preventDefault();
           P.api(editing ? 'PUT' : 'POST', '/api/templates' + (editing ? '/' + editing.id : ''), readDesign(f)).then(function () { P.toast(editing ? 'Saved' : 'Task created and given to the team'); editing = null; return load(); }).catch(P.fail);
-        });
-        var qf = el.querySelector('#quick'); qf.schedule.addEventListener('change', function () { qf.querySelector('[data-qdue]').hidden = qf.schedule.value !== 'once'; });
-        el.querySelector('#quick').addEventListener('submit', function (e) {
-          e.preventDefault(); var q = e.target;
-          var steps = q.steps.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
-          P.api('POST', '/api/templates', { name: q.title.value, kind: 'checklist', steps: steps.length ? steps : [q.title.value], schedule: q.schedule.value, dueDate: q.schedule.value === 'once' ? q.due.value : '', adhoc: q.schedule.value === 'once', assignees: [].filter.call(q.querySelectorAll('[name=qassignee]'), function (c) { return c.checked; }).map(function (c) { return c.value; }) })
-            .then(function () { P.toast('Task given. It is on their list now.'); return load(); }).catch(P.fail);
-        });
-        [].forEach.call(el.querySelectorAll('[data-preset]'), function (form) {
-          form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            var p = state.presets.filter(function (x) { return x.id === form.dataset.preset; })[0];
-            var body = JSON.parse(JSON.stringify(p)); delete body.id; delete body.for;
-            body.assignees = [].filter.call(form.querySelectorAll('[name=passignee]'), function (c) { return c.checked; }).map(function (c) { return c.value; });
-            P.api('POST', '/api/templates', body).then(function () { P.toast('"' + p.name + '" created and given to the team'); return load(); }).catch(P.fail);
-          });
         });
         if (el.__wired) return; el.__wired = true; // the click handler is attached once, however often the screen is redrawn
         el.addEventListener('click', function (e) {
