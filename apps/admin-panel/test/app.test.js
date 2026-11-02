@@ -1360,3 +1360,31 @@ describe('multi-choice column (interested categories)', () => {
     } finally { await s.stop(); }
   });
 });
+
+describe('drive', () => {
+  test('everyone can make folders, upload and download; changes are limited to the uploader or the owner; folders must be empty to go', async () => {
+    const { s, admin, ann, raj } = await team(pretendZoho());
+    try {
+      const f = (await ann.post('/api/drive/folders', { name: 'Price lists' })).data.folder;
+      assert.equal((await raj.post('/api/drive/folders', { name: 'price LISTS' })).status, 400, 'same name twice');
+      const text = 'hello drive';
+      const up = await ann.post('/api/drive/files', { name: '../rates.txt', folderId: f.id, data: Buffer.from(text).toString('base64') });
+      assert.equal(up.status, 200);
+      assert.equal(up.data.file.name, 'rates.txt', 'path characters are stripped');
+      const listing = (await raj.get('/api/drive?folder=' + f.id)).data;
+      assert.equal(listing.files.length, 1, 'the team sees it');
+      assert.equal(listing.files[0].canChange, false);
+      assert.equal((await raj.get('/api/drive')).data.folders[0].items, 1);
+      const dl = await raj.raw('GET', '/api/drive/files/' + up.data.file.id + '/download');
+      assert.equal(dl.status, 200);
+      assert.equal(dl.data, text);
+      assert.equal((await fetch(s.base + '/api/drive/files/' + up.data.file.id + '/download')).status, 401, 'signed-in only');
+      assert.equal((await raj.del('/api/drive/files/' + up.data.file.id)).status, 403);
+      assert.equal((await ann.post('/api/drive/files', { name: 'x', data: '' })).status, 400, 'empty file');
+      assert.equal((await ann.del('/api/drive/folders/' + f.id)).status, 400, 'not empty');
+      assert.equal((await admin.del('/api/drive/files/' + up.data.file.id)).status, 200, 'owner can remove');
+      assert.equal((await raj.get('/api/drive/files/' + up.data.file.id + '/download')).status, 404);
+      assert.equal((await ann.del('/api/drive/folders/' + f.id)).status, 200);
+    } finally { await s.stop(); }
+  });
+});

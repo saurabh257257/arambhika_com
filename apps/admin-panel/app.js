@@ -18,7 +18,7 @@ const { createZoho } = require('./lib/zoho');
 const { mergeCadence } = require('./lib/followups');
 const { todayIST, str, uid, nowISO, safeEqual, checkPassword, clock } = require('./lib/util');
 
-const MODULES = ['team', 'tasks', 'admintasks', 'requests', 'newcustomers', 'customers', 'invoices', 'office', 'dashboard', 'charts', 'masterdata', 'custfollow'];
+const MODULES = ['team', 'tasks', 'admintasks', 'requests', 'newcustomers', 'customers', 'invoices', 'office', 'dashboard', 'charts', 'masterdata', 'custfollow', 'drive'];
 
 function createApp({ dataDir, adminPassword, sessionSecret, zoho, startSync = false, webhookSecret = process.env.ZOHO_WEBHOOK_SECRET || '' }) {
   if (!adminPassword) throw new Error('ADMIN_PASSWORD is not set. Refusing to start without a login password.');
@@ -32,7 +32,8 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho, startSync = fa
   app.use(compression());
   // a photo arrives inside JSON, so the screenshot route may be big; everything else stays small
   const smallJson = express.json({ limit: '200kb' }); const bigJson = express.json({ limit: '7mb' });
-  app.use((req, res, next) => (/\/(screenshot|paid)$/.test(req.path) ? bigJson : smallJson)(req, res, next));
+  const driveJson = express.json({ limit: '28mb' }); // a Drive file (20 MB) is about a third bigger as base64
+  app.use((req, res, next) => (req.method === 'POST' && req.path === '/api/drive/files' ? driveJson : /\/(screenshot|paid)$/.test(req.path) ? bigJson : smallJson)(req, res, next));
   app.use((req, res, next) => {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     res.setHeader('X-Content-Type-Options', 'nosniff');
