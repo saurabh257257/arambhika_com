@@ -16,7 +16,7 @@ module.exports = function drive(app, ctx) {
   const files = () => ctx.col('drivefiles');
   const cleanName = (v, max) => str(v, max).replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').replace(/^\.+/, '').trim();
   const folderOk = (id) => !id || folders().some((f) => f.id === id);
-  const canChange = (user, item) => user.role === 'admin' || item.createdBy === user.id;
+  const canChange = () => true; // the whole team can rename and remove anything in Drive
 
   // one folder's contents, with the path of folders above it
   app.get('/api/drive', (req, res) => {
@@ -52,7 +52,7 @@ module.exports = function drive(app, ctx) {
   app.patch('/api/drive/folders/:id', (req, res) => {
     const f = folders().find((x) => x.id === req.params.id);
     if (!f) return res.status(404).json({ error: 'Folder not found' });
-    if (!canChange(req.user, f)) return res.status(403).json({ error: 'Only the person who made it, or the owner, can rename this' });
+    if (!canChange(req.user, f)) return res.status(403).json({ error: 'Not allowed' });
     const name = cleanName(req.body && req.body.name, 80);
     if (!name) return res.status(400).json({ error: 'Give the folder a name' });
     if (folders().some((x) => x.id !== f.id && (x.parentId || '') === (f.parentId || '') && x.name.toLowerCase() === name.toLowerCase())) return res.status(400).json({ error: 'A folder with that name is already here' });
@@ -64,7 +64,7 @@ module.exports = function drive(app, ctx) {
   app.delete('/api/drive/folders/:id', (req, res) => {
     const list = folders(), i = list.findIndex((x) => x.id === req.params.id);
     if (i < 0) return res.status(404).json({ error: 'Folder not found' });
-    if (!canChange(req.user, list[i])) return res.status(403).json({ error: 'Only the person who made it, or the owner, can remove this' });
+    if (!canChange(req.user, list[i])) return res.status(403).json({ error: 'Not allowed' });
     if (files().some((x) => x.folderId === list[i].id) || list.some((x) => x.parentId === list[i].id)) return res.status(400).json({ error: 'Empty the folder first (move or remove what is inside)' });
     const [gone] = list.splice(i, 1); ctx.save('drivefolders');
     ctx.log(req.user, 'Removed the Drive folder ' + gone.name);
@@ -106,7 +106,7 @@ module.exports = function drive(app, ctx) {
   app.patch('/api/drive/files/:id', (req, res) => {
     const f = files().find((x) => x.id === req.params.id);
     if (!f) return res.status(404).json({ error: 'File not found' });
-    if (!canChange(req.user, f)) return res.status(403).json({ error: 'Only the person who uploaded it, or the owner, can change this' });
+    if (!canChange(req.user, f)) return res.status(403).json({ error: 'Not allowed' });
     if (req.body && req.body.name !== undefined) { const name = cleanName(req.body.name, 150); if (!name) return res.status(400).json({ error: 'The file needs a name' }); f.name = name; }
     if (req.body && req.body.folderId !== undefined) { const to = String(req.body.folderId || ''); if (!folderOk(to)) return res.status(404).json({ error: 'Folder not found' }); f.folderId = to; }
     ctx.save('drivefiles');
@@ -116,7 +116,7 @@ module.exports = function drive(app, ctx) {
   app.delete('/api/drive/files/:id', (req, res) => {
     const list = files(), i = list.findIndex((x) => x.id === req.params.id);
     if (i < 0) return res.status(404).json({ error: 'File not found' });
-    if (!canChange(req.user, list[i])) return res.status(403).json({ error: 'Only the person who uploaded it, or the owner, can remove this' });
+    if (!canChange(req.user, list[i])) return res.status(403).json({ error: 'Not allowed' });
     const [gone] = list.splice(i, 1); ctx.save('drivefiles');
     try { fs.unlinkSync(path.join(dir, gone.id)); } catch (e) { /* already gone */ }
     ctx.log(req.user, 'Removed ' + gone.name + ' from Drive');

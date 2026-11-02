@@ -1362,7 +1362,7 @@ describe('multi-choice column (interested categories)', () => {
 });
 
 describe('drive', () => {
-  test('everyone can make folders, upload and download; changes are limited to the uploader or the owner; folders must be empty to go', async () => {
+  test('everyone can make folders, upload, download, rename and remove; folders must be empty to go', async () => {
     const { s, admin, ann, raj } = await team(pretendZoho());
     try {
       const f = (await ann.post('/api/drive/folders', { name: 'Price lists' })).data.folder;
@@ -1373,16 +1373,16 @@ describe('drive', () => {
       assert.equal(up.data.file.name, 'rates.txt', 'path characters are stripped');
       const listing = (await raj.get('/api/drive?folder=' + f.id)).data;
       assert.equal(listing.files.length, 1, 'the team sees it');
-      assert.equal(listing.files[0].canChange, false);
+      assert.equal(listing.files[0].canChange, true);
       assert.equal((await raj.get('/api/drive')).data.folders[0].items, 1);
       const dl = await raj.raw('GET', '/api/drive/files/' + up.data.file.id + '/download');
       assert.equal(dl.status, 200);
       assert.equal(dl.data, text);
       assert.equal((await fetch(s.base + '/api/drive/files/' + up.data.file.id + '/download')).status, 401, 'signed-in only');
-      assert.equal((await raj.del('/api/drive/files/' + up.data.file.id)).status, 403);
+      assert.equal((await raj.patch('/api/drive/files/' + up.data.file.id, { name: 'rates-2.txt' })).status, 200, 'anyone can rename');
       assert.equal((await ann.post('/api/drive/files', { name: 'x', data: '' })).status, 400, 'empty file');
       assert.equal((await ann.del('/api/drive/folders/' + f.id)).status, 400, 'not empty');
-      assert.equal((await admin.del('/api/drive/files/' + up.data.file.id)).status, 200, 'owner can remove');
+      assert.equal((await raj.del('/api/drive/files/' + up.data.file.id)).status, 200, 'anyone can remove');
       assert.equal((await raj.get('/api/drive/files/' + up.data.file.id + '/download')).status, 404);
       assert.equal((await ann.del('/api/drive/folders/' + f.id)).status, 200);
     } finally { await s.stop(); }
