@@ -10,6 +10,13 @@ const { str, uid, nowISO } = require('../lib/util');
 const MAX_BYTES = 20 * 1024 * 1024;
 const ID_RE = /^[0-9a-f-]{36}$/;
 
+const PREVIEW = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf',
+  txt: 'text/plain; charset=utf-8', csv: 'text/plain; charset=utf-8', json: 'text/plain; charset=utf-8', md: 'text/plain; charset=utf-8', log: 'text/plain; charset=utf-8',
+  mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', wav: 'audio/wav',
+};
+const previewType = (name) => PREVIEW[String(name).split('.').pop().toLowerCase()] || '';
+
 module.exports = function drive(app, ctx) {
   const dir = path.join(ctx.store.dir, 'drive');
   const folders = () => ctx.col('drivefolders');
@@ -20,21 +27,24 @@ module.exports = function drive(app, ctx) {
 
   // one folder's contents, with the path of folders above it
   app.get('/api/drive', (req, res) => {
-    const parent = String(req.query.folder || '');
-    if (!folderOk(parent)) return res.status(404).json({ error: 'Folder not found' });
-    const trail = [];
-    for (let id = parent, n = 0; id && n < 50; n++) { const f = folders().find((x) => x.id === id); if (!f) break; trail.unshift({ id: f.id, name: f.name }); id = f.parentId; }
     const byName = (a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' });
     res.json({
-      trail,
-      folders: folders().filter((f) => (f.parentId || '') === parent).sort(byName).map((f) => ({
-        id: f.id, name: f.name, createdByName: f.createdByName, createdAt: f.createdAt, canChange: canChange(req.user, f),
-        items: files().filter((x) => x.folderId === f.id).length + folders().filter((x) => x.parentId === f.id).length,
-      })),
-      files: files().filter((f) => (f.folderId || '') === parent).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).map((f) => ({
-        id: f.id, name: f.name, size: f.size, createdByName: f.createdByName, createdAt: f.createdAt, canChange: canChange(req.user, f),
+      folders: folders().slice().sort(byName).map((f) => ({ id: f.id, name: f.name, parentId: f.parentId || '', createdByName: f.createdByName, createdAt: f.createdAt })),
+      files: files().slice().sort(byName).map((f) => ({
+        id: f.id, name: f.name, folderId: f.folderId || '', size: f.size, createdByName: f.createdByName, createdAt: f.createdAt, previewable: !!previewType(f.name),
       })),
     });
+  });
+
+  // a file can be looked at in the page only when it is one of these safe kinds (never web pages or SVG, which could run code)
+  app.get('/api/drive/files/:id/preview', (req, res) => {
+    const f = ID_RE.test(req.params.id) && files().find((x) => x.id === req.params.id);
+    const type = f && previewType(f.name);
+    const p = f && path.join(dir, f.id);
+    if (!f || !fs.existsSync(p)) return res.status(404).json({ error: 'File not found' });
+    if (!type) return res.status(415).json({ error: 'This kind of file cannot be previewed. Download it instead.' });
+    res.set({ 'Content-Type': type, 'Content-Length': String(f.size), 'Cache-Control': 'private, no-store', 'Content-Disposition': 'inline', 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'" });
+    fs.createReadStream(p).pipe(res);
   });
 
   app.post('/api/drive/folders', (req, res) => {

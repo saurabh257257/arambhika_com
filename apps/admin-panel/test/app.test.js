@@ -1371,10 +1371,10 @@ describe('drive', () => {
       const up = await ann.post('/api/drive/files', { name: '../rates.txt', folderId: f.id, data: Buffer.from(text).toString('base64') });
       assert.equal(up.status, 200);
       assert.equal(up.data.file.name, 'rates.txt', 'path characters are stripped');
-      const listing = (await raj.get('/api/drive?folder=' + f.id)).data;
-      assert.equal(listing.files.length, 1, 'the team sees it');
-      assert.equal(listing.files[0].canChange, true);
-      assert.equal((await raj.get('/api/drive')).data.folders[0].items, 1);
+      const listing = (await raj.get('/api/drive')).data;
+      assert.equal(listing.files.length, 1, 'the team sees it'); assert.equal(listing.files[0].folderId, f.id); assert.equal(listing.files[0].previewable, true);
+      
+      const pv = await raj.raw('GET', '/api/drive/files/' + up.data.file.id + '/preview'); assert.equal(pv.status, 200); assert.equal(pv.data, text);
       const dl = await raj.raw('GET', '/api/drive/files/' + up.data.file.id + '/download');
       assert.equal(dl.status, 200);
       assert.equal(dl.data, text);
@@ -1385,6 +1385,23 @@ describe('drive', () => {
       assert.equal((await raj.del('/api/drive/files/' + up.data.file.id)).status, 200, 'anyone can remove');
       assert.equal((await raj.get('/api/drive/files/' + up.data.file.id + '/download')).status, 404);
       assert.equal((await ann.del('/api/drive/folders/' + f.id)).status, 200);
+    } finally { await s.stop(); }
+  });
+});
+
+describe('drive preview', () => {
+  test('only safe kinds open in the page; web pages and SVG are download-only', async () => {
+    const { s, ann } = await team(pretendZoho());
+    try {
+      const up = (name) => ann.post('/api/drive/files', { name, folderId: '', data: Buffer.from('<script>alert(1)</script>').toString('base64') });
+      const html = (await up('page.html')).data.file, svg = (await up('pic.svg')).data.file, txt = (await up('notes.TXT')).data.file;
+      assert.equal((await ann.get('/api/drive/files/' + html.id + '/preview')).status, 415);
+      assert.equal((await ann.get('/api/drive/files/' + svg.id + '/preview')).status, 415);
+      const r = await ann.raw('GET', '/api/drive/files/' + txt.id + '/preview');
+      assert.equal(r.status, 200);
+      const list = (await ann.get('/api/drive')).data.files;
+      assert.deepEqual(list.map((f) => [f.name, f.previewable]).sort(), [['notes.TXT', true], ['page.html', false], ['pic.svg', false]]);
+      assert.equal((await fetch(s.base + '/api/drive/files/' + txt.id + '/preview')).status, 401);
     } finally { await s.stop(); }
   });
 });
