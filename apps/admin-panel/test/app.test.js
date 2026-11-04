@@ -358,7 +358,7 @@ describe('daily and weekly work that carries forward', () => {
 
 // ======================================================================
 process.env.ZOHO_SYNC_ORDERS = '1'; // the website-order sync is off by default; these tests exercise it
-describe('customer requests: six steps, a screenshot, and carried to the next day', () => {
+describe('customer requests: five steps, a screenshot, and carried to the next day', () => {
   let s, z, admin, ann, raj, annId, rajId;
   const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
   const day = (d) => { clock.date = d; };
@@ -375,17 +375,17 @@ describe('customer requests: six steps, a screenshot, and carried to the next da
     assert.equal((await ann.post('/api/requests', { customerName: 'X', phone: 'abc' })).status, 400);
     const r = (await ann.post('/api/requests', { customerName: 'Sharma Traders', phone: '9811122233', company: 'Sharma Traders Pvt Ltd', request: 'Needs 20 kg nickel strip 0.15 mm', source: 'WhatsApp' })).data.request;
     id = r.id;
-    assert.equal(r.ownerId, annId); assert.equal(r.source, 'WhatsApp'); assert.equal(r.progress.done, 0); assert.equal(r.nextStep, 'Asked what is required');
+    assert.equal(r.ownerId, annId); assert.equal(r.source, 'WhatsApp'); assert.equal(r.progress.done, 0); assert.equal(r.nextStep, 'Quote sent and payment asked');
     assert.equal((await raj.get('/api/requests')).data.requests.length, 0, 'private to the person who owns it');
     assert.equal((await admin.get('/api/requests')).data.requests.length, 1, 'the owner sees everything');
-    assert.deepEqual((await ann.get('/api/requests')).data.steps.map((x) => x.label), ['Asked what is required', 'Quote sent and payment asked', 'Payment received', 'Material ready', 'Material dispatched', 'Sent successfully']);
-    assert.equal((await raj.put('/api/requests/' + id + '/steps/ask', { done: true })).status, 404);
+    assert.deepEqual((await ann.get('/api/requests')).data.steps.map((x) => x.label), ['Quote sent and payment asked', 'Payment received', 'Material ready', 'Material dispatched', 'Sent successfully']);
+    assert.equal((await raj.put('/api/requests/' + id + '/steps/quote', { done: true })).status, 404);
   });
 
   test('every step is a checkbox with a time and a name; payment needs its screenshot; steps can be ticked in any order', async () => {
-    const t = (await ann.put('/api/requests/' + id + '/steps/ask', { done: true })).data.request;
-    assert.equal(t.steps.ask.by, 'Ann'); assert.ok(t.steps.ask.at); assert.equal(t.progress.done, 1);
-    assert.equal((await ann.put('/api/requests/' + id + '/steps/quote', { done: true })).data.request.progress.done, 2);
+    const t = (await ann.put('/api/requests/' + id + '/steps/quote', { done: true })).data.request;
+    assert.equal(t.steps.quote.by, 'Ann'); assert.ok(t.steps.quote.at); assert.equal(t.progress.done, 1);
+    assert.equal((await ann.put('/api/requests/' + id + '/steps/ask', { done: true })).status, 400, 'there is no ask step any more');
     const noPhoto = await ann.put('/api/requests/' + id + '/steps/payment', { done: true });
     assert.equal(noPhoto.status, 400); assert.match(noPhoto.data.error, /screenshot/i);
     assert.equal((await ann.post('/api/requests/' + id + '/screenshot', { dataUrl: 'hello' })).status, 400);
@@ -393,9 +393,9 @@ describe('customer requests: six steps, a screenshot, and carried to the next da
     assert.equal((await raj.post('/api/requests/' + id + '/screenshot', { dataUrl: PNG })).status, 404);
     const up = (await ann.post('/api/requests/' + id + '/screenshot', { dataUrl: PNG })).data.request;
     assert.equal(up.screenshots.length, 1); assert.equal(up.screenshots[0].byName, 'Ann');
-    assert.equal((await ann.put('/api/requests/' + id + '/steps/payment', { done: true })).data.request.progress.done, 3);
+    assert.equal((await ann.put('/api/requests/' + id + '/steps/payment', { done: true })).data.request.progress.done, 2);
     assert.equal((await ann.put('/api/requests/' + id + '/steps/dispatched', { done: true })).status, 200, 'any order');
-    assert.equal((await ann.put('/api/requests/' + id + '/steps/dispatched', { done: false })).data.request.progress.done, 3, 'untick works');
+    assert.equal((await ann.put('/api/requests/' + id + '/steps/dispatched', { done: false })).data.request.progress.done, 2, 'untick works');
     assert.equal((await ann.put('/api/requests/' + id + '/steps/teleport', { done: true })).status, 400);
     // the photo is only served to people who are signed in
     const name = up.screenshots[0].name;
@@ -442,7 +442,7 @@ describe('customer requests: six steps, a screenshot, and carried to the next da
     assert.equal(r.requests.length, 1, 'the 200 day old order is not pulled in');
     const o = r.requests[0];
     assert.equal(o.source, 'Website'); assert.equal(o.customerName, 'Web Buyer'); assert.equal(o.ownerId, ''); assert.equal(o.amount, 1180);
-    assert.equal(o.steps.ask.by, 'Website'); assert.equal(o.steps.payment.by, 'Zoho'); assert.equal(o.progress.done, 3);
+    assert.equal(o.steps.quote.by, 'Website'); assert.equal(o.steps.ask, undefined); assert.equal(o.steps.payment.by, 'Zoho'); assert.equal(o.progress.done, 2);
     assert.equal((await raj.get('/api/requests')).data.requests.length, 1, 'syncing again does not duplicate');
     assert.equal((await raj.post('/api/requests/' + o.id + '/pick')).status, 200);
     assert.equal((await ann.post('/api/requests/' + o.id + '/pick')).status, 400);
@@ -1054,11 +1054,11 @@ describe('dashboard charts', () => {
     const { s, admin, ann } = await team(pretendZoho());
     try {
       const r = await ann.post('/api/requests', { customerName: 'Chart Co', phone: '9800000001' });
-      await ann.put('/api/requests/' + r.data.request.id + '/steps/ask', { done: true });
+      await ann.put('/api/requests/' + r.data.request.id + '/steps/quote', { done: true });
       const d = (await admin.get('/api/dashboard-charts')).data;
       assert.equal(d.performance.days.length, 14); assert.equal(d.performance.people.length, 2);
       assert.equal(d.newCustomers.months.length, 6);
-      assert.equal(d.funnel.length, 6); assert.equal(d.funnel[0].count, 1);
+      assert.equal(d.funnel.length, 5); assert.equal(d.funnel[0].count, 1);
       assert.equal(d.invoices.buckets.length, 4); assert.equal(d.invoices.count, 3);
       assert.equal((await ann.get('/api/dashboard-charts')).status, 403);
     } finally { await s.stop(); }

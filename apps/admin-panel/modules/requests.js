@@ -1,6 +1,6 @@
 // Customer requests: a customer messages (usually on WhatsApp), a team member logs them by hand and works the request through
-// six steps, each a checkbox with a time and a name:
-//   ask what is required > quote sent and payment asked > payment received (with screenshot) > material ready > dispatched > sent successfully
+// five steps, each a checkbox with a time and a name (a request starts at the quote):
+//   quote sent and payment asked > payment received (with screenshot) > material ready > dispatched > sent successfully
 // A request that is not finished shows up again every day for its owner until the last step is ticked.
 // New website orders from Zoho Books appear here by themselves (source "website") and their payment / dispatch / delivery steps
 // tick from Zoho, so everything a customer has asked for lives in one list.
@@ -10,7 +10,6 @@ const files = require('../lib/files');
 const { str, text, uid, nowISO, istDate, diffDays, isDate, PHONE_RE } = require('../lib/util');
 
 const STEPS = [
-  { key: 'ask', label: 'Asked what is required' },
   { key: 'quote', label: 'Quote sent and payment asked' },
   { key: 'payment', label: 'Payment received', needsPhoto: true },
   { key: 'ready', label: 'Material ready' },
@@ -64,7 +63,7 @@ module.exports = function requests(app, ctx) {
   function create({ user, fields, ownerId, zoho }) {
     const at = (zoho && zoho.at) || nowISO();
     const r = { id: uid(), ...fields, ownerId: ownerId || '', pickedAt: ownerId ? nowISO() : '', steps: {}, screenshots: [], notes: [], nextDate: '', lastTouchedAt: at, createdAt: at, createdByName: zoho ? 'Zoho' : (user ? user.name : ''), updatedAt: at, zohoSoId: zoho ? zoho.id : '', zohoSoNumber: zoho ? zoho.number : '' };
-    if (zoho) { r.steps.ask = { at, by: 'Website' }; r.steps.quote = { at, by: 'Website' }; }
+    if (zoho) { r.steps.quote = { at, by: 'Website' }; }
     list().push(r); ctx.save('requests');
     if (user) ctx.log(user, 'Logged a customer request from ' + r.customerName + (r.ownerId ? ' (owner: ' + ctx.userName(r.ownerId) + ')' : ' (waiting to be picked)'));
     return r;

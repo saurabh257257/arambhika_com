@@ -20,7 +20,7 @@ the work, the team does it, and everyone can see where things stand.
 **Team members (password set by the owner)** see only their own work:
 - **My day:** one percentage for everything, what is left, follow-up calls due, unfinished customer requests, tasks.
 - **Tasks:** cells to fill, each saved with the time and their name. **Follow-up calls due** sit at the top until they are logged.
-- **Customer requests:** a customer messages on WhatsApp, they log it, and tick six steps: *asked what is required*, *quote sent and
+- **Customer requests:** a customer messages on WhatsApp, they log it, and tick five steps: *quote sent and
   payment asked*, *payment received (with the screenshot)*, *material ready*, *dispatched*, *sent successfully*. Every step is a checkbox
   with a time and a name; steps can be ticked in any order, and payment needs its screenshot first.
 - **Customers, Invoices** (their own list from Zoho), **Office** (send a transaction for approval).

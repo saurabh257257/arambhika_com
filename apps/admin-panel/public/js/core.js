@@ -32,7 +32,7 @@
     // a request's progress as a row of stops: what is done (and how long that step took after the one before it), what is
     // being waited on (and for how long), and what is still ahead. The first step is timed from when the request was logged.
     track: function (r, can) {
-      var keys = [['ask', 'Asked'], ['quote', 'Quote sent'], ['payment', 'Paid'], ['ready', 'Ready'], ['dispatched', 'Dispatched'], ['done', 'Delivered']];
+      var keys = [['quote', 'Quote sent'], ['payment', 'Paid'], ['ready', 'Ready'], ['dispatched', 'Dispatched'], ['done', 'Invoiced']];
       var ms = function (iso) { return new Date(iso).getTime(); };
       var dur = function (n) { var m = Math.round(n / 60000); if (m < 1) return 'under 1 min'; if (m < 60) return m + ' min'; var h = Math.floor(m / 60); if (h < 24) return h + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); var d = Math.floor(h / 24); return d + 'd' + (h % 24 ? ' ' + (h % 24) + 'h' : ''); };
       var times = [ms(r.createdAt)].concat(keys.filter(function (k) { return r.steps[k[0]]; }).map(function (k) { return ms(r.steps[k[0]].at); })).sort(function (a, b) { return a - b; });
@@ -46,7 +46,7 @@
         return '<div class="tk ' + cls + (can ? ' tap' : '') + '"><i' + (can ? ' role="button" tabindex="0" data-tick="' + k[0] + '" data-on="' + (d ? 1 : 0) + '" title="' + (d ? 'Click to undo' : 'Click when done') + '"' : '') + '>' + (d ? '&#10003;' : i + 1) + '</i><em>' + k[1] + '</em>' + sub + '</div>';
       }).join('');
       var all = r.steps.done ? ms(r.steps.done.at) - times[0] : 0;
-      return '<div class="track">' + html + '</div>' + (r.steps.done ? '<div class="muted small">Delivered in ' + dur(all) + ' from when it was logged</div>' : '');
+      return '<div class="track">' + html + '</div>' + (r.steps.done ? '<div class="muted small">Invoiced in' + dur(all) + ' from when it was logged</div>' : '');
     },
     bar: function (done, total) { var p = Panel.pct(done, total); return '<div class="bar ' + (total > 0 && done >= total ? 'done' : '') + '"><i style="width:' + p + '%"></i></div>'; },
     pill: function (text, cls) { return '<span class="pill ' + (cls || '') + '">' + esc(text) + '</span>'; },
