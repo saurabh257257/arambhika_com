@@ -7,7 +7,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { str, uid, nowISO } = require('../lib/util');
 
-const MAX_BYTES = 20 * 1024 * 1024;
+const MAX_BYTES = 100 * 1024 * 1024;
 const ID_RE = /^[0-9a-f-]{36}$/;
 
 const PREVIEW = {
@@ -92,7 +92,7 @@ module.exports = function drive(app, ctx) {
     if (!/^[A-Za-z0-9+/]*={0,2}$/.test(data)) return res.status(400).json({ error: 'That file could not be read' });
     const buf = Buffer.from(data, 'base64');
     if (!buf.length) return res.status(400).json({ error: 'The file is empty' });
-    if (buf.length > MAX_BYTES) return res.status(400).json({ error: 'The file is too big (20 MB at most)' });
+    if (buf.length > MAX_BYTES) return res.status(400).json({ error: 'The file is too big (100 MB at most)' });
     fs.mkdirSync(dir, { recursive: true });
     const id = uid();
     fs.writeFileSync(path.join(dir, id), buf);

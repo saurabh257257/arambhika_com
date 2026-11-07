@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   var P = window.Panel, esc = P.esc;
-  var MAX = 20 * 1024 * 1024;
+  var MAX = 100 * 1024 * 1024;
 
   function size(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
   // the file as base64 text
@@ -52,7 +52,7 @@
     }
 
     function paint() {
-      el.innerHTML = '<div class="card"><h3>Drive</h3><div class="muted small">Shared with the whole team. Anyone can make folders, upload files (20 MB each), preview, download, rename and remove. Open a folder to see what is inside it.</div>' +
+      el.innerHTML = '<div class="card"><h3>Drive</h3><div class="muted small">Shared with the whole team. Anyone can make folders, upload files (100 MB each), preview, download, rename and remove. Open a folder to see what is inside it.</div>' +
         '<div class="actions"><button class="btn sm" data-addf="" type="button">+ New folder</button><button class="btn sm" data-up="" type="button">Upload a file</button></div><input type="file" id="upFiles" multiple hidden></div>' +
         previewHtml() +
         '<div class="card"><div class="list">' + (branch('') || '<div class="muted">Nothing here yet. Create a folder or upload a file.</div>') + '</div></div>';
@@ -70,7 +70,7 @@
       var list = [].slice.call(e.target.files), input = e.target, to = uploadTo, chain = Promise.resolve();
       list.forEach(function (f) {
         chain = chain.then(function () {
-          if (f.size > MAX) { P.toast(f.name + ' is over 20 MB, skipped'); return; }
+          if (f.size > MAX) { P.toast(f.name + ' is over 100 MB, skipped'); return; }
           P.toast('Uploading ' + f.name + '...');
           return readBase64(f).then(function (b) { return P.api('POST', '/api/drive/files', { name: f.name, folderId: to, data: b }); }).then(function () { P.toast('Uploaded ' + f.name); }).catch(P.fail);
         });

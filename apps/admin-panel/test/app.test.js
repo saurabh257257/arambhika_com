@@ -1369,6 +1369,9 @@ describe('drive', () => {
       assert.equal((await raj.post('/api/drive/folders', { name: 'price LISTS' })).status, 400, 'same name twice');
       const text = 'hello drive';
       const up = await ann.post('/api/drive/files', { name: '../rates.txt', folderId: f.id, data: Buffer.from(text).toString('base64') });
+      const big = await ann.post('/api/drive/files', { name: 'video.bin', folderId: f.id, data: Buffer.alloc(25 * 1024 * 1024, 1).toString('base64') });
+      assert.equal(big.status, 200, 'files over the old 20 MB limit are accepted now (100 MB at most)');
+      await ann.del('/api/drive/files/' + big.data.file.id);
       assert.equal(up.status, 200);
       assert.equal(up.data.file.name, 'rates.txt', 'path characters are stripped');
       const listing = (await raj.get('/api/drive')).data;

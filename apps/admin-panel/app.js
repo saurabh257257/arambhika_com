@@ -32,7 +32,7 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho, startSync = fa
   app.use(compression());
   // a photo arrives inside JSON, so the screenshot route may be big; everything else stays small
   const smallJson = express.json({ limit: '200kb' }); const bigJson = express.json({ limit: '7mb' });
-  const driveJson = express.json({ limit: '28mb' }); // a Drive file (20 MB) is about a third bigger as base64
+  const driveJson = express.json({ limit: '140mb' }); // a Drive file (100 MB) is about a third bigger as base64
   app.use((req, res, next) => (req.method === 'POST' && req.path === '/api/drive/files' ? driveJson : /\/(screenshot|paid)$/.test(req.path) ? bigJson : smallJson)(req, res, next));
   app.use((req, res, next) => {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
