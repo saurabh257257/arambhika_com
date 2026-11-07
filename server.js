@@ -18,7 +18,7 @@ import { verifyGstin, providerConfigured as gstProviderConfigured } from './lib/
 import { selectableStates, findState, isValidPostalCode, isValidEmail } from './lib/india.js'
 import { profileStatus } from './lib/profile-status.js'
 import { renderProductPage, renderProductSitemap } from './lib/product-pages.js'
-import { renderCategoryPage, renderBrowseList, listCategories } from './lib/category-pages.js'
+import { renderCategoryPage, listCategories } from './lib/category-pages.js'
 import { renderLlmsTxt, indexNowKey, pingIndexNow } from './lib/discovery.js'
 
 try { process.loadEnvFile() } catch {}
@@ -666,11 +666,9 @@ app.get('/category/:slug', (req, res) => {
   res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600').type('html').send(html)
 })
 
-// The home page carries a plain-HTML list of every category and product, so it is crawlable without JavaScript.
 function sendHome(req, res, next) {
   let html
   try { html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8') } catch { return next() }
-  html = html.replace(/<!-- browse:start -->[\s\S]*?<!-- browse:end -->/, () => `<!-- browse:start -->${renderBrowseList(current.data)}<!-- browse:end -->`)
   res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600').type('html').send(html)
 }
 app.get(['/', '/index.html'], sendHome)

@@ -2519,7 +2519,7 @@ body.rq-open { overflow: hidden; }
 /* checkout totals */
 .ck-totals .ck-total-final { border-top: 1px solid var(--line, #d9e1e5); margin-top: 6px; padding-top: 6px; font-size: 1.05em; }
 
-/* category pages, the home browse list and the 404 */
+/* category pages and the 404 */
 .cp-title { margin: 6px 0 4px; font-size: 1.5rem; color: var(--f-navy, #12263f); }
 .cp-intro { margin: 0 0 14px; color: #5b6b7a; max-width: 70ch; }
 .cp-others { margin: 26px 0 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -2530,14 +2530,6 @@ body.rq-open { overflow: hidden; }
 .pp-seo-related { margin-top: 18px; font-size: 0.85rem; }
 .pp-seo-related h2 { font-size: 0.95rem; margin: 0 0 6px; }
 .pp-seo-related ul { margin: 0; padding-left: 18px; columns: 2; }
-.seo-browse { padding: 18px 0 8px; }
-.seo-browse h2 { font-size: 1.05rem; margin: 0 0 10px; }
-.seo-browse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 22px; }
-.seo-browse-group h3 { font-size: 0.88rem; margin: 0 0 4px; }
-.seo-browse-group h3 small { color: #5b6b7a; font-weight: 500; }
-.seo-browse-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.seo-browse-group a { font-size: 0.76rem; color: #3a5a6b; text-decoration: none; }
-.seo-browse-group a:hover { color: #0b6f62; text-decoration: underline; }
 
 /* ===== favourites: the heart, the header button, the slide-over and the dashboard list ===== */
 .wish-btn { position: absolute; top: 8px; right: 8px; z-index: 3; width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 1px solid rgba(18, 38, 63, 0.14); background: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 4px rgba(18, 38, 63, 0.18); transition: transform .15s ease, background .15s ease, border-color .15s ease; }
@@ -2853,7 +2845,7 @@ input, select, textarea { border-radius: 12px !important; border: 1.5px solid va
 input:focus, select:focus, textarea:focus { border-color: var(--m-teal) !important; box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12); outline: none; }
 
 /* side panels, modals, cart drawer, FAQ, guides: the same rounded, soft-shadow card */
-.side-panel, .panel, .pp-card, .acct-modal-card, .cd-panel, .faq-item, .blog-tile, .seo-browse-group { border-radius: var(--m-r) !important; border: 1px solid var(--m-line) !important; box-shadow: var(--m-shadow) !important; }
+.side-panel, .panel, .pp-card, .acct-modal-card, .cd-panel, .faq-item, .blog-tile { border-radius: var(--m-r) !important; border: 1px solid var(--m-line) !important; box-shadow: var(--m-shadow) !important; }
 .blog-tile { overflow: hidden; transition: transform .18s ease, box-shadow .18s ease; }
 .blog-tile:hover { transform: translateY(-3px); box-shadow: var(--m-shadow-hover) !important; }
 .blog-tag { border-radius: 999px !important; background: var(--m-teal-soft) !important; color: var(--m-teal-dark) !important; font-weight: 700; }
