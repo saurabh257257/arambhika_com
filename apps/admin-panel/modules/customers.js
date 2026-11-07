@@ -19,6 +19,38 @@ module.exports = function customers(app, ctx) {
     return s;
   };
 
+  // A team member who logs a request for a NEW customer becomes that customer's owner. The customer is not in Zoho yet, so the
+  // claim is kept here (by phone, and by name) and applied the first time the customer shows up in the Zoho list.
+  const claims = () => ctx.col('newcustowners');
+  const digitsOf = (v) => String(v || '').replace(/\D/g, '');
+  const normOf = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const keysOf = (name, phone) => [digitsOf(phone).length >= 7 ? 'p' + digitsOf(phone).slice(-10) : '', normOf(name) ? 'n' + normOf(name) : ''].filter(Boolean);
+  ctx.claimNewCustomer = ({ user, name, phone }) => {
+    const keys = keysOf(name, phone);
+    if (!user || !keys.length) return null;
+    // somebody already claimed this customer: the first one keeps it
+    const taken = claims().find((c) => !c.appliedTo && c.keys.some((k) => keys.includes(k)));
+    if (taken) return taken;
+    const c = { id: String(Date.now()) + Math.random().toString(36).slice(2, 6), keys, ownerId: user.id, name: str(name, 100), at: nowISO(), appliedTo: '' };
+    claims().push(c); ctx.save('newcustowners');
+    ctx.log(user, 'Became the owner of the new customer ' + c.name + ' (will apply when they appear in Zoho)');
+    return c;
+  };
+  function applyClaims(list) {
+    const open = claims().filter((c) => !c.appliedTo); if (!open.length) return;
+    let changed = false; let stateChanged = false;
+    for (const claim of open) {
+      const hit = list.find((c) => keysOf(c.name, c.phone).some((k) => claim.keys.includes(k)));
+      if (!hit) continue;
+      const st = stateOf(hit.id);
+      // a customer that already has an owner keeps it; the claim never takes a customer away from anybody
+      if (!(st && st.ownerId) && ctx.employees().some((u) => u.id === claim.ownerId)) { const e = ensureState(hit.id); e.ownerId = claim.ownerId; e.updatedAt = nowISO(); stateChanged = true; }
+      claim.appliedTo = hit.id; changed = true;
+    }
+    if (stateChanged) ctx.save('customerstate');
+    if (changed) ctx.save('newcustowners');
+  }
+
   // customers with their invoice history and our own follow-up details
   async function load(refresh) {
     const [c, inv] = await Promise.all([ctx.zoho.customers({ refresh }), ctx.zoho.invoices({ refresh }).catch(() => [])]);
@@ -31,6 +63,7 @@ module.exports = function customers(app, ctx) {
       by.set(i.customerId, b);
     }
     // customers the owner removed from the list (not real customers) are left out everywhere; Zoho itself is never changed
+    applyClaims(c.list);
     return { source: c.source, note: c.note || '', by, list: c.list.filter((x) => !(stateOf(x.id) || {}).excluded), allList: c.list };
   }
   ctx.customersData = load;
