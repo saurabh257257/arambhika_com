@@ -412,6 +412,7 @@ describe('daily marketing studio', () => {
     const page = await app.request('GET', '/studio.html');
     assert.equal(page.status, 200);
     assert.match(page.text, /Daily Marketing Studio/);
+    assert.match(page.text, /value="shorts">YouTube Shorts 9:16/, 'the product card maker offers a YouTube Shorts size');
   });
 
   test('an image can be uploaded, and a non-image is refused', async () => {
