@@ -15,8 +15,65 @@
     img.src = url;
   }
 
+  // ---- payment screenshot: pick a file, or take a photo with the camera ----
+  var COARSE = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  function overlay(html) {
+    var o = document.createElement('div'); o.className = 'pay-overlay'; o.innerHTML = '<div class="pay-box">' + html + '</div>';
+    o.close = function () { if (o.stop) o.stop(); o.remove(); };
+    o.addEventListener('click', function (e) { if (e.target === o) o.close(); });
+    document.body.appendChild(o); return o;
+  }
+  // phones: the camera app opens straight from the file input. Computers: a live preview with a Capture button.
+  function liveCamera(onShot, fallback) {
+    if (COARSE || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { fallback(); return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }).then(function (stream) {
+      var o = overlay('<h3 style="margin:0 0 8px">Take a photo of the payment</h3><video playsinline autoplay muted class="pay-video"></video><div class="actions" style="margin-top:10px"><button class="btn" type="button" data-shot>Capture</button><button class="btn ghost" type="button" data-cancel>Cancel</button></div>');
+      var v = o.querySelector('video'); v.srcObject = stream;
+      o.stop = function () { stream.getTracks().forEach(function (t) { t.stop(); }); };
+      o.querySelector('[data-cancel]').addEventListener('click', o.close);
+      o.querySelector('[data-shot]').addEventListener('click', function () {
+        if (!v.videoWidth) { P.toast('The camera is still starting, try again'); return; }
+        var r = Math.min(1, 1600 / Math.max(v.videoWidth, v.videoHeight)), c = document.createElement('canvas');
+        c.width = Math.round(v.videoWidth * r); c.height = Math.round(v.videoHeight * r);
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        var url = c.toDataURL('image/jpeg', 0.85); o.close(); onShot(url);
+      });
+    }).catch(function () { P.toast('Could not open the camera. Choose a photo from your device instead.'); fallback(); });
+  }
+
   P.register({ id: 'requests', label: 'Customer requests', roles: ['admin', 'employee'], order: 3, render: function (el) {
     var isAdmin = P.me.role === 'admin', filter = 'open', who = '', steps = [], sources = [], editing = '';
+    // one pair of hidden inputs serves every card: a file picker, and one that opens the phone's camera
+    var payTarget = null;
+    var fileIn = document.createElement('input'); fileIn.type = 'file'; fileIn.accept = 'image/*'; fileIn.hidden = true;
+    var camIn = document.createElement('input'); camIn.type = 'file'; camIn.accept = 'image/*'; camIn.setAttribute('capture', 'environment'); camIn.hidden = true;
+    // they live on the page itself, because the list is redrawn (el.innerHTML) after every change
+    Array.prototype.forEach.call(document.querySelectorAll('[data-payin]'), function (n) { n.remove(); });
+    fileIn.setAttribute('data-payin', ''); camIn.setAttribute('data-payin', '');
+    document.body.appendChild(fileIn); document.body.appendChild(camIn);
+    function sendPhoto(rid, dataUrl, thenTick) {
+      P.toast('Uploading...');
+      return P.api('POST', '/api/requests/' + rid + '/screenshot', { dataUrl: dataUrl })
+        .then(function () { return thenTick ? P.api('PUT', '/api/requests/' + rid + '/steps/payment', { done: true }) : null; })
+        .then(function () { P.toast(thenTick ? 'Screenshot saved, marked as paid' : 'Screenshot saved'); return load(); }).catch(P.fail);
+    }
+    function onPicked(input) {
+      var f = input.files && input.files[0], t = payTarget; input.value = '';
+      if (!f || !t) return;
+      shrink(f, function (dataUrl) { sendPhoto(t.id, dataUrl, t.tick); }, P.fail);
+    }
+    fileIn.addEventListener('change', function () { onPicked(fileIn); });
+    camIn.addEventListener('change', function () { onPicked(camIn); });
+    function chooseFile(target) { payTarget = target; fileIn.click(); }
+    function takePhoto(target) { payTarget = target; liveCamera(function (dataUrl) { sendPhoto(target.id, dataUrl, target.tick); }, function () { camIn.click(); }); }
+    // ticking Paid starts here when there is no screenshot yet: nothing is marked paid until one is saved
+    function askForProof(rid) {
+      var o = overlay('<h3 style="margin:0 0 6px">Payment screenshot needed</h3><p class="muted small" style="margin:0 0 12px">Add the screenshot of the payment. The request is marked as paid once it is saved.</p><div class="actions"><button class="btn" type="button" data-cam>&#128247; Take photo</button><button class="btn ghost" type="button" data-file>Upload screenshot</button><button class="btn ghost" type="button" data-cancel>Cancel</button></div>');
+      o.querySelector('[data-cancel]').addEventListener('click', o.close);
+      o.querySelector('[data-file]').addEventListener('click', function () { o.close(); chooseFile({ id: rid, tick: true }); });
+      o.querySelector('[data-cam]').addEventListener('click', function () { o.close(); takePhoto({ id: rid, tick: true }); });
+    }
+    var photoButtons = '<button class="btn ghost sm" type="button" data-pay-file>+ Upload screenshot</button><button class="btn ghost sm" type="button" data-pay-cam>&#128247; Take photo</button>';
 
     function stepRow(r, s, can) {
       var d = r.steps[s.key], hasPhoto = r.screenshots.length > 0;
@@ -31,7 +88,7 @@
     function photoRow(r, can) {
       if (!r.screenshots.length && !can) return '';
       return '<div class="actions"><span class="muted small">Payment screenshot:</span> ' + r.screenshots.map(function (p) { return '<a href="/api/files/' + p.name + '" target="_blank" rel="noopener" title="' + esc(p.byName) + ' &middot; ' + P.fmtTime(p.at) + '"><img src="/api/files/' + p.name + '" alt="Payment screenshot" style="height:36px;border-radius:8px;border:1px solid #e2e8f0"></a>'; }).join('') +
-        (can && r.screenshots.length < 5 ? '<label class="btn ghost sm" style="display:inline-block;cursor:pointer">+ Upload screenshot<input type="file" accept="image/*" data-photo hidden></label>' : '') + '</div>';
+        (can && r.screenshots.length < 5 ? photoButtons : '') + '</div>';
     }
 
     function cardFull(r) {
@@ -120,10 +177,12 @@
         if (!window.confirm('Delete this customer request for good?\n\nIts notes and screenshots are removed too. This cannot be undone.')) return;
         P.api('DELETE', '/api/requests/' + id.id).then(function () { P.toast('Request deleted'); return load(); }).catch(P.fail); return;
       }
+      if (e.target.closest('[data-pay-file]')) { chooseFile({ id: id.id, tick: false }); return; }
+      if (e.target.closest('[data-pay-cam]')) { takePhoto({ id: id.id, tick: false }); return; }
       var tk = e.target.closest('[data-tick]');
       if (tk) {
         var on = tk.dataset.on === '1';
-        if (!on && tk.dataset.tick === 'payment' && !tk.closest('[data-id]').querySelector('img[alt="Payment screenshot"]')) { P.toast('Upload the payment screenshot first, then tick Paid'); return; }
+        if (!on && tk.dataset.tick === 'payment' && !tk.closest('[data-id]').querySelector('img[alt="Payment screenshot"]')) { askForProof(id.id); return; }
         if (on && !window.confirm('Undo this step?')) return;
         P.api('PUT', '/api/requests/' + id.id + '/steps/' + tk.dataset.tick, { done: !on }).then(function (res) { P.toast((on ? 'Unticked, saved ' : 'Done, saved ') + P.fmtTime(res.request.updatedAt)); return load(); }).catch(P.fail); return;
       }
