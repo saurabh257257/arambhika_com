@@ -8,8 +8,11 @@ import { fileURLToPath } from 'node:url'
 import { posts as materialPosts, guides } from './blog-content.mjs'
 import { posts as howtoPosts } from './blog-content-howto.mjs'
 import { posts as morePosts } from './blog-content-more.mjs'
+import { posts as productPostsA } from './blog-content-products-a.mjs'
+import { posts as productPostsB } from './blog-content-products-b.mjs'
+import { posts as productPostsC } from './blog-content-products-c.mjs'
 
-const posts = [...materialPosts, ...howtoPosts, ...morePosts]
+const posts = [...materialPosts, ...howtoPosts, ...morePosts, ...productPostsA, ...productPostsB, ...productPostsC]
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public')
 const OUT = path.join(ROOT, 'blog')
@@ -95,6 +98,12 @@ for (const post of posts) {
     const hit = byName.get(norm(n))
     if (hit && !listed.includes(hit)) listed.push(hit)
   }
+  const missing = names.filter((n) => !byName.get(norm(n)))
+  if (missing.length) {
+    const msg = 'Post ' + post.slug + ' links products that are not in the catalogue: ' + missing.join(' | ')
+    if (post.short) throw new Error(msg)
+    console.warn('warning: ' + msg)
+  }
   if (!listed.length) {
     const cat = String(post.category).split(',')[0].trim()
     for (const it of (byCategory.get(cat) || []).slice(0, 3)) listed.push(it)
@@ -116,7 +125,7 @@ for (const post of posts) {
     const hit = byName.get(norm(decodeURIComponent(enc)))
     return hit ? 'href="' + hit.url + '"' : m
   })
-  const [headline, sub] = SHORT[post.slug] || [post.title, post.teaser]
+  const [headline, sub] = SHORT[post.slug] || post.short || [post.title, post.teaser]
   post.headline = headline
   post.metaTitle = `${headline} | Arambhika Blog`.length <= 60 ? `${headline} | Arambhika Blog` : `${headline} | Arambhika`
   post.subline = sub

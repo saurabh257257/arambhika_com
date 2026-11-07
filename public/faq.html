@@ -631,6 +631,486 @@
             "@type": "Answer",
             "text": "Yes, share your design drawing or specifications on WhatsApp and we will confirm size, lead time and pricing before you place a bulk order."
           }
+        },
+        {
+          "@type": "Question",
+          "name": "Is a smart BMS safer than a hardware BMS?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Both protect against the same basic faults. A smart BMS adds visibility and adjustable settings, which helps you catch problems early, but safe protection depends on the BMS being correctly rated and wired."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use a smart BMS without the phone app?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. It protects the pack like any BMS. The app is optional and used for monitoring and settings."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does a smart BMS talk to every inverter?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Inverter communication depends on the protocol the inverter supports and the BMS model. Check the inverter manual and the BMS specification before ordering."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How many cells in series for a 48V LFP pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Most 48 V LFP packs use 15S (about 48 V nominal) or 16S (about 51.2 V nominal). Check what your charger and controller are designed for."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use a 16S BMS on a 15S pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The BMS monitors each series group, so the cell count has to match the board."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is 13S NMC the same as 48V?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A 13S NMC pack is about 46.8 V nominal and is sold as a 48 V pack. Fully charged it sits near 54.6 V."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need active balancing for a small battery?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not usually. For small packs with few cells, normal balancing is often enough. Active balancing pays off on large cells and long-life storage."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is 15S or 16S better for solar storage?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Both are used. 16S gives about 51.2 V and is widely used with 48 V class inverters. 15S gives about 48 V. Follow your inverter manufacturer's recommended range."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will the BMS balance during discharge?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "That depends on the model and its settings. Check the specification of the exact board you choose."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How many amps BMS do I need for 1000W?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "At 48 V, 1000 W is about 21 A, so a 40 A to 60 A board gives margin. At 12 V the same load is about 83 A, which needs a 100 A class board or more."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the peak or continuous rating more important?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Both. Choose the continuous rating for your normal load and check that the BMS peak rating covers motor start-up or inverter surge."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can two BMS be used in parallel?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Do not parallel BMS boards on one pack unless the manufacturer says it is supported. Use a single higher-rated board instead."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does 1X2 mean on a cell holder?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It describes the layout: one row of two cells. Join holders together to form larger blocks."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need holders if I am spot-welding strip?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not strictly, but they keep spacing even, make welding easier and give a more rigid pack. Most professional packs use them."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can a holder replace glue or tape?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Holders position the cells but you still need the pack case or wrap to keep it together. Follow your pack design."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is epoxy sheet sold by weight?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, our epoxy sheets are priced per kg. The listing shows the sheet size so you can work out how many sheets a kg covers."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which thickness should I start with?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Many builders keep 0.5 mm for wrapping and 1 mm for base plates. Your design and voltage decide the final choice."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I drill epoxy sheet?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, with sharp bits and support underneath to avoid chipping. Use a dust mask."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does 1:1 mean on potting compound?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It means the two parts are mixed in equal amounts. Check the datasheet to see whether that is by weight or by volume."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I remove potted electronics later?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Silicone gel is easier to cut away than rigid epoxy, but repair is still difficult. Plan accordingly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is potting required by law?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Requirements depend on your product and its standards. Check them for your pack type before deciding."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does C2C mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It stands for cell to cell: the busbar is designed to connect one cell to another."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I weld aluminium busbar to the cell?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Some prismatic cells are laser welded, others are bolted. Follow the cell maker for the method it supports."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need anti-oxidation paste?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Many builders use a contact compound on aluminium joints. Follow the cell and busbar maker's guidance for your build."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is copper busbar always better?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It carries more current for the same size and resists joint problems well, but it costs more and weighs more. The best choice depends on your design."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why is copper tin coated?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The coating protects the copper from oxidising and gives a stable surface for bolted joints."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I mix copper and aluminium in one pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is possible but dissimilar metals can corrode at the joint in damp air. Avoid direct contact unless the design handles it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How many kWh is a 16S 314Ah pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "About 16 kWh nominal (51.2 V x 314 Ah). Usable energy depends on the depth of discharge you allow."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to compress prismatic cells?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Cell makers usually specify a compression range to keep cells flat over life. Follow the datasheet for the exact cell you buy."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I build a 24V or 12V pack from 314Ah cells?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, with 8S (25.6 V) or 4S (12.8 V). Current rises as voltage falls, so check the BMS and busbar rating."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can 100Ah cells be paralleled?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, for more capacity. Match the cells, connect them with equal-length busbar, and use a BMS rated for the total current."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are LFP cells a drop-in for a lead-acid battery?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A 4S LFP pack is about 12.8 V, which suits many 12 V systems, but the charger and any alternator must support lithium charging."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which brand is best?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "We list several makers. Choose by availability, price and the matching you can do within one batch."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is a 12V 100Ah LFP battery equal to a 100Ah lead-acid battery?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It holds more usable energy, because LFP can be discharged much deeper than lead-acid. Compare usable watt-hours rather than amp-hours alone."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a special charger?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use a charger with an LFP profile, or one whose settings you can set to the right voltages for four LFP cells in series."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is it safe to build my own?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It needs care: clean joints, correct wiring order, proper fusing and a rated BMS. If unsure, use a qualified pack builder."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does 32140 mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The cell is about 32 mm in diameter and 140 mm long. Check the datasheet for the exact dimensions."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is 32140 the same as 32650?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. 32650 is about 65 mm long. Both are 32 mm wide, which is why some strip and holders suit both. Check fit before ordering."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use pure nickel strip with LFP cells?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Pure nickel carries more current for the same size, which helps on higher-rate packs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is a 21700 always better than an 18650?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It holds more energy per cell, but the best choice depends on space, current needs and your tooling."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does EV grade mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It indicates a cell offered for higher-rate vehicle use. Always read the datasheet for the actual continuous and peak current rating."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I mix 18650 and 21700 in one pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Different sizes need different holders and strip, and different cell types should not be mixed in a series string."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does 13S4P mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "13 cell groups in series, with 4 cells in parallel in each group. That is 52 cells in total."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How far can this pack take a scooter?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It depends on the vehicle, load and riding. As a rough guide, 842 Wh at 25 Wh per km would be about 33 km. Treat it as an estimate only."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I use plated or pure strip?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Plated is the economical choice for moderate current. Pure nickel carries more current for the same size, suiting higher loads."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between 1P and 2P strip?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "1P strip is a plain strip used to join cells in whatever layout you need. 2P strip is pre-shaped to join two cells in parallel and link to the next group."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does CD stand for?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Centre distance, the spacing between the centres of two adjacent cells in the layout."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use CD 23 strip in a CD 22.5 holder?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not without checking. A half-millimetre difference can move the weld point off the terminal. Match the CD to your holder."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does a fuse-type strip replace a BMS?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It adds cell-level protection in certain faults, but the BMS and main fuse are still required."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are slit strips easier to weld?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It depends on your welder and settings. Run test welds on both before committing to a batch."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I get a custom shape?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Message us on WhatsApp with a drawing and quantity and we will tell you what is possible."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is 0.30 mm strip always better?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It carries more current, but it needs a stronger welder and gives more heat at the joint. Use the thickness your current and welder require."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I stack two thin strips instead of one thick one?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Some builders do. Test the weld quality, since stacked strip can be harder to weld reliably."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is better for e-bikes?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It depends on the motor current and the cells. Many e-bike packs use 0.15 to 0.20 mm strip; high-power builds may need more."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a spot welder for every pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only for strip-welded cylindrical packs. Prismatic cells use bolted or laser-welded busbar, so no spot welder is needed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the part people forget most?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The main fuse and insulation. A BMS alone is not a replacement for a correctly rated fuse and clean insulation."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I buy everything from one place?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Cells, strip, busbar, holders, BMS, epoxy sheet and potting compound are all on our store."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does A-grade mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is the supplier's grading term and is not a single universal standard. Ask for the datasheet and the test data behind the grade."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I test every cell?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For expensive or critical packs, yes. At minimum, measure the voltage and internal resistance of every cell and capacity-test a sample."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I mix cells bought at different times?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Avoid it. Different batches and ages age differently, which causes balancing problems. Build the whole pack from one batch."
+          }
         }
       ]
     }
@@ -668,7 +1148,7 @@
       <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <span>FAQ</span></nav>
       <p class="blog-tag">Help centre</p>
       <h1>Frequently asked questions</h1>
-      <p class="blog-subline">74 answers on strips, busbars, welding, sizing and ordering.</p>
+      <p class="blog-subline">134 answers on strips, busbars, welding, sizing and ordering.</p>
       <input type="search" id="faqSearch" class="faq-search" placeholder="Search the FAQs..." aria-label="Search the FAQs" />
       
       <section class="faq-group">
@@ -734,6 +1214,86 @@
       <section class="faq-group">
         <h2>Bulk Nickel Strip: Mistakes to Avoid</h2>
         <div class="faq-list"><div class="faq-item"><h3 class="faq-q">How much tolerance is normal on nickel strip thickness?</h3><p class="faq-a">This varies by manufacturer and grade. Ask your supplier for the specific tolerance on your size, and if your welding process is tolerance-sensitive, request a sample from the actual production batch.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">How long should I store nickel strip before it degrades?</h3><p class="faq-a">Properly sealed with silica gel in dry conditions, strip can be stored for extended periods. The main risk is humidity exposure, particularly during the monsoon, which causes surface oxidation.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Should I always order the cheapest quote?</h3><p class="faq-a">Not without checking what is behind the price: grade, plating thickness, tolerance and lead time all affect whether a cheaper quote is actually a better deal for your specific pack design.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can Arambhika confirm a custom size before I order in bulk?</h3><p class="faq-a">Yes, share your design drawing or specifications on WhatsApp and we will confirm size, lead time and pricing before you place a bulk order.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Smart BMS vs Hardware BMS</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is a smart BMS safer than a hardware BMS?</h3><p class="faq-a">Both protect against the same basic faults. A smart BMS adds visibility and adjustable settings, which helps you catch problems early, but safe protection depends on the BMS being correctly rated and wired.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I use a smart BMS without the phone app?</h3><p class="faq-a">Yes. It protects the pack like any BMS. The app is optional and used for monitoring and settings.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Does a smart BMS talk to every inverter?</h3><p class="faq-a">No. Inverter communication depends on the protocol the inverter supports and the BMS model. Check the inverter manual and the BMS specification before ordering.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>LFP vs NMC BMS: Pick the Series Count</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">How many cells in series for a 48V LFP pack?</h3><p class="faq-a">Most 48 V LFP packs use 15S (about 48 V nominal) or 16S (about 51.2 V nominal). Check what your charger and controller are designed for.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I use a 16S BMS on a 15S pack?</h3><p class="faq-a">No. The BMS monitors each series group, so the cell count has to match the board.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Is 13S NMC the same as 48V?</h3><p class="faq-a">A 13S NMC pack is about 46.8 V nominal and is sold as a 48 V pack. Fully charged it sits near 54.6 V.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Active Balancing BMS for Home Solar</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Do I need active balancing for a small battery?</h3><p class="faq-a">Not usually. For small packs with few cells, normal balancing is often enough. Active balancing pays off on large cells and long-life storage.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Is 15S or 16S better for solar storage?</h3><p class="faq-a">Both are used. 16S gives about 51.2 V and is widely used with 48 V class inverters. 15S gives about 48 V. Follow your inverter manufacturer's recommended range.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Will the BMS balance during discharge?</h3><p class="faq-a">That depends on the model and its settings. Check the specification of the exact board you choose.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Choosing a BMS Current Rating</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">How many amps BMS do I need for 1000W?</h3><p class="faq-a">At 48 V, 1000 W is about 21 A, so a 40 A to 60 A board gives margin. At 12 V the same load is about 83 A, which needs a 100 A class board or more.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Is the peak or continuous rating more important?</h3><p class="faq-a">Both. Choose the continuous rating for your normal load and check that the BMS peak rating covers motor start-up or inverter surge.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can two BMS be used in parallel?</h3><p class="faq-a">Do not parallel BMS boards on one pack unless the manufacturer says it is supported. Use a single higher-rated board instead.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Cell Holders for Battery Packs</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What does 1X2 mean on a cell holder?</h3><p class="faq-a">It describes the layout: one row of two cells. Join holders together to form larger blocks.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Do I need holders if I am spot-welding strip?</h3><p class="faq-a">Not strictly, but they keep spacing even, make welding easier and give a more rigid pack. Most professional packs use them.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can a holder replace glue or tape?</h3><p class="faq-a">Holders position the cells but you still need the pack case or wrap to keep it together. Follow your pack design.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Epoxy Sheet for Battery Packs</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is epoxy sheet sold by weight?</h3><p class="faq-a">Yes, our epoxy sheets are priced per kg. The listing shows the sheet size so you can work out how many sheets a kg covers.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which thickness should I start with?</h3><p class="faq-a">Many builders keep 0.5 mm for wrapping and 1 mm for base plates. Your design and voltage decide the final choice.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I drill epoxy sheet?</h3><p class="faq-a">Yes, with sharp bits and support underneath to avoid chipping. Use a dust mask.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Potting Compound for Battery Packs</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What does 1:1 mean on potting compound?</h3><p class="faq-a">It means the two parts are mixed in equal amounts. Check the datasheet to see whether that is by weight or by volume.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I remove potted electronics later?</h3><p class="faq-a">Silicone gel is easier to cut away than rigid epoxy, but repair is still difficult. Plan accordingly.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Is potting required by law?</h3><p class="faq-a">Requirements depend on your product and its standards. Check them for your pack type before deciding.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Aluminium Busbar Guide</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What does C2C mean?</h3><p class="faq-a">It stands for cell to cell: the busbar is designed to connect one cell to another.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I weld aluminium busbar to the cell?</h3><p class="faq-a">Some prismatic cells are laser welded, others are bolted. Follow the cell maker for the method it supports.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Do I need anti-oxidation paste?</h3><p class="faq-a">Many builders use a contact compound on aluminium joints. Follow the cell and busbar maker's guidance for your build.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Copper vs Aluminium Busbar</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is copper busbar always better?</h3><p class="faq-a">It carries more current for the same size and resists joint problems well, but it costs more and weighs more. The best choice depends on your design.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why is copper tin coated?</h3><p class="faq-a">The coating protects the copper from oxidising and gives a stable surface for bolted joints.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I mix copper and aluminium in one pack?</h3><p class="faq-a">It is possible but dissimilar metals can corrode at the joint in damp air. Avoid direct contact unless the design handles it.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Build a 51.2V 314Ah Storage Battery</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">How many kWh is a 16S 314Ah pack?</h3><p class="faq-a">About 16 kWh nominal (51.2 V x 314 Ah). Usable energy depends on the depth of discharge you allow.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Do I need to compress prismatic cells?</h3><p class="faq-a">Cell makers usually specify a compression range to keep cells flat over life. Follow the datasheet for the exact cell you buy.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I build a 24V or 12V pack from 314Ah cells?</h3><p class="faq-a">Yes, with 8S (25.6 V) or 4S (12.8 V). Current rises as voltage falls, so check the BMS and busbar rating.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>100Ah and 150Ah LFP Prismatic Cells</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Can 100Ah cells be paralleled?</h3><p class="faq-a">Yes, for more capacity. Match the cells, connect them with equal-length busbar, and use a BMS rated for the total current.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Are LFP cells a drop-in for a lead-acid battery?</h3><p class="faq-a">A 4S LFP pack is about 12.8 V, which suits many 12 V systems, but the charger and any alternator must support lithium charging.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which brand is best?</h3><p class="faq-a">We list several makers. Choose by availability, price and the matching you can do within one batch.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Build a 12V 100Ah LFP Battery</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is a 12V 100Ah LFP battery equal to a 100Ah lead-acid battery?</h3><p class="faq-a">It holds more usable energy, because LFP can be discharged much deeper than lead-acid. Compare usable watt-hours rather than amp-hours alone.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Do I need a special charger?</h3><p class="faq-a">Use a charger with an LFP profile, or one whose settings you can set to the right voltages for four LFP cells in series.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Is it safe to build my own?</h3><p class="faq-a">It needs care: clean joints, correct wiring order, proper fusing and a rated BMS. If unsure, use a qualified pack builder.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>LFP 32140 Cylindrical Cells</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What does 32140 mean?</h3><p class="faq-a">The cell is about 32 mm in diameter and 140 mm long. Check the datasheet for the exact dimensions.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Is 32140 the same as 32650?</h3><p class="faq-a">No. 32650 is about 65 mm long. Both are 32 mm wide, which is why some strip and holders suit both. Check fit before ordering.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I use pure nickel strip with LFP cells?</h3><p class="faq-a">Yes. Pure nickel carries more current for the same size, which helps on higher-rate packs.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>18650 vs 21700 NMC Cells</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is a 21700 always better than an 18650?</h3><p class="faq-a">It holds more energy per cell, but the best choice depends on space, current needs and your tooling.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">What does EV grade mean?</h3><p class="faq-a">It indicates a cell offered for higher-rate vehicle use. Always read the datasheet for the actual continuous and peak current rating.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I mix 18650 and 21700 in one pack?</h3><p class="faq-a">No. Different sizes need different holders and strip, and different cell types should not be mixed in a series string.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Build a 13S 48V 21700 Pack</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What does 13S4P mean?</h3><p class="faq-a">13 cell groups in series, with 4 cells in parallel in each group. That is 52 cells in total.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">How far can this pack take a scooter?</h3><p class="faq-a">It depends on the vehicle, load and riding. As a rough guide, 842 Wh at 25 Wh per km would be about 33 km. Treat it as an estimate only.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Should I use plated or pure strip?</h3><p class="faq-a">Plated is the economical choice for moderate current. Pure nickel carries more current for the same size, suiting higher loads.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Nickel Strip Centre Distance (CD)</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What is the difference between 1P and 2P strip?</h3><p class="faq-a">1P strip is a plain strip used to join cells in whatever layout you need. 2P strip is pre-shaped to join two cells in parallel and link to the next group.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">What does CD stand for?</h3><p class="faq-a">Centre distance, the spacing between the centres of two adjacent cells in the layout.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I use CD 23 strip in a CD 22.5 holder?</h3><p class="faq-a">Not without checking. A half-millimetre difference can move the weld point off the terminal. Match the CD to your holder.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Slit, Fuse and Zig-Zag Nickel Strip</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Does a fuse-type strip replace a BMS?</h3><p class="faq-a">No. It adds cell-level protection in certain faults, but the BMS and main fuse are still required.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Are slit strips easier to weld?</h3><p class="faq-a">It depends on your welder and settings. Run test welds on both before committing to a batch.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I get a custom shape?</h3><p class="faq-a">Message us on WhatsApp with a drawing and quantity and we will tell you what is possible.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Nickel Strip Thickness: 0.15, 0.20, 0.30</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is 0.30 mm strip always better?</h3><p class="faq-a">It carries more current, but it needs a stronger welder and gives more heat at the joint. Use the thickness your current and welder require.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I stack two thin strips instead of one thick one?</h3><p class="faq-a">Some builders do. Test the weld quality, since stacked strip can be harder to weld reliably.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which is better for e-bikes?</h3><p class="faq-a">It depends on the motor current and the cells. Many e-bike packs use 0.15 to 0.20 mm strip; high-power builds may need more.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Battery Pack Bill of Materials</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Do I need a spot welder for every pack?</h3><p class="faq-a">Only for strip-welded cylindrical packs. Prismatic cells use bolted or laser-welded busbar, so no spot welder is needed.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">What is the part people forget most?</h3><p class="faq-a">The main fuse and insulation. A BMS alone is not a replacement for a correctly rated fuse and clean insulation.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I buy everything from one place?</h3><p class="faq-a">Yes. Cells, strip, busbar, holders, BMS, epoxy sheet and potting compound are all on our store.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Buying LFP Cells: A Checklist</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What does A-grade mean?</h3><p class="faq-a">It is the supplier's grading term and is not a single universal standard. Ask for the datasheet and the test data behind the grade.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Should I test every cell?</h3><p class="faq-a">For expensive or critical packs, yes. At minimum, measure the voltage and internal resistance of every cell and capacity-test a sample.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I mix cells bought at different times?</h3><p class="faq-a">Avoid it. Different batches and ages age differently, which causes balancing problems. Build the whole pack from one batch.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
       </section>
       <p class="faq-empty" id="faqEmpty" hidden>No question matches. <a href="https://wa.me/919315545821" target="_blank" rel="noopener">Ask us on WhatsApp</a>.</p>
     </section>
