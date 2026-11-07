@@ -271,9 +271,10 @@ describe('website catalogue in the Products page', () => {
     ] };
     stub = http.createServer((req, res) => {
       if (req.url === '/products.json') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(catalog)); }
-      if (req.url === '/zimg/1/a.jpg') { res.setHeader('content-type', 'image/jpeg'); return res.end(Buffer.from([0xff, 0xd8, 0xff, 0xd9])); }
+      if (req.url === '/zimg/1/a.jpg' || req.url === '/zimg/2/b.jpg') { res.setHeader('content-type', 'image/jpeg'); return res.end(Buffer.from([0xff, 0xd8, 0xff, 0xd9])); }
       res.statusCode = 404; res.end();
     });
+    stub.catalog = catalog;
     await new Promise((r) => stub.listen(0, '127.0.0.1', r));
     app = await start({ WEBSITE_URL: `http://127.0.0.1:${stub.address().port}` });
     await app.login();
@@ -308,6 +309,18 @@ describe('website catalogue in the Products page', () => {
     assert.equal(del.json.removed, 1);
     await app.request('POST', '/api/products/import-website', {});
     assert.equal((await app.request('GET', '/api/products')).json.data.some((p) => p.sku === 'NS1'), true);
+  });
+
+  test('a photo replaced in Zoho is downloaded again on the next refresh', async () => {
+    const before = JSON.parse((await app.request('GET', '/api/products')).json.data.find((p) => p.sku === 'NS1').images);
+    stub.catalog.categories[0].products[0].Image_Link = ['/zimg/2/b.jpg'];
+    const r = await app.request('POST', '/api/products/import-website', {});
+    assert.equal(r.json.images, 1, 'the new photo was fetched');
+    const after = JSON.parse((await app.request('GET', '/api/products')).json.data.find((p) => p.sku === 'NS1').images);
+    assert.equal(after.length, 1);
+    assert.notDeepEqual(after, before, 'a new file replaced the old one');
+    assert.ok(!fs.existsSync(path.join(app.dir, 'uploads', before[0])), 'the old file is gone');
+    assert.equal((await app.request('POST', '/api/products/import-website', {})).json.images, 0, 'unchanged photos are not fetched again');
   });
 
   test('the import and bulk remove need a session', async () => {
@@ -463,5 +476,32 @@ describe('library and refresh status', () => {
   test('the studio has the three tabs, the description option and the refresh line', () => {
     const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
     for (const needle of ['data-pt="create"', 'data-pt="plan"', 'data-pt="library"', 'id="incDesc"', 'id="syncWhen"', 'sync-status', '/api/creatives']) assert.ok(page.includes(needle), needle);
+  });
+
+  test('the Product card tab makes the same layout every time and a hidden tab really is hidden', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['data-pt="card"', 'id="pt-card"', 'id="pcCanvas"', 'id="pcTitle"', 'id="pcSub"', 'id="pcDownload"', 'id="pcSave"', "channel: 'product-card'", "'create', 'card', 'cat', 'plan', 'library'"]) assert.ok(page.includes(needle), needle);
+    assert.ok(page.includes('.st-wrap[hidden] { display: none; }'), 'the display rule must not override hidden');
+  });
+
+  test('the Category image tab arranges several products on one image and saves it to the library', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['data-pt="cat"', 'id="pt-cat"', 'id="ciCanvas"', 'id="ciPicker"', 'id="ciLayout"', 'id="ciBg"', 'id="ciDownload"', 'id="ciSave"', "channel: 'category-image'", "'create', 'card', 'cat', 'plan', 'library'"]) assert.ok(page.includes(needle), needle);
+  });
+
+  test('the Category image tab can cut products out and put 2-3 of them in a circle', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['value="circle" selected', 'function cutOut(', 'function drawCircleImage(', 'ctx.arc'.replace('ctx', 'g'), 'slice(0, 3)']) assert.ok(page.includes(needle), needle);
+  });
+
+  test('products with no photo in Zoho are still listed, with a plain tile', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    assert.ok(page.includes('function thumb(p)') && page.includes('st-nophoto'));
+    assert.ok(!page.includes("filter(function (p) { return firstImage(p); });"), 'the product list must not drop products without photos');
+  });
+
+  test('the Product card tab has a category dropdown that narrows the product-name dropdown', () => {
+    const page = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8');
+    for (const needle of ['id="pcCat"', 'id="pcPick"', "$('pcCat').addEventListener('change', drawCardPick)", '(no photo)']) assert.ok(page.includes(needle), needle);
   });
 });

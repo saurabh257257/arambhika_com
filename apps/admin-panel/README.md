@@ -1,0 +1,74 @@
+# Arambhika Admin Panel
+
+Staff-only site at `https://admin.arambhika.com` (dev droplet only, never part of the website release). The owner designs
+the work, the team does it, and everyone can see where things stand.
+
+## What it does
+
+**The owner (`admin` + the `ADMIN_PANEL_PASSWORD` secret)**
+- **Dashboard:** each team member's percent done today and work left, how much was carried over, call follow-ups running late,
+  open customer requests (and how many were not touched today), who has not started, invoice follow-up health, the Zoho connection.
+- **Task designer:** design any task, or use **Quick start** for the usual ones.
+  - *Fill in rows* ("Call 10 people": phone, name, company, what was discussed, follow-up date), *Checklist*, *Counter*.
+  - Daily (working days), weekly (Monday to Sunday) or one-time (stays until done), for any people.
+  - **Quick task:** a one-time task for today ("Send the new price list to dealers") given to one or both people.
+  - **Carry forward what was missed:** 8 of 10 calls today means 12 tomorrow (up to the limit you set, default = the daily target).
+- **Team work** (anyone's tasks for any day), **Team** (add people, set passwords), **Follow-up rules** (what happened -> when to follow up,
+  and the **working days**, Monday to Saturday by default), **Activity** (who did what and when), **Office** (approve transactions).
+- **Customer requests, Customers, Invoices:** see everyone's; assign owners; "Share unowned customers evenly".
+
+**Team members (password set by the owner)** see only their own work:
+- **My day:** one percentage for everything, what is left, follow-up calls due, unfinished customer requests, tasks.
+- **Tasks:** cells to fill, each saved with the time and their name. **Follow-up calls due** sit at the top until they are logged.
+- **Customer requests:** a customer messages on WhatsApp, they log it, and tick five steps: *quote sent and
+  payment asked*, *payment received (with the screenshot)*, *material ready*, *dispatched*, *sent successfully*. Every step is a checkbox
+  with a time and a name; steps can be ticked in any order, and payment needs its screenshot first.
+- **Customers, Invoices** (their own list from Zoho), **Office** (send a transaction for approval).
+
+## How work carries over
+- **Daily rows / counters:** the first time somebody opens the panel on a working day, that day's work is created. Target = base + what was
+  left over yesterday (capped). Working days nobody opened are filled in (up to 7 days back) so a miss is not forgotten. Days off add nothing.
+- **Weekly:** one card for the week; next week's target = base + this week's shortfall.
+- **Call follow-ups:** a call row with a follow-up date comes back in "Follow-up calls due" on that date, and stays (with "N days late") until the
+  person logs it (what was said, and the next date or none). They are extra work on top of the daily 10.
+- **Customer requests:** every request that is not "sent successfully" is listed again every day for its owner; it counts as one piece of work
+  per day, done when it is touched (a step ticked or a note added). A request not touched for a day is flagged to the owner.
+- **One-time tasks:** stay until done.
+
+## What comes from Zoho, at runtime
+Read-only, from Zoho Books, kept in memory for 5 minutes ("Refresh from Zoho" forces a pull). Nothing is copied to disk or written to Zoho.
+- **Customers** (contact list, or rebuilt from invoices if the saved login cannot read contacts) and whether each is **onboarded** (invoiced before).
+- **Invoices:** unpaid ones with due date, balance and phone; a paid invoice disappears by itself.
+- **Website orders** (sales orders) can appear in Customer requests by themselves, but this is switched off: the panel does not read sales orders. Set `ZOHO_SYNC_ORDERS=1` (and give the Zoho login `ZohoBooks.salesorders.READ`) to turn it on.
+
+What the panel itself stores (JSON files in `DATA_DIR`, plus payment screenshots in `DATA_DIR/uploads`): team members, task designs and the work done,
+customer requests, who owns which customer/invoice, follow-up history, transactions, the activity feed and settings.
+
+## Follow up with existing customers (daily list)
+
+Every working day each team member gets a list of 3 customers (setting: Follow-up rules). They come from the customers assigned to that person, only if they have bought before and have **not ordered in the last 30 days** (also a setting), biggest spenders first. Each comes with a note of what they bought and at what price (read from the Zoho invoices). The person logs what happened and the next follow-up date (suggested from the rules). A customer who is not called today comes back tomorrow ahead of new ones, so the list stays at 3. A customer who was called is not offered again before the follow-up date. The list counts as "Customer follow-ups" in the day's percentage. The old customer follow-up logging in the Customers tab was removed.
+
+## The customer master list (customers.json)
+
+Every customer in Zoho Books, with quotes, invoices, bills, sales orders (with item lines) and item categories, plus the leads the team found. It is rebuilt into `customers.json`; the team's work is also written to `call10.json`, `find4.json` and `newrequests.json`. People are matched by mobile number (last 10 digits). A person not in Zoho is a lead; when a paid invoice for the same mobile appears (dated after the first contact) the lead is converted to a customer, credited to whoever found them. A mobile that already had a paid invoice earlier is only linked. People logged without a mobile stay as unmatched leads. Needs Zoho read access to estimates, bills, items and sales orders.
+
+Freshness without hitting Zoho's daily call limit: a full check every 30 minutes (set MASTER_SYNC_MINUTES to change it), and an instant refresh (at most every 30 seconds) when Zoho calls `POST /hooks/zoho?token=...`. Switch the instant link on by setting `ZOHO_WEBHOOK_SECRET` on the server and pointing a Zoho Books workflow rule webhook at `https://admin.arambhika.com/hooks/zoho?token=<the secret>`.
+
+## How "done" is counted
+Today's work = every row, step or target of today's tasks (including what carried over) + call follow-ups due + customer and invoice follow-ups
+due + customer requests not finished. Percent = done / total. On a day off only what was actually done counts.
+
+## Adding or changing features
+- Server: one file per feature in `modules/` (`module.exports = function (app, ctx)` adds its `/api` routes); list it in `app.js`.
+- Screen: one file per feature in `public/js/` that calls `Panel.register({ id, label, roles, order, render })`; list it in `index.html`.
+- Task kinds, presets and carry rules are in `lib/tasks.js`; follow-up rules in `lib/followups.js`; Zoho reads in `lib/zoho.js`; photo saving in `lib/files.js`.
+- Tests pretend it is another day with `clock.date = '2026-11-02'` (from `lib/util.js`).
+
+## One-time setup
+1. DNS: an `A` record `admin` -> the dev droplet IP (the same as `dev` and `digital`).
+2. GitHub -> Settings -> Environments -> `dev`: add `ADMIN_PANEL_PASSWORD` and `ADMIN_PANEL_SESSION_SECRET` (any long random text).
+   The Zoho values (`ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_BOOKS_ORG_ID`, variable `ZOHO_DC`) are the ones the
+   website already uses. The login needs `ZohoBooks.invoices.READ`, and `ZohoBooks.contacts.READ` (sales orders are not needed).
+3. Push to `dev` (or run the workflow). The deploy creates the nginx site and, once the DNS record exists, the HTTPS certificate.
+
+Run locally: `ADMIN_PASSWORD=something npm start` (port 4100), tests: `npm test`.

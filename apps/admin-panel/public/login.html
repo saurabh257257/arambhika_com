@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Sign in | Arambhika Admin</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="login">
+    <form class="card" id="f" autocomplete="on">
+      <h2>Arambhika Admin</h2>
+      <p class="muted" style="margin:0">Staff sign-in</p>
+      <label>Username<input name="username" autocomplete="username" autocapitalize="none" required autofocus /></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+      <div class="err" id="err" role="alert"></div>
+      <button class="btn" id="go" type="submit">Sign in</button>
+    </form>
+  </div>
+  <script src="/login.js"></script>
+</body>
+</html>

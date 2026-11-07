@@ -10,6 +10,13 @@
 <style>
 :root { --teal: #0e8f7e; --teal-dark: #0b6f62; --navy: #12263f; --wa: #25d366; --wa-dark: #128c7e; }
 .st-wrap { padding: 20px 24px 60px; display: grid; gap: 18px; max-width: 1500px; }
+.st-wrap[hidden] { display: none; }
+.ci-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; max-height: 260px; overflow-y: auto; padding: 4px; border: 1px solid var(--border); border-radius: 10px; }
+.ci-item { position: relative; border: 2px solid transparent; border-radius: 8px; background: #fff; padding: 4px; cursor: pointer; text-align: center; font: inherit; }
+.ci-item img { width: 100%; height: 64px; object-fit: contain; display: block; }
+.ci-item span { display: block; font-size: 10px; line-height: 1.2; color: var(--muted); height: 24px; overflow: hidden; }
+.ci-item.on { border-color: var(--teal); background: #ecfdf5; }
+.ci-item .ci-n { position: absolute; top: 2px; right: 2px; background: var(--teal); color: #fff; font-size: 11px; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; } /* the display rule above would otherwise keep every tab on screen at once */
 .st-today { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 22px; border-radius: 16px; color: #fff; background: linear-gradient(120deg, #12263f, #1c3a5c 55%, #0b6f62); }
 .st-today small { text-transform: uppercase; letter-spacing: .1em; font-size: 11px; opacity: .8; font-weight: 600; }
 .st-today h3 { font-size: 20px; margin: 2px 0; } .st-today p { font-size: 13px; opacity: .9; max-width: 60ch; }
@@ -69,6 +76,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 .st-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
 .st-pick-item { border: 2px solid var(--border); border-radius: 10px; overflow: hidden; cursor: pointer; background: #fff; position: relative; }
 .st-pick-item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #f1f5f9; } .st-pick-item span { display: block; padding: 5px 7px; font-size: 11px; line-height: 1.3; }
+.st-nophoto { width: 100%; aspect-ratio: 1; display: grid; place-items: center; background: #f1f5f9; color: #94a3b8; font-size: 11px; font-weight: 600; } .st-chip .st-nophoto { width: 28px; height: 28px; aspect-ratio: auto; font-size: 8px; border-radius: 6px; }
 .st-pick-item.sel { border-color: var(--teal); } .st-pick-item.sel::after { content: "\2713"; position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--teal); color: #fff; display: grid; place-items: center; font-size: 13px; }
 .st-toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; z-index: 400; opacity: 0; transition: opacity .2s; pointer-events: none; } .st-toast.show { opacity: 1; }
 .st-tabbar { display: flex; gap: 4px; padding: 0 24px; background: #fff; border-bottom: 1px solid var(--border); overflow-x: auto; position: sticky; top: 0; z-index: 20; }
@@ -125,6 +133,8 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 
   <div class="st-tabbar" id="pageTabs" role="tablist">
     <button type="button" class="st-pt active" data-pt="create" role="tab">Create</button>
+    <button type="button" class="st-pt" data-pt="card" role="tab">Product card</button>
+    <button type="button" class="st-pt" data-pt="cat" role="tab">Category image</button>
     <button type="button" class="st-pt" data-pt="plan" role="tab">Weekly plan</button>
     <button type="button" class="st-pt" data-pt="library" role="tab">Library</button>
   </div>
@@ -204,6 +214,53 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
       </div>
     </div>
   </div>
+  <div class="st-wrap" id="pt-card" hidden>
+    <div class="st-grid">
+      <div class="st-card">
+        <h4>Product card</h4>
+        <p style="font-size:13px;color:var(--muted)">Add a photo and a title. Every card comes out in the same layout: logo on top, photo in the middle, title and details at the bottom.</p>
+        <div class="st-row2">
+          <div class="st-field"><label for="pcCat">Category</label><select id="pcCat"><option value="">All categories</option></select></div>
+          <div class="st-field"><label for="pcPick">Product name</label><select id="pcPick"><option value="">Choose a product...</option></select></div>
+        </div>
+        <div class="st-field"><label>Product photo</label>
+          <div class="st-logo-prev"><img id="pcImgPrev" alt="Product photo" hidden><button type="button" class="st-btn ghost sm" id="pcImgBtn">Upload photo</button><button type="button" class="st-btn ghost sm" id="pcImgClear" hidden>Remove</button><input type="file" id="pcImgIn" accept="image/*" hidden></div>
+        </div>
+        <div class="st-field"><label for="pcTitle">Title</label><input type="text" id="pcTitle" maxlength="90" placeholder="Nickel Strip Plated 2P(32650)"></div>
+        <div class="st-field"><label for="pcSub">Details (optional, smaller line under the title)</label><input type="text" id="pcSub" maxlength="140" placeholder="46.5x0.15 mm | CD 34.5 | with holder with slit"></div>
+        <div class="st-field"><label for="pcFormat">Size</label><select id="pcFormat"><option value="portrait">Portrait 4:5 (1080 x 1350)</option><option value="square">Square 1:1 (1080 x 1080)</option></select></div>
+        <div class="st-res-actions"><button type="button" class="st-btn" id="pcDownload">Download PNG</button><button type="button" class="st-btn ghost" id="pcSave">Save to Library</button></div>
+      </div>
+      <div class="st-card"><h4>Preview</h4><canvas id="pcCanvas" width="1080" height="1350" style="width:100%;max-width:440px;border:1px solid var(--border);border-radius:10px;background:#fff"></canvas></div>
+    </div>
+  </div>
+
+  <div class="st-wrap" id="pt-cat" hidden>
+    <div class="st-grid">
+      <div class="st-card">
+        <h4>Category image</h4>
+        <p style="font-size:13px;color:var(--muted)">Pick several products and get one clean image with all of them together, ready to use as a category picture on the website (upload it to the category in Zoho Commerce).</p>
+        <div class="st-field"><label for="ciName">Category name</label><input type="text" id="ciName" maxlength="60" placeholder="Nickel Strip Pure"></div>
+        <div class="st-row2">
+          <div class="st-field"><label for="ciFilter">Show products from</label><select id="ciFilter"><option value="">All categories</option></select></div>
+          <div class="st-field"><label for="ciSearch">Search</label><input type="text" id="ciSearch" placeholder="e.g. 18650"></div>
+        </div>
+        <div class="st-field"><label>Choose products (tap to select; the circle uses the first 3)</label><div class="ci-picker" id="ciPicker"></div></div>
+        <div class="st-field"><label>Or add your own photos</label><div class="st-logo-prev"><button type="button" class="st-btn ghost sm" id="ciUpBtn">Upload photos</button><input type="file" id="ciUpIn" accept="image/*" multiple hidden><span id="ciCount" style="font-size:12px;color:var(--muted)"></span><button type="button" class="st-btn ghost sm" id="ciClear" hidden>Clear all</button></div></div>
+        <div class="st-row2">
+          <div class="st-field"><label for="ciLayout">Arrangement</label><select id="ciLayout"><option value="circle" selected>Circle cut-out (2-3 products)</option><option value="fan">Fan (overlapping cards)</option><option value="row">Row</option><option value="grid">Grid</option></select></div>
+          <div class="st-field"><label for="ciBg">Background</label><select id="ciBg"><option value="light">Soft light</option><option value="teal">Teal</option><option value="navy">Navy</option><option value="white">Plain white</option></select></div>
+        </div>
+        <div class="st-row2">
+          <div class="st-field"><label for="ciSize">Size</label><select id="ciSize"><option value="1200x1200">Square 1200 x 1200</option><option value="1200x900">Landscape 1200 x 900</option><option value="800x800">Small square 800 x 800</option></select></div>
+          <div class="st-field"><label class="st-check" style="margin-top:22px"><input type="checkbox" id="ciShowName" checked> Show the category name</label></div>
+        </div>
+        <div class="st-res-actions"><button type="button" class="st-btn" id="ciDownload">Download PNG</button><button type="button" class="st-btn ghost" id="ciSave">Save to Library</button></div>
+      </div>
+      <div class="st-card"><h4>Preview</h4><canvas id="ciCanvas" width="1200" height="1200" style="width:100%;max-width:520px;border:1px solid var(--border);border-radius:10px;background:#fff"></canvas></div>
+    </div>
+  </div>
+
   <div class="st-wrap" id="pt-plan" hidden>
     <div class="st-card"><h4>This week's plan</h4><p style="font-size:13px;color:var(--muted)">One idea for each day, so there is always something ready to post. Tap "Use" to set it up in the Create tab.</p></div>
     <div class="st-plan" id="week"></div>
@@ -214,7 +271,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
       <h4>Library</h4>
       <p style="font-size:13px;color:var(--muted)">Every image you generate is saved here automatically, sorted by product category.</p>
       <div class="st-lib-filters" id="libCats"></div>
-      <div class="st-field" style="max-width:240px"><label for="libChannel">Channel</label><select id="libChannel"><option value="">All channels</option><option value="ig-image">Instagram image</option><option value="ig-carousel">Instagram carousel</option><option value="wa-message">WhatsApp message</option></select></div>
+      <div class="st-field" style="max-width:240px"><label for="libChannel">Channel</label><select id="libChannel"><option value="">All channels</option><option value="ig-image">Instagram image</option><option value="ig-carousel">Instagram carousel</option><option value="product-card">Product card</option><option value="category-image">Category image</option><option value="wa-message">WhatsApp message</option></select></div>
     </div>
     <div id="libList"></div>
   </div>
@@ -285,12 +342,14 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
   /* ---------------- products ---------------- */
   var products = [], selected = [];
   function firstImage(p) { try { return JSON.parse(p.images || '[]')[0] || ''; } catch (e) { return ''; } }
+  // a product with no photo in Zoho yet is still listed, with a plain 'No photo' tile
+  function thumb(p) { var f = firstImage(p); return f ? '<img src="/uploads/' + esc(f) + '" alt="" loading="lazy">' : '<div class="st-nophoto">No photo</div>'; }
   function loadProducts() {
     return fetch('/api/products/sync-if-stale', { method: 'POST' }).catch(function () {}).then(function () { return fetch('/api/products'); })
-      .then(function (r) { return r.json(); }).then(function (b) { products = (b.data || []).filter(function (p) { return firstImage(p); }); }).catch(function () { products = []; });
+      .then(function (r) { return r.json(); }).then(function (b) { products = b.data || []; }).catch(function () { products = []; });
   }
   function drawChips() {
-    $('selChips').innerHTML = selected.length ? selected.map(function (p) { return '<span class="st-chip"><img src="/uploads/' + esc(firstImage(p)) + '" alt=""><span>' + esc(p.name.slice(0, 34)) + '</span><button type="button" data-rm="' + p.id + '" aria-label="Remove">&times;</button></span>'; }).join('') : '<span style="font-size:12.5px;color:var(--muted)">No product chosen. The image will be a general Arambhika brand creative.</span>';
+    $('selChips').innerHTML = selected.length ? selected.map(function (p) { return '<span class="st-chip">' + thumb(p) + '<span>' + esc(p.name.slice(0, 34)) + '</span><button type="button" data-rm="' + p.id + '" aria-label="Remove">&times;</button></span>'; }).join('') : '<span style="font-size:12.5px;color:var(--muted)">No product chosen. The image will be a general Arambhika brand creative.</span>';
   }
   $('selChips').addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (b) { selected = selected.filter(function (p) { return String(p.id) !== b.dataset.rm; }); drawChips(); } });
   $('clearProducts').addEventListener('click', function () { selected = []; drawChips(); });
@@ -309,7 +368,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
         var inCol = true; if (col) { try { inCol = JSON.parse(p.collections || '[]').indexOf(col) > -1; } catch (e) { inCol = false; } }
         return (!cat || p.category === cat) && inCol && (!q || (p.name + ' ' + p.sku).toLowerCase().indexOf(q) > -1);
       });
-      $('pkGrid').innerHTML = list.map(function (p) { var on = pickTmp.some(function (x) { return x.id === p.id; }); return '<div class="st-pick-item ' + (on ? 'sel' : '') + '" data-id="' + p.id + '"><img src="/uploads/' + esc(firstImage(p)) + '" alt="" loading="lazy"><span>' + esc(p.name.slice(0, 48)) + '</span></div>'; }).join('') || '<p style="font-size:13px;color:var(--muted)">No products match.</p>';
+      $('pkGrid').innerHTML = list.map(function (p) { var on = pickTmp.some(function (x) { return x.id === p.id; }); return '<div class="st-pick-item ' + (on ? 'sel' : '') + '" data-id="' + p.id + '">' + thumb(p) + '<span>' + esc(p.name.slice(0, 48)) + '</span></div>'; }).join('') || '<p style="font-size:13px;color:var(--muted)">No products match.</p>';
       $('pkCount').textContent = pickTmp.length + ' selected';
     }
     ['pkQ', 'pkCat', 'pkCol'].forEach(function (id) { $(id).addEventListener('input', draw); });
@@ -366,7 +425,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var PLAN = { 1: ['spotlight', 'ig-image', 'Product spotlight', 'Start the week with one hero product.'], 2: ['tip', 'ig-image', 'Tech tip', 'Teach something useful to battery pack makers.'], 3: ['usecase', 'ig-image', 'Use case', 'Show the product inside a real battery pack.'], 4: ['offer', 'ig-image', 'Bulk quote offer', 'Push an offer or a price to move stock.'], 5: ['car-choose', 'ig-carousel', 'How to choose (carousel)', 'A swipeable guide people save and share.'], 6: ['factory', 'ig-image', 'Made in India', 'Show the factory and build trust.'], 0: ['wa-catalog', 'wa-message', 'WhatsApp catalogue share', 'Weekly catalogue message for your broadcast list.'] };
   var channel = 'ig-image', tplId = 'spotlight';
-  var CHANNEL_LABEL = { 'ig-image': 'Instagram image', 'ig-carousel': 'Instagram carousel', 'wa-message': 'WhatsApp message', 'wa-template': 'WhatsApp template' };
+  var CHANNEL_LABEL = { 'ig-image': 'Instagram image', 'ig-carousel': 'Instagram carousel', 'product-card': 'Product card', 'category-image': 'Category image', 'wa-message': 'WhatsApp message', 'wa-template': 'WhatsApp template' };
 
   function drawWeek() {
     var today = new Date().getDay();
@@ -403,7 +462,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
   function ctx() {
     return { products: selected, headline: $('headline').value.trim(), extra: $('extra').value.trim(), tone: $('tone').value, lang: $('lang').value, festival: $('festival').value.trim(), aiText: $('aiText').checked, incDesc: $('incDesc').checked, refs: selected.length + uploads.length };
   }
-  function refFiles() { var r = selected.slice(0, 4).map(firstImage); uploads.forEach(function (u) { r.push(u.filename); }); return r.slice(0, 6); }
+  function refFiles() { var r = selected.slice(0, 4).map(firstImage).filter(Boolean); uploads.forEach(function (u) { r.push(u.filename); }); return r.slice(0, 6); }
   function post(url, body) { return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Request failed'); return j; }); }); }
   function genImage(prompt) {
     return post('/api/byteplus/generate-image', { model: MODEL, size: '2k', response_format: 'url', referenceImages: refFiles(), prompt: prompt, noLogo: true }).then(function (j) { var d = j.data && j.data[0]; if (!d || !d.url) throw new Error('No image came back'); return d.url; });
@@ -612,12 +671,284 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 
   /* ---------------- tabs ---------------- */
   function showTab(name) {
-    ['create', 'plan', 'library'].forEach(function (n) { $('pt-' + n).hidden = n !== name; });
+    ['create', 'card', 'cat', 'plan', 'library'].forEach(function (n) { $('pt-' + n).hidden = n !== name; });
     Array.prototype.forEach.call($('pageTabs').children, function (b) { b.classList.toggle('active', b.dataset.pt === name); });
     if (name === 'library') loadLibrary();
+    if (name === 'card') drawProductCard();
+    if (name === 'cat') { drawCatPicker(); drawCategoryImage(); }
     window.scrollTo({ top: 0 });
   }
   $('pageTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-pt]'); if (b) showTab(b.dataset.pt); });
+
+  /* ---------------- product card ---------------- */
+  // Same layout every time: logo on top, the photo in the middle, title and details at the bottom, on white.
+  var pcImg = null, pcSeq = 0;
+  var PC_FONT = '"Segoe UI", Inter, Arial, sans-serif';
+  function pcWrap(g, text, maxW, maxLines) {
+    var words = String(text || '').split(/\s+/).filter(Boolean), lines = [], line = '';
+    words.forEach(function (w) {
+      var t = line ? line + ' ' + w : w;
+      if (g.measureText(t).width <= maxW || !line) line = t; else { lines.push(line); line = w; }
+    });
+    if (line) lines.push(line);
+    if (lines.length > maxLines) { lines = lines.slice(0, maxLines); var last = lines[maxLines - 1]; while (last.length > 1 && g.measureText(last + '...').width > maxW) last = last.slice(0, -1); lines[maxLines - 1] = last + '...'; }
+    return lines;
+  }
+  function drawProductCard() {
+    var cv = $('pcCanvas'), g = cv.getContext('2d'), W = 1080, H = $('pcFormat').value === 'square' ? 1080 : 1350;
+    cv.width = W; cv.height = H;
+    var seq = ++pcSeq, pad = 60;
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+    loadImg(brand.logo || BRAND_DEFAULT.logo).catch(function () { return null; }).then(function (logo) {
+      if (seq !== pcSeq) return;
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+      var y = 44;
+      if (logo) { var lh = H === 1080 ? 110 : 130, lw = Math.round(logo.naturalWidth / logo.naturalHeight * lh); g.drawImage(logo, Math.round((W - lw) / 2), y, lw, lh); y += lh; }
+      // bottom text block: title (bold) and details (lighter), centred, anchored to the bottom
+      var title = $('pcTitle').value.trim(), sub = $('pcSub').value.trim();
+      g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+      g.font = '700 58px ' + PC_FONT; var tl = title ? pcWrap(g, title, W - pad * 2, 2) : [];
+      g.font = '400 36px ' + PC_FONT; var sl = sub ? pcWrap(g, sub, W - pad * 2, 2) : [];
+      var th = tl.length * 70, sh = sl.length * 46, gap = tl.length && sl.length ? 8 : 0;
+      var textH = th + gap + sh, textTop = H - pad - textH;
+      // photo: fitted inside the free space, never stretched
+      var top = y + 24, bottom = textTop - 28, boxW = W - pad * 2, boxH = Math.max(100, bottom - top);
+      if (pcImg) {
+        var r = Math.min(boxW / pcImg.naturalWidth, boxH / pcImg.naturalHeight), dw = Math.round(pcImg.naturalWidth * r), dh = Math.round(pcImg.naturalHeight * r);
+        g.drawImage(pcImg, Math.round((W - dw) / 2), Math.round(top + (boxH - dh) / 2), dw, dh);
+      } else {
+        g.strokeStyle = '#d5dde3'; g.setLineDash([14, 10]); g.lineWidth = 3; g.strokeRect(pad + 60, top + 10, boxW - 120, boxH - 20); g.setLineDash([]);
+        g.fillStyle = '#94a3b8'; g.font = '500 34px ' + PC_FONT; g.fillText('Add a product photo', W / 2, top + boxH / 2 + 12);
+      }
+      g.fillStyle = '#1f2937'; g.font = '700 58px ' + PC_FONT; tl.forEach(function (t, i) { g.fillText(t, W / 2, textTop + 52 + i * 70); });
+      g.fillStyle = '#6b7280'; g.font = '400 36px ' + PC_FONT; sl.forEach(function (t, i) { g.fillText(t, W / 2, textTop + th + gap + 34 + i * 46); });
+    });
+  }
+  function setCardPhoto(src) {
+    if (!src) { pcImg = null; $('pcImgPrev').hidden = true; $('pcImgClear').hidden = true; drawProductCard(); return; }
+    loadImg(src).then(function (i) { pcImg = i; $('pcImgPrev').src = src; $('pcImgPrev').hidden = false; $('pcImgClear').hidden = false; drawProductCard(); }).catch(function (e) { toast(e.message); });
+  }
+  // Category first, then the products of that category, as listed on the website.
+  function drawCardPick() {
+    var cats = [], seen = {};
+    products.forEach(function (p) { if (p.category && !seen[p.category]) { seen[p.category] = 1; cats.push(p.category); } });
+    var sel = $('pcCat'), cur = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>' + cats.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+    sel.value = seen[cur] ? cur : '';
+    var keep = $('pcPick').value;
+    var list = products.filter(function (p) { return !sel.value || p.category === sel.value; });
+    $('pcPick').innerHTML = '<option value="">Choose a product...</option>' + list.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + (firstImage(p) ? '' : ' (no photo)') + '</option>'; }).join('');
+    $('pcPick').value = list.some(function (p) { return String(p.id) === keep; }) ? keep : '';
+  }
+  $('pcCat').addEventListener('change', drawCardPick);
+  $('pcPick').addEventListener('change', function () {
+    var p = products.filter(function (x) { return String(x.id) === this.value; }, this)[0];
+    if (!p) return;
+    $('pcTitle').value = p.name; $('pcSub').value = '';
+    if (firstImage(p)) setCardPhoto('/uploads/' + firstImage(p)); else { setCardPhoto(''); toast('This product has no photo in Zoho yet. Upload one here.'); }
+  });
+  $('pcImgBtn').addEventListener('click', function () { $('pcImgIn').click(); });
+  $('pcImgClear').addEventListener('click', function () { $('pcImgIn').value = ''; setCardPhoto(''); });
+  $('pcImgIn').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    if (!/^image\//.test(f.type)) { toast('Only image files'); return; }
+    var rd = new FileReader(); rd.onload = function () { setCardPhoto(rd.result); }; rd.readAsDataURL(f);
+  });
+  ['pcTitle', 'pcSub', 'pcFormat'].forEach(function (id) { $(id).addEventListener('input', drawProductCard); $(id).addEventListener('change', drawProductCard); });
+  function cardFileName() { return (($('pcTitle').value || 'product-card').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'product-card') + '.png'; }
+  $('pcDownload').addEventListener('click', function () {
+    if (!$('pcTitle').value.trim() && !pcImg) { toast('Add a photo and a title first'); return; }
+    var a = document.createElement('a'); a.href = $('pcCanvas').toDataURL('image/png'); a.download = cardFileName(); document.body.appendChild(a); a.click(); a.remove();
+  });
+  $('pcSave').addEventListener('click', function () {
+    var title = $('pcTitle').value.trim();
+    if (!title || !pcImg) { toast('Add a photo and a title first'); return; }
+    var b = this; b.disabled = true;
+    var pick = products.filter(function (x) { return String(x.id) === $('pcPick').value; })[0];
+    post('/api/creatives', { channel: 'product-card', template: 'product-card', category: (pick && pick.category) || 'Product cards', title: title, caption: $('pcSub').value.trim(), images: [$('pcCanvas').toDataURL('image/png')], products: [title] })
+      .then(function () { toast('Saved to Library'); }).catch(function (e) { toast('Could not save: ' + e.message); }).then(function () { b.disabled = false; });
+  });
+
+  /* ---------------- category image ---------------- */
+  // Several product photos arranged together on one background, each on its own white card.
+  var ciPicked = [], ciUploads = [], ciSeq = 0, CI_MAX = 8;
+  function ciSources() { return ciPicked.map(function (p) { return { key: 'p' + p.id, src: '/uploads/' + firstImage(p), name: p.name }; }).concat(ciUploads.map(function (u, i) { return { key: 'u' + i, src: u, name: 'Your photo ' + (i + 1) }; })); }
+  function drawCatPicker() {
+    var cats = {}; products.forEach(function (p) { cats[p.category] = 1; });
+    var sel = $('ciFilter'), cur = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>' + Object.keys(cats).map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+    sel.value = cats[cur] ? cur : '';
+    var q = $('ciSearch').value.trim().toLowerCase(), f = sel.value;
+    var list = products.filter(function (p) { return (!f || p.category === f) && (!q || p.name.toLowerCase().indexOf(q) >= 0); });
+    $('ciPicker').innerHTML = list.length ? list.map(function (p) {
+      var at = ciPicked.findIndex(function (x) { return x.id === p.id; });
+      return '<button type="button" class="ci-item' + (at >= 0 ? ' on' : '') + '" data-ci="' + esc(p.id) + '" title="' + esc(p.name) + (firstImage(p) ? '' : ' (no photo in Zoho yet)') + '"' + (firstImage(p) ? '' : ' style="opacity:.45"') + '>' + thumb(p) + '<span>' + esc(p.name) + '</span>' + (at >= 0 ? '<b class="ci-n">' + (at + 1) + '</b>' : '') + '</button>';
+    }).join('') : '<div class="st-empty">No products match.</div>';
+    var n = ciSources().length;
+    $('ciCount').textContent = n ? n + ' selected' : '';
+    $('ciClear').hidden = !n;
+  }
+  function ciBg(g, W, H, kind) {
+    if (kind === 'white') { g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H); return false; }
+    var grad = g.createLinearGradient(0, 0, W, H);
+    if (kind === 'navy') { grad.addColorStop(0, '#0f2a4a'); grad.addColorStop(1, '#16507a'); }
+    else if (kind === 'teal') { grad.addColorStop(0, '#0f766e'); grad.addColorStop(1, '#14b8a6'); }
+    else { grad.addColorStop(0, '#f8fafc'); grad.addColorStop(1, '#dbeafe'); }
+    g.fillStyle = grad; g.fillRect(0, 0, W, H);
+    return kind === 'navy' || kind === 'teal';
+  }
+  function ciPlace(layout, n, W, H, top, bottom) {
+    var spots = [], areaH = bottom - top, cx = W / 2, i;
+    if (layout === 'row') {
+      var cw = (W - 160) / n, hh = Math.min(areaH, cw * 2.2);
+      for (i = 0; i < n; i++) spots.push({ x: 80 + cw * (i + 0.5), y: top + areaH / 2, w: cw * 0.9, h: hh, rot: 0 });
+    } else if (layout === 'grid') {
+      var cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols), gw = (W - 160) / cols, gh = areaH / rows;
+      for (i = 0; i < n; i++) spots.push({ x: 80 + gw * ((i % cols) + 0.5), y: top + gh * (Math.floor(i / cols) + 0.5), w: gw * 0.86, h: gh * 0.86, rot: 0 });
+    } else {
+      var bw = Math.min(W * 0.38, (W - 160) / (1 + (n - 1) * 0.62)), step = bw * 0.62, ang = n > 1 ? Math.min(9, 36 / (n - 1)) : 0, bh = areaH * 0.9;
+      for (i = 0; i < n; i++) spots.push({ x: cx + (i - (n - 1) / 2) * step, y: top + areaH / 2, w: bw, h: bh, rot: (i - (n - 1) / 2) * ang * Math.PI / 180 });
+    }
+    return spots;
+  }
+  // Cuts a product out of its photo: the photos have a white background, a logo at the top and a caption at the
+  // bottom, so the largest connected object (the strip or bar itself) is kept and everything else is made transparent.
+  var ciCut = {};
+  function cutOut(im, key) {
+    if (ciCut[key]) return ciCut[key];
+    var sc = Math.min(1, 700 / Math.max(im.naturalWidth, im.naturalHeight)), w = Math.max(1, Math.round(im.naturalWidth * sc)), hh = Math.max(1, Math.round(im.naturalHeight * sc));
+    var c = document.createElement('canvas'); c.width = w; c.height = hh;
+    var g = c.getContext('2d'); g.drawImage(im, 0, 0, w, hh);
+    var d = g.getImageData(0, 0, w, hh), px = d.data, n = w * hh, mask = new Uint8Array(n), i;
+    for (i = 0; i < n; i++) { var r = px[i * 4], gg = px[i * 4 + 1], b = px[i * 4 + 2], mn = Math.min(r, gg, b), mx = Math.max(r, gg, b); mask[i] = (px[i * 4 + 3] > 20 && (mn < 214 || mx - mn > 24)) ? 1 : 0; }
+    var label = new Int32Array(n), best = 0, bestScore = 0, bb = null, cur = 0, stack = [];
+    for (i = 0; i < n; i++) {
+      if (!mask[i] || label[i]) continue;
+      cur++; var x0 = w, x1 = 0, y0 = hh, y1 = 0, area = 0; stack.length = 0; stack.push(i); label[i] = cur;
+      while (stack.length) {
+        var p = stack.pop(), x = p % w, y = (p - x) / w; area++;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        if (x > 0 && mask[p - 1] && !label[p - 1]) { label[p - 1] = cur; stack.push(p - 1); }
+        if (x < w - 1 && mask[p + 1] && !label[p + 1]) { label[p + 1] = cur; stack.push(p + 1); }
+        if (y > 0 && mask[p - w] && !label[p - w]) { label[p - w] = cur; stack.push(p - w); }
+        if (y < hh - 1 && mask[p + w] && !label[p + w]) { label[p + w] = cur; stack.push(p + w); }
+      }
+      var score = Math.max(x1 - x0, y1 - y0) * Math.sqrt(area);
+      if (area > n * 0.004 && score > bestScore) { bestScore = score; best = cur; bb = [x0, y0, x1, y1]; }
+    }
+    var out;
+    if (!best) { out = c; }
+    else {
+      var m = 3, X0 = Math.max(0, bb[0] - m), Y0 = Math.max(0, bb[1] - m), X1 = Math.min(w - 1, bb[2] + m), Y1 = Math.min(hh - 1, bb[3] + m), cw = X1 - X0 + 1, ch = Y1 - Y0 + 1;
+      out = document.createElement('canvas'); out.width = cw; out.height = ch;
+      var og = out.getContext('2d'), od = og.createImageData(cw, ch);
+      for (var yy = 0; yy < ch; yy++) for (var xx = 0; xx < cw; xx++) {
+        var sx = xx + X0, sy = yy + Y0, sp = sy * w + sx, keep = label[sp] === best;
+        if (!keep) { for (var dy = -1; dy <= 1 && !keep; dy++) for (var dx = -1; dx <= 1; dx++) { var nx = sx + dx, ny = sy + dy; if (nx >= 0 && ny >= 0 && nx < w && ny < hh && label[ny * w + nx] === best) { keep = true; break; } } }
+        var o = (yy * cw + xx) * 4; od.data[o] = px[sp * 4]; od.data[o + 1] = px[sp * 4 + 1]; od.data[o + 2] = px[sp * 4 + 2]; od.data[o + 3] = keep ? 255 : 0;
+      }
+      og.putImageData(od, 0, 0);
+    }
+    ciCut[key] = out; return out;
+  }
+  // The website category picture: 2-3 products cut out and overlapping, inside a circle.
+  function drawCircleImage(srcs, seq) {
+    var cv = $('ciCanvas'), g = cv.getContext('2d'), sz = $('ciSize').value.split('x'), S = Math.min(Number(sz[0]), Number(sz[1]));
+    cv.width = S; cv.height = S; g.clearRect(0, 0, S, S);
+    var kind = $('ciBg').value, dark = kind === 'navy' || kind === 'teal', R = S / 2 - S * 0.02, C = S / 2;
+    function disc() {
+      g.save(); g.shadowColor = 'rgba(15,42,74,.25)'; g.shadowBlur = S * 0.03; g.shadowOffsetY = S * 0.012;
+      g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.closePath();
+      var grad = g.createLinearGradient(0, 0, S, S);
+      if (kind === 'navy') { grad.addColorStop(0, '#0f2a4a'); grad.addColorStop(1, '#16507a'); } else if (kind === 'teal') { grad.addColorStop(0, '#0f766e'); grad.addColorStop(1, '#14b8a6'); } else if (kind === 'white') { grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#ffffff'); } else { grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#e6eefb'); }
+      g.fillStyle = grad; g.fill(); g.restore();
+    }
+    function ring() { g.save(); g.beginPath(); g.arc(C, C, R - S * 0.008, 0, Math.PI * 2); g.lineWidth = S * 0.016; g.strokeStyle = dark ? 'rgba(255,255,255,.9)' : '#14b8a6'; g.stroke(); g.restore(); }
+    disc();
+    return Promise.all(srcs.slice(0, 3).map(function (s) { return loadImg(s.src).then(function (im) { return cutOut(im, s.key); }).catch(function () { return null; }); })).then(function (cuts) {
+      if (seq !== ciSeq) return;
+      cuts = cuts.filter(Boolean);
+      g.clearRect(0, 0, S, S); disc();
+      if (!cuts.length) { g.fillStyle = dark ? 'rgba(255,255,255,.75)' : '#94a3b8'; g.font = '500 ' + Math.round(S * 0.04) + 'px ' + PC_FONT; g.textAlign = 'center'; g.fillText('Choose 2-3 products', C, C); ring(); return; }
+      var n = cuts.length, rots = n === 1 ? [0] : n === 2 ? [-15, 13] : [-20, 18, 0], offs = n === 1 ? [0] : n === 2 ? [-0.12, 0.12] : [-0.2, 0.2, 0], order = n === 3 ? [0, 1, 2] : n === 2 ? [0, 1] : [0];
+      g.save(); g.beginPath(); g.arc(C, C, R - S * 0.012, 0, Math.PI * 2); g.clip();
+      order.forEach(function (i) {
+        var cu = cuts[i], ar = cu.width / cu.height, hgt = S * (n === 1 ? 0.6 : 0.52), wid = hgt * ar;
+        if (wid > S * 0.46) { wid = S * 0.46; hgt = wid / ar; }
+        g.save(); g.translate(C + offs[i] * S, C + S * 0.01); g.rotate(rots[i] * Math.PI / 180);
+        g.shadowColor = 'rgba(15,42,74,.35)'; g.shadowBlur = S * 0.03; g.shadowOffsetX = S * 0.008; g.shadowOffsetY = S * 0.014;
+        g.drawImage(cu, -wid / 2, -hgt / 2, wid, hgt); g.restore();
+      });
+      g.restore(); ring();
+    });
+  }
+  function drawCategoryImage() {
+    if ($('ciLayout').value === 'circle') { var seq0 = ++ciSeq; drawCircleImage(ciSources(), seq0); return; }
+    var cv = $('ciCanvas'), g = cv.getContext('2d'), sz = $('ciSize').value.split('x'), W = Number(sz[0]), H = Number(sz[1]);
+    cv.width = W; cv.height = H;
+    var seq = ++ciSeq, srcs = ciSources();
+    var dark = ciBg(g, W, H, $('ciBg').value);
+    var name = $('ciName').value.trim(), showName = $('ciShowName').checked && name;
+    Promise.all(srcs.map(function (s) { return loadImg(s.src).catch(function () { return null; }); })).then(function (imgs) {
+      if (seq !== ciSeq) return;
+      ciBg(g, W, H, $('ciBg').value);
+      imgs = imgs.filter(Boolean);
+      var logoH = 0, top = 50, bottom = H - 50;
+      if (showName) {
+        g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = dark ? '#ffffff' : '#0f2a4a'; g.font = '700 ' + (W >= 1100 ? 72 : 52) + 'px ' + PC_FONT;
+        var nm = name; while (nm.length > 3 && g.measureText(nm).width > W - 120) nm = nm.slice(0, -1);
+        g.fillText(nm, W / 2, H - 56); bottom = H - 56 - (W >= 1100 ? 100 : 76);
+      }
+      if (!imgs.length) {
+        g.fillStyle = dark ? 'rgba(255,255,255,.7)' : '#94a3b8'; g.font = '500 38px ' + PC_FONT; g.textAlign = 'center'; g.fillText('Choose products to see them here', W / 2, H / 2);
+        return;
+      }
+      var spots = ciPlace($('ciLayout').value, imgs.length, W, H, top, bottom);
+      imgs.forEach(function (im, i) {
+        var s = spots[i], r = Math.min(s.w / im.naturalWidth, s.h / im.naturalHeight), dw = im.naturalWidth * r, dh = im.naturalHeight * r;
+        // every product sits on its own white card, so busy photos stay tidy on any background
+        var pad = 12, pw = dw + pad * 2, ph = dh + pad * 2;
+        g.save(); g.translate(s.x, s.y); g.rotate(s.rot);
+        g.shadowColor = dark ? 'rgba(0,0,0,.35)' : 'rgba(15,42,74,.25)'; g.shadowBlur = 26; g.shadowOffsetY = 10;
+        g.fillStyle = '#ffffff'; g.beginPath(); if (g.roundRect) g.roundRect(-pw / 2, -ph / 2, pw, ph, 16); else g.rect(-pw / 2, -ph / 2, pw, ph); g.fill();
+        g.shadowColor = 'transparent'; g.drawImage(im, -dw / 2, -dh / 2, dw, dh);
+        g.restore();
+      });
+      g.shadowColor = 'transparent';
+    });
+  }
+  $('ciPicker').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-ci]'); if (!b) return;
+    var p = products.filter(function (x) { return String(x.id) === b.dataset.ci; })[0]; if (!p) return;
+    if (!firstImage(p)) { toast('This product has no photo in Zoho yet, so it cannot be shown in the picture.'); return; }
+    var at = ciPicked.findIndex(function (x) { return x.id === p.id; });
+    if (at >= 0) ciPicked.splice(at, 1);
+    else { if (ciSources().length >= CI_MAX) { toast('Up to ' + CI_MAX + ' products'); return; } ciPicked.push(p); if (!$('ciName').value.trim() && p.category) $('ciName').value = p.category; }
+    drawCatPicker(); drawCategoryImage();
+  });
+  $('ciUpBtn').addEventListener('click', function () { $('ciUpIn').click(); });
+  $('ciUpIn').addEventListener('change', function () {
+    var files = Array.prototype.slice.call(this.files || []); this.value = '';
+    files.forEach(function (f) {
+      if (!/^image\//.test(f.type)) { toast('Only image files'); return; }
+      if (ciSources().length >= CI_MAX) { toast('Up to ' + CI_MAX + ' products'); return; }
+      var rd = new FileReader(); rd.onload = function () { if (ciSources().length >= CI_MAX) return; ciUploads.push(rd.result); drawCatPicker(); drawCategoryImage(); }; rd.readAsDataURL(f);
+    });
+  });
+  $('ciClear').addEventListener('click', function () { ciPicked = []; ciUploads = []; drawCatPicker(); drawCategoryImage(); });
+  ['ciName', 'ciLayout', 'ciBg', 'ciSize', 'ciShowName'].forEach(function (id) { $(id).addEventListener('input', drawCategoryImage); $(id).addEventListener('change', drawCategoryImage); });
+  $('ciFilter').addEventListener('change', drawCatPicker); $('ciSearch').addEventListener('input', drawCatPicker);
+  function ciFileName() { return (($('ciName').value || 'category-image').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'category-image') + '.png'; }
+  $('ciDownload').addEventListener('click', function () {
+    if (!ciSources().length) { toast('Choose some products first'); return; }
+    var a = document.createElement('a'); a.href = $('ciCanvas').toDataURL('image/png'); a.download = ciFileName(); document.body.appendChild(a); a.click(); a.remove();
+  });
+  $('ciSave').addEventListener('click', function () {
+    if (!ciSources().length) { toast('Choose some products first'); return; }
+    var b = this, name = $('ciName').value.trim(); b.disabled = true;
+    post('/api/creatives', { channel: 'category-image', template: 'category-image', category: name || 'Category images', title: (name || 'Category') + ' image', caption: '', images: [$('ciCanvas').toDataURL('image/png')], products: ciSources().map(function (s) { return s.name; }) })
+      .then(function () { toast('Saved to Library'); }).catch(function (e) { toast('Could not save: ' + e.message); }).then(function () { b.disabled = false; });
+  });
 
   /* ---------------- website sync status ---------------- */
   var lastSync = null;
@@ -626,13 +957,13 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
     return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago';
   }
   function drawSync() {
-    $('syncWhen').textContent = lastSync ? ago(lastSync) + ' (' + new Date(lastSync).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '), ' + products.length + ' products with photos' : 'not refreshed yet';
+    $('syncWhen').textContent = lastSync ? ago(lastSync) + ' (' + new Date(lastSync).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '), ' + products.length + ' products (' + products.filter(function (p) { return firstImage(p); }).length + ' with photos)' : 'not refreshed yet';
   }
   function loadSyncStatus() { return fetch('/api/sync-status').then(function (r) { return r.json(); }).then(function (j) { lastSync = j.lastSync; drawSync(); }).catch(function () {}); }
   $('syncNow').addEventListener('click', function () {
     var b = this; b.disabled = true; b.textContent = 'Refreshing...';
     post('/api/products/import-website', {}).then(function (j) { lastSync = j.lastSync || Date.now(); return fetch('/api/products').then(function (r) { return r.json(); }); })
-      .then(function (r) { products = (r.data || []).filter(function (p) { return firstImage(p); }); selected = selected.filter(function (s) { return products.some(function (p) { return p.id === s.id; }); }); drawChips(); drawSync(); toast('Products refreshed from the website'); })
+      .then(function (r) { products = r.data || []; selected = selected.filter(function (s) { return products.some(function (p) { return p.id === s.id; }); }); drawChips(); drawCardPick(); drawCatPicker(); drawSync(); toast('Products refreshed from the website'); })
       .catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; b.textContent = 'Refresh now'; });
   });
   setInterval(drawSync, 60000);
@@ -675,7 +1006,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
 
   /* ---------------- start ---------------- */
   drawWeek(); drawChips(); drawTpls(); chooseTemplate('spotlight');
-  loadProducts().then(function () { drawChips(); return loadSyncStatus(); });
+  loadProducts().then(function () { drawChips(); drawCardPick(); drawCatPicker(); return loadSyncStatus(); });
 })();
 </script>
 </body>

@@ -1,0 +1,393 @@
+(function () {
+  'use strict';
+  var P = window.Panel, esc = P.esc;
+  var KIND = { rows: 'Fill in rows', checklist: 'Checklist', count: 'Counter' };
+  var SCHED = { daily: 'Every day', weekly: 'Every week', once: 'One time' };
+
+  // ---------------- one task, drawn the same way for the team member and for the owner ----------------
+  function cellInput(col, value, editable) {
+    var dis = editable ? '' : ' disabled', v = esc(value || '');
+    if (col.type === 'choice') return '<select name="' + col.key + '"' + dis + '><option value=""></option>' + col.options.map(function (o) { return '<option' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+    if (col.type === 'multi') {
+      var chosen = String(value || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!editable) return '<span class="multitxt">' + esc(chosen.join(', ')) + '</span>';
+      return '<details class="multi"><summary>' + (chosen.length ? esc(chosen.join(', ')) : '<span class="muted">Select...</span>') + '</summary><div class="multibox">' + col.options.map(function (o) { return '<label class="check"><input type="checkbox" data-multi-opt value="' + esc(o) + '"' + (chosen.indexOf(o) >= 0 ? ' checked' : '') + '> ' + esc(o) + '</label>'; }).join('') + '</div><input type="hidden" name="' + col.key + '" value="' + esc(chosen.join(', ')) + '"></details>';
+    }
+    var type = { phone: 'tel', date: 'date', number: 'number' }[col.type] || 'text';
+    return '<input name="' + col.key + '" type="' + type + '" value="' + v + '" aria-label="' + esc(col.label) + '" maxlength="200"' + dis + (col.followUp ? ' data-fu="1" min="' + P.addDays(P.today, 1) + '"' : '') + '>';
+  }
+  function carryNote(t) {
+    if (!t.carried) return '';
+    return P.pill('+' + t.carried + ' carried over from ' + (t.schedule === 'weekly' ? 'last week' : 'earlier'), 'doing');
+  }
+  // which task cards are open: the first task starts open and the rest closed; a click toggles one and the choice is remembered
+  var openIds = {}, seeded = {};
+  function seedOpen(tasks, key) { key = key || 'me'; if (seeded[key]) return; seeded[key] = true; var first = tasks.filter(function (t) { return t.schedule !== 'weekly'; })[0] || tasks[0]; if (first) openIds[first.id] = true; }
+  function isOpen(t) { return Boolean(openIds[t.id]); }
+  // today's and one-time tasks first, then the weekly ones under their own heading with the week's count
+  function taskList(tasks, editable, empty) {
+    if (!tasks.length) return empty;
+    var daily = tasks.filter(function (t) { return t.schedule !== 'weekly'; }), weekly = tasks.filter(function (t) { return t.schedule === 'weekly'; });
+    var done = weekly.reduce(function (s, t) { return s + t.progress.done; }, 0), total = weekly.reduce(function (s, t) { return s + t.progress.total; }, 0);
+    return daily.map(function (t) { return taskCard(t, editable); }).join('') +
+      (weekly.length ? '<div class="between wkhead"><h3>Weekly tasks</h3><span class="muted small">for the whole week, not every day &middot; ' + done + ' of ' + total + ' done this week</span></div>' + weekly.map(function (t) { return taskCard(t, editable); }).join('') : '');
+  }
+  function taskCard(t, editable) {
+    var pr = t.progress, hasFu = t.kind === 'rows' && t.columns.some(function (c) { return c.followUp; });
+    var when = t.schedule === 'weekly' ? P.pill('This week, from ' + P.fmtDate(t.date)) : t.schedule === 'once' ? P.pill(t.dueDate ? 'Due ' + P.fmtDate(t.dueDate) : 'One-time', t.dueDate && t.dueDate < P.today && !t.completedAt ? 'overdue' : '') : P.pill('Daily');
+    var head = '<div class="th"><div class="between"><span class="chips">' + P.pill(KIND[t.kind]) + when + carryNote(t) + (t.completedAt ? P.pill('Complete', 'ok') : '') + '</span></div>' +
+      (t.instructions ? '<div class="muted">' + esc(t.instructions) + '</div>' : '') +
+      (t.carried ? '<div class="muted small">Target today: ' + t.base + ' + ' + t.carried + ' left over from before = ' + (t.base + t.carried) + '</div>' : '') +
+      (hasFu ? '<div class="muted small">Set a follow-up date on a call and it comes back by itself on that day.</div>' : '') +
+      '<div class="between"><b>' + pr.done + ' of ' + pr.total + ' done (' + pr.percent + '%)</b><span class="stamp">' + (t.updatedAt ? 'Last updated ' + P.stamp(t.updatedAt, t.updatedByName) : 'Not started') + '</span></div>' + P.bar(pr.done, pr.total) + '</div>';
+    var body = '';
+    if (t.kind === 'rows') {
+      var cols = t.columns, n = cols.length;
+      body = '<div class="cells" style="--cols:' + n + '"><div class="cellrow head"><span></span>' + cols.map(function (c) { return '<span>' + esc(c.label) + (c.required ? ' *' : '') + '</span>'; }).join('') + '<span></span></div>' +
+        t.rows.map(function (r, i) {
+          var last = (r.history || [])[(r.history || []).length - 1];
+          return '<div class="cellrow ' + (t.rowsDone[i] ? 'done' : '') + '" data-task="' + t.id + '" data-i="' + i + '"><span class="no">' + (t.rowsDone[i] ? '&#10003;' : (i + 1)) + '</span>' +
+            cols.map(function (c) { return '<span class="cell">' + cellInput(c, (r.values || {})[c.key], editable) + '</span>'; }).join('') +
+            (editable ? '<span class="go"><button class="btn sm" type="button" data-save-row>Save</button></span>' : '<span></span>') +
+            ((r.updatedAt || last) ? '<div class="stampcol stamp">' + (r.updatedAt ? 'Updated ' + P.stamp(r.updatedAt, r.updatedByName) : '') + (last ? ' &middot; Follow-up call ' + P.fmtTime(last.at) + ': ' + esc(last.notes) : '') + '</div>' : '') + '</div>';
+        }).join('') + '</div>';
+    } else if (t.kind === 'checklist') {
+      body = '<div class="steps">' + t.steps.map(function (s, i) {
+        return '<label class="step check ' + (s.done ? 'on' : '') + '"><input type="checkbox" data-step="' + i + '" data-task="' + t.id + '"' + (s.done ? ' checked' : '') + (editable ? '' : ' disabled') + '><span class="t">' + esc(s.text) + '</span>' + (s.doneAt ? '<span class="stamp">' + P.fmtTime(s.doneAt) + '</span>' : '') + '</label>';
+      }).join('') + '</div>';
+    } else {
+      body = '<form class="row" style="padding:12px 14px" data-count="' + t.id + '"><label>How many ' + esc(t.unit) + ' (target ' + t.target + ')<input type="number" name="count" min="0" value="' + t.count + '"' + (editable ? '' : ' disabled') + '></label>' +
+        '<label style="flex:3 1 240px">Notes or link<input name="notes" maxlength="2000" value="' + esc(t.notes) + '" placeholder="e.g. link of the Instagram post"' + (editable ? '' : ' disabled') + '></label>' + (editable ? '<button class="btn fit" type="submit">Save</button>' : '') + '</form>';
+    }
+    var open = isOpen(t);
+    var sum = '<div class="tsum" data-toggle="' + t.id + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b class="tname">' + esc(t.name) + '</b><span class="tprog' + (t.completedAt || (pr.total && pr.done >= pr.total) ? ' ok' : '') + '">' + pr.done + '/' + pr.total + '</span><span class="tbar">' + P.bar(pr.done, pr.total) + '</span></div>';
+    return '<div class="task' + (open ? ' open' : '') + '" data-card="' + t.id + '">' + sum + '<div class="tbody">' + head + body + '</div></div>';
+  }
+
+  function wireTasks(el, editable, tasks, reload) {
+    function replace(task) { var old = el.querySelector('[data-card="' + task.id + '"]'); var tmp = document.createElement('div'); tmp.innerHTML = taskCard(task, editable); if (old) old.replaceWith(tmp.firstChild); }
+    function toggle(e) {
+      var h = e.target.closest('[data-toggle]'); if (!h) return;
+      if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      var card = h.closest('.task'), id = h.dataset.toggle; openIds[id] = !openIds[id];
+      card.classList.toggle('open', openIds[id]); h.querySelector('.caret').innerHTML = openIds[id] ? '&#9662;' : '&#9656;';
+    }
+    el.addEventListener('click', toggle); el.addEventListener('keydown', toggle);
+    if (!editable) return;
+    el.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-save-row]'); if (!b) return;
+      var row = b.closest('.cellrow'), values = {};
+      [].forEach.call(row.querySelectorAll('input,select'), function (i) { if (i.name) values[i.name] = i.value; });
+      b.disabled = true;
+      P.api('PUT', '/api/tasks/' + row.dataset.task + '/rows/' + row.dataset.i, { values: values }).then(function (r) { replace(r.task); P.toast('Saved ' + P.fmtTime(r.task.updatedAt)); if (reload) reload(true); }).catch(function (err) { b.disabled = false; P.fail(err); });
+    });
+    el.addEventListener('change', function (e) {
+      if (!e.target.hasAttribute('data-multi-opt')) return;
+      var box = e.target.closest('details'), picked = [].filter.call(box.querySelectorAll('[data-multi-opt]'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+      box.querySelector('input[type=hidden]').value = picked.join(', ');
+      box.querySelector('summary').innerHTML = picked.length ? picked.map(function (x) { return x.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }).join(', ') : '<span class="muted">Select...</span>';
+      var row = e.target.closest('.cellrow'), d = row.querySelector('[data-fu]'); if (d && !d.value && !d.dataset.suggested) { d.value = P.addDays(P.today, 7); d.dataset.suggested = '1'; }
+    });
+    el.addEventListener('input', function (e) {
+      var row = e.target.closest('.cellrow'); if (!row || e.target.hasAttribute('data-fu')) return;
+      var d = row.querySelector('[data-fu]'); if (d && !d.value && !d.dataset.suggested) { d.value = P.addDays(P.today, 7); d.dataset.suggested = '1'; }
+    });
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('.cellrow') && e.target.tagName === 'INPUT') { e.preventDefault(); e.target.closest('.cellrow').querySelector('[data-save-row]').click(); } });
+    el.addEventListener('change', function (e) {
+      var c = e.target.closest('[data-step]'); if (!c) return;
+      P.api('PUT', '/api/tasks/' + c.dataset.task + '/steps/' + c.dataset.step, { done: c.checked }).then(function (r) { replace(r.task); if (reload) reload(true); }).catch(function (err) { c.checked = !c.checked; P.fail(err); });
+    });
+    el.addEventListener('submit', function (e) {
+      var f = e.target.closest('[data-count]'); if (!f) return; e.preventDefault();
+      P.api('PUT', '/api/tasks/' + f.dataset.count + '/count', { count: f.count.value, notes: f.notes.value }).then(function (r) { replace(r.task); P.toast('Saved ' + P.fmtTime(r.task.updatedAt)); if (reload) reload(true); }).catch(P.fail);
+    });
+  }
+
+  // the customer requests still open: a short list with how far along each one is, and a way into the Customer requests tab
+  // where they are worked on. The card folds up; with more than 3 requests it starts folded (a click remembers the choice).
+  var reqFold = null;
+  // Follow up with existing customers: the day's list (3 customers who bought before and went quiet), what they bought with prices,
+  // and a small form to log the call and the next follow-up date. A customer not called today comes back tomorrow.
+  var cfOpen = {}, cfFold = null;
+  function cfRow(r, cf) {
+    var open = cfOpen[r.id] === true;
+    var head = '<div class="cfhead" data-cftog="' + r.id + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b>' + esc(r.name) + '</b><span class="chips">' + (r.calledAt ? P.pill('Called', 'ok') : P.pill('To call', 'due')) +
+      (r.rolledFrom ? P.pill('From ' + P.fmtDate(r.rolledFrom), 'overdue') : '') + P.pill('Last order ' + r.daysSince + ' days ago') + '</span></div>';
+    var min = P.addDays(P.today, 1);
+    var form = r.calledAt ? '<div class="stamp">Logged ' + P.stamp(r.calledAt, r.calledByName) + ': <b>' + esc(r.outcomeLabel) + '</b>' + (r.followUpDate ? ' &middot; next follow-up ' + P.fmtDate(r.followUpDate) : '') + (r.callNote ? ' &middot; ' + esc(r.callNote) : '') + '</div>' :
+      '<form class="fu" data-cfform="' + r.id + '"><div class="row"><label>What happened<select name="outcome" data-cfout><option value="">Choose...</option>' + cf.outcomes.map(function (o) { return '<option value="' + esc(o.key) + '">' + esc(o.label) + '</option>'; }).join('') + '</select></label>' +
+        '<label>Next follow-up<input type="date" name="nextDate" min="' + min + '"></label></div><label>Note<input name="note" maxlength="1000" placeholder="What was said"></label><div class="actions"><button class="btn sm" type="submit">Save call</button></div></form>';
+    return '<div class="item cfitem' + (open ? ' open' : '') + '" data-cfrow="' + r.id + '">' + head + '<div class="cfbody"' + (open ? '' : ' hidden') + '><div class="meta">' + (r.phone ? '<span>&#9742; <b>' + esc(r.phone) + '</b></span>' : '') + (r.company ? '<span>' + esc(r.company) + '</span>' : '') +
+      '<span>Last order <b>' + P.fmtDate(r.lastPurchaseOn) + '</b></span><span>Billed in all <b>' + P.money(r.billed) + '</b></span></div><div class="muted small">What they bought</div><pre class="cfnote">' + esc(r.note) + '</pre>' + form + '</div></div>';
+  }
+  function custCard(cf) {
+    if (!cf || cf.workDay === false) return '';
+    var rows = cf.rows, folded = cfFold === null ? false : cfFold;
+    if (!rows.length) return '<div class="card"><h3>Follow up with existing customers</h3><div class="muted small">Nobody to call today. None of the customers assigned to you who bought before has gone ' + cf.minDays + ' days without ordering (or no customers are assigned to you yet).</div></div>';
+    return '<div class="card' + (folded ? ' folded' : '') + '" id="cfCard"><div class="between reqhead" data-cffold role="button" tabindex="0"><div><h3><span class="caret">' + (folded ? '&#9656;' : '&#9662;') + '</span> Follow up with existing customers</h3><div class="muted small">' + cf.perDay + ' a day, customers who have not ordered for ' + cf.minDays + ' days. Anyone not called today comes back tomorrow.</div></div>' +
+      P.pill(cf.summary.done + ' of ' + rows.length + ' called', cf.summary.done >= rows.length ? 'ok' : 'due') + '</div><div class="reqbody list">' + rows.map(function (r) { return cfRow(r, cf); }).join('') + '</div></div>';
+  }
+  // the owner's read-only view of a person's list
+  function cfView(cf) {
+    if (!cf || !cf.rows || !cf.rows.length) return '';
+    return '<details class="card dfold"><summary><h3>Customer follow-ups (' + cf.summary.done + ' of ' + cf.rows.length + ' called)</h3></summary><div class="list">' + cf.rows.map(function (r) {
+      return '<div class="item ' + (r.calledAt ? '' : 'warn') + '"><div class="between"><b>' + esc(r.name) + '</b><span class="chips">' + (r.calledAt ? P.pill('Called', 'ok') : P.pill('Not called yet', 'due')) + (r.rolledFrom ? P.pill('From ' + P.fmtDate(r.rolledFrom), 'overdue') : '') + '</span></div>' +
+        (r.calledAt ? '<div class="stamp">' + esc(r.outcomeLabel) + (r.followUpDate ? ' &middot; next ' + P.fmtDate(r.followUpDate) : '') + (r.callNote ? ' &middot; ' + esc(r.callNote) : '') + '</div>' : '<div class="muted small">Last order ' + r.daysSince + ' days ago</div>') + '</div>';
+    }).join('') + '</div></details>';
+  }
+  function requestsCard(list) {
+    if (!list.length) return '';
+    var folded = reqFold === null ? list.length > 3 : reqFold;
+    var late = list.filter(function (r) { return r.needsAttention || r.followUpDue; }).length, shown = list.slice(0, 8);
+    var done = list.reduce(function (n, r) { return n + r.progress.done; }, 0), total = list.reduce(function (n, r) { return n + r.progress.total; }, 0), pct = total ? Math.round(done / total * 100) : 0;
+    return '<div class="card' + (folded ? ' folded' : '') + '" id="reqCard"><div class="between reqhead" data-reqfold role="button" tabindex="0"><div><h3><span class="caret">' + (folded ? '&#9656;' : '&#9662;') + '</span> Customer requests open (' + list.length + ')</h3><div class="muted small">' + (late ? late + ' need attention today. ' : '') + '<span class="red">' + pct + '% of the steps completed.</span></div></div>' +
+      '<button class="btn sm" data-goreq type="button">Open customer requests</button></div><div class="reqbody"><div class="list">' + shown.map(function (r) {
+      var p = r.progress.total ? Math.round(r.progress.done / r.progress.total * 100) : 0;
+      return '<div class="item ' + (r.needsAttention ? 'hot' : r.followUpDue ? 'warn' : '') + '" data-goreq style="cursor:pointer"><div class="between"><b>' + esc(r.customerName) + (r.request ? ' <span class="muted">' + esc(r.request.slice(0, 60)) + '</span>' : '') + '</b><span class="chips">' + P.pill(p + '% completed', (p >= 100 ? 'ok ' : '') + 'pcr') + (r.needsAttention ? P.pill('Not touched for ' + r.daysSinceTouched + ' day' + (r.daysSinceTouched === 1 ? '' : 's'), 'overdue') : '') + (r.followUpDue ? P.pill('Follow up today', 'due') : '') + '</span></div>' + P.track(r) + '<div class="meta"><span>' + r.progress.done + ' of ' + r.progress.total + ' steps</span><span>Pending: <b>' + esc(r.nextStep) + '</b></span><span>Follow up: <b>' + (r.nextDate ? P.fmtDate(r.nextDate) : 'not set') + '</b></span></div>' + '</div>';
+    }).join('') + '</div>' + (list.length > shown.length ? '<div class="muted small">and ' + (list.length - shown.length) + ' more in the tab</div>' : '') + '</div></div>';
+  }
+
+  // calls whose follow-up date has come: what was said before, and a form for this call
+  function followupsCard(list) {
+    if (!list.length) return '';
+    return '<div class="card" id="fuCard"><div class="between"><h3>Follow-up calls due (' + list.length + ')</h3><span class="muted small">They stay here until you log the call.</span></div><div class="list">' + list.map(function (f, n) {
+      return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '" data-fu="' + n + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b><span class="chips">' + P.pill(f.daysLate > 0 ? f.daysLate + ' day' + (f.daysLate === 1 ? '' : 's') + ' late' : 'Follow up today', f.daysLate > 0 ? 'overdue' : 'due') + '</span></div>' +
+        '<div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '<span>First called ' + P.fmtDate(f.calledOn) + '</span></div>' +
+        (f.history.length ? '<div class="hist">' + f.history.map(function (h) { return '<div><b>' + P.fmtTime(h.at) + '</b> ' + esc(h.notes) + '</div>'; }).join('') + '</div>' : '') +
+        '<form class="fu" data-fuform><label>What did you talk about this time<textarea name="notes" required minlength="2" maxlength="1000" style="min-height:56px"></textarea></label>' +
+        '<div class="row"><label>Next follow-up date<input type="date" name="nextDate" min="' + P.addDays(P.today, 1) + '"></label><div class="small muted" style="align-self:center">Leave it empty if there is nothing more to follow up.</div></div>' +
+        '<div class="actions"><button class="btn sm" type="submit">Save follow-up call</button></div></form></div>';
+    }).join('') + '</div></div>';
+  }
+  // ---------------- the week at a glance (Monday to Sunday) ----------------
+  var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function shortDate(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); }
+  function weekStrip(w, selected, isOwner) {
+    return '<div class="card" id="weekCard"><div class="between"><button class="btn ghost sm" data-wk="-7" type="button" title="Previous week">&lsaquo;</button>' +
+      '<div style="text-align:center"><b>' + shortDate(w.weekStart) + ' &ndash; ' + shortDate(w.weekEnd) + '</b><div class="muted small">Week: ' + w.totals.done + ' of ' + w.totals.total + ' done</div></div>' +
+      '<button class="btn ghost sm" data-wk="7" type="button" title="Next week">&rsaquo;</button></div>' +
+      '<div class="weekbar">' + w.days.map(function (d) {
+        var open = isOwner || d.editable || !d.isFuture;
+        var cls = (d.date === selected ? ' sel' : '') + (d.isToday ? ' today' : '') + (d.isFuture ? ' future' : '') + (!d.isWorkDay ? ' off' : '');
+        return '<button type="button" class="wk-day' + cls + '" data-day="' + d.date + '"' + (open ? '' : ' disabled') + '><span class="wk-n">' + DOW[d.dow] + '</span><span class="wk-d">' + Number(d.date.slice(8)) + '</span>' +
+          (d.isToday ? '<span class="wk-tag">Today</span>' : d.isFuture ? '<span class="wk-tag ahead">Ahead</span>' : '<span class="wk-tag">&nbsp;</span>') +
+          (d.isWorkDay ? P.bar(d.done, d.total) + '<span class="wk-t">' + (d.planned ? d.total + ' planned' : d.done + ' of ' + d.total) + '</span>' : '<span class="wk-t">Day off</span>') + '</button>';
+      }).join('') + '</div>' +
+      (w.weekly.length ? '<div class="chips">' + w.weekly.map(function (x) { return '<span class="chip">' + esc(x.name) + ': <b>' + x.done + ' of ' + x.total + '</b>' + (x.carried ? ' (+' + x.carried + ' carried)' : '') + (x.planned ? ' planned' : '') + '</span>'; }).join('') + '</div>' : '') +
+      '<div class="muted small" title="What is left over from earlier days is added on top when that day comes, and what you wrote is kept.">Tap a day. You can work up to a week ahead.</div></div>';
+  }
+  function daySummary(r, date) {
+    var day = r.tasks.filter(function (t) { return t.schedule !== 'weekly'; });
+    var done = day.reduce(function (s, t) { return s + t.progress.done; }, 0), total = day.reduce(function (s, t) { return s + t.progress.total; }, 0);
+    var title = date === P.today ? 'Today' : DOW[new Date(date + 'T00:00:00').getDay()] + ' ' + shortDate(date);
+    var pct = total ? Math.round(done / total * 100) : 0;
+    return '<div class="card" id="daySummary"><div class="between"><div><h3>' + title + (r.ahead ? ' (working ahead)' : '') + (r.workDay ? '' : ' (day off)') + '</h3><div class="muted">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left</div></div><div class="pct' + (pct >= 100 ? ' ok' : '') + '">' + pct + '%<span>completed</span></div></div>' + (total ? P.bar(done, total) : '') +
+      (r.ahead ? '<div class="banner info">You are working ahead on this day. Whatever is left over from the days before is added on top when this day comes, and everything you write now is kept.</div>' : '') + '</div>';
+  }
+  // the week strip and its buttons, shared by the team member and the owner. load(date, anchor) is called with the new choice.
+  function wireWeek(el, state, limits, load) {
+    el.addEventListener('click', function (e) {
+      var d = e.target.closest('[data-day]'); if (d && !d.disabled) { state.date = d.dataset.day; load(); return; }
+      var w = e.target.closest('[data-wk]'); if (!w) return;
+      var step = Number(w.dataset.wk), next = P.addDays(state.date, step);
+      if (limits.max && next > limits.max) next = limits.max;
+      if (limits.min && next < limits.min) next = limits.min;
+      state.date = next; load();
+    });
+  }
+
+  // ---------------- the team member's tasks ----------------
+  function tasksScreen(owner) { return function (el) {
+    var state = { date: P.today }, wired = false, limits = {};
+    // after each save, the week strip and the day's totals are brought up to date without redrawing the rows being typed in
+    function refreshTop() {
+      var date = state.date;
+      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date)]).then(function (res) {
+        var sum = el.querySelector('#daySummary'), wk = el.querySelector('#weekCard');
+        var t1 = document.createElement('div'); t1.innerHTML = daySummary(res[0], date); if (sum) sum.replaceWith(t1.firstChild);
+        var t2 = document.createElement('div'); t2.innerHTML = weekStrip(res[1], date, false); if (wk) wk.replaceWith(t2.firstChild);
+      }).catch(function () { /* the numbers catch up on the next reload */ });
+    }
+    function load() {
+      var date = state.date;
+      return Promise.all([P.api('GET', '/api/tasks?date=' + date), P.api('GET', '/api/week?date=' + date), date === P.today && !owner ? P.api('GET', '/api/followups-due') : Promise.resolve({ followups: [] }), date === P.today && !owner ? P.api('GET', '/api/requests?filter=mine').catch(function () { return { requests: [] }; }) : Promise.resolve({ requests: [] }), date === P.today && !owner ? P.api('GET', '/api/cust-followups').catch(function () { return null; }) : Promise.resolve(null)]).then(function (res) {
+        var r = res[0], w = res[1], fu = res[2].followups, rq = res[3].requests.filter(function (x) { return !x.complete; }); limits = { min: w.minDate, max: w.maxDate };
+        seedOpen(r.tasks);
+        el.innerHTML = '<div class="tasklayout"><aside>' + daySummary(r, date) + weekStrip(w, date, false) + '</aside><main>' +
+          requestsCard(rq) + followupsCard(fu) + custCard(res[4]) +
+          taskList(r.tasks, true, P.empty(r.workDay ? 'No tasks for this day.' : 'It is a day off. Nothing is expected.')) + '</main></div>';
+        el.__fu = fu; el.__cf = res[4];
+        if (!wired) { wired = true; wireTasks(el, true, r.tasks, refreshTop); wireWeek(el, state, { get min() { return limits.min; }, get max() { return limits.max; } }, function () { load().catch(P.fail); }); }
+      });
+    }
+    el.addEventListener('click', function (e) {
+      var cfh = e.target.closest('[data-cffold]');
+      if (cfh) { var cc = cfh.closest('#cfCard'), now = !cc.classList.contains('folded'); cfFold = now; cc.classList.toggle('folded', now); cfh.querySelector('.caret').innerHTML = now ? '&#9656;' : '&#9662;'; return; }
+      var cft = e.target.closest('[data-cftog]');
+      if (cft) { var rid = cft.dataset.cftog, body = cft.nextElementSibling, on = body.hidden; cfOpen[rid] = on; body.hidden = !on; cft.querySelector('.caret').innerHTML = on ? '&#9662;' : '&#9656;'; return; }
+      if (e.target.closest('[data-goreq]')) { P.go('requests'); return; }
+      var h = e.target.closest('[data-reqfold]'); if (!h) return;
+      var card = h.closest('#reqCard'), now = !card.classList.contains('folded'); reqFold = now; card.classList.toggle('folded', now); h.querySelector('.caret').innerHTML = now ? '&#9656;' : '&#9662;';
+    });
+    // choosing what happened suggests the next follow-up date from the rules; saving logs the call
+    el.addEventListener('change', function (e) {
+      var sel = e.target.closest('[data-cfout]'); if (!sel || !el.__cf) return;
+      var o = el.__cf.outcomes.filter(function (x) { return x.key === sel.value; })[0], f = sel.closest('form');
+      f.nextDate.value = o && o.days ? P.addDays(P.today, o.days) : '';
+    });
+    el.addEventListener('submit', function (e) {
+      var f = e.target.closest('[data-cfform]'); if (!f) return; e.preventDefault();
+      if (!f.outcome.value) { P.toast('Choose what happened'); return; }
+      P.api('POST', '/api/cust-followups/' + f.dataset.cfform + '/call', { outcome: f.outcome.value, nextDate: f.nextDate.value, note: f.note.value }).then(function () { P.toast('Call saved'); cfOpen[f.dataset.cfform] = true; return load(); }).catch(P.fail);
+    });
+    // the follow-up list changes after each save, so the handler reads the latest list from the element
+    el.addEventListener('submit', function (e) {
+      var f = e.target.closest('[data-fuform]'); if (!f) return; e.preventDefault();
+      var item = (el.__fu || [])[Number(f.closest('[data-fu]').dataset.fu)]; if (!item) return;
+      P.api('POST', '/api/tasks/' + item.taskId + '/rows/' + item.rowIndex + '/followup', { notes: f.notes.value, nextDate: f.nextDate.value }).then(function (r) { P.toast(r.nextDate ? 'Saved. Next follow-up on ' + P.fmtDate(r.nextDate) : 'Saved. No more follow-up needed.'); return load(); }).catch(P.fail);
+    });
+    return load();
+  }; }
+  P.register({ id: 'tasks', label: 'Tasks', roles: ['employee'], order: 1, render: tasksScreen(false) });
+
+  // ---------------- the owner looks at somebody's work ----------------
+  P.register({ id: 'work', label: 'Team work', roles: ['admin'], order: 2, render: function (el) {
+    var state = { date: P.today }, wired = false;
+    // everybody's day side by side: each person has their own column with the day's total, the week and their tasks
+    // one slim calendar for everybody: each day shows the team's done / planned together
+    function miniWeek(weeks, date) {
+      var w0 = weeks[0], tot = weeks.reduce(function (n, w) { return { done: n.done + w.totals.done, total: n.total + w.totals.total }; }, { done: 0, total: 0 });
+      return '<div class="card minibar"><button class="btn ghost sm" data-wk="-7" type="button" title="Previous week">&lsaquo;</button><div class="mdays">' + w0.days.map(function (d, i) {
+        var done = 0, total = 0; weeks.forEach(function (w) { done += w.days[i].done; total += w.days[i].total; });
+        return '<button type="button" class="mday' + (d.date === date ? ' sel' : '') + (d.isToday ? ' today' : '') + (d.isFuture ? ' future' : '') + (!d.isWorkDay ? ' off' : '') + '" data-day="' + d.date + '"><b>' + DOW[d.dow] + ' ' + Number(d.date.slice(8)) + '</b><span>' + (d.isWorkDay ? done + '/' + total : 'off') + '</span></button>';
+      }).join('') + '</div><span class="muted small mwk">' + shortDate(w0.weekStart) + ' &ndash; ' + shortDate(w0.weekEnd) + ' &middot; ' + tot.done + ' of ' + tot.total + '</span><button class="btn ghost sm" data-wk="7" type="button" title="Next week">&rsaquo;</button></div>';
+    }
+    // a person's header: their name and how much of the chosen day they have finished
+    function colHead(u, r, w) {
+      var day = r.tasks.filter(function (t) { return t.schedule !== 'weekly'; });
+      var done = day.reduce(function (n, t) { return n + t.progress.done; }, 0), total = day.reduce(function (n, t) { return n + t.progress.total; }, 0), pct = total ? Math.round(done / total * 100) : 0;
+      return '<div class="card colhead"><div class="between"><div><h3>' + esc(u.name) + '</h3><div class="muted small">' + done + ' of ' + total + ' done &middot; ' + (total - done) + ' left' + (r.ahead ? ' &middot; working ahead' : '') + (r.workDay ? '' : ' &middot; day off') + '</div></div><div class="pct' + (pct >= 100 ? ' ok' : '') + '">' + pct + '%<span>completed</span></div></div>' + (total ? P.bar(done, total) : '') +
+        (w.weekly.length ? '<div class="chips">' + w.weekly.map(function (x) { return '<span class="chip">' + esc(x.name) + ': <b>' + x.done + ' of ' + x.total + '</b></span>'; }).join('') + '</div>' : '') + '</div>';
+    }
+    function column(u, r, w, fu, cf) {
+      return '<section class="tcol">' + colHead(u, r, w) +
+        (fu.length ? '<details class="card dfold"><summary><h3>Follow-up calls due (' + fu.length + ')</h3></summary><div class="list">' + fu.map(function (f) { return '<div class="item ' + (f.daysLate > 0 ? 'hot' : 'warn') + '"><div class="between"><b>' + esc((f.details[0] || {}).value || 'Call') + '</b>' + P.pill(f.daysLate > 0 ? f.daysLate + ' days late' : 'Today', f.daysLate > 0 ? 'overdue' : 'due') + '</div><div class="meta">' + f.details.slice(1).map(function (x) { return '<span>' + esc(x.label) + ': <b>' + esc(x.value) + '</b></span>'; }).join('') + '</div></div>'; }).join('') + '</div></details>' : '') +
+        cfView(cf) + taskList(r.tasks, false, P.empty('No tasks for them on this day.')) + '</section>';
+    }
+    function load() {
+      var people = P.users.filter(function (u) { return u.active !== false; });
+      if (!people.length) { el.innerHTML = P.empty('Add team members first.'); return Promise.resolve(); }
+      var date = state.date;
+      return Promise.all(people.map(function (u) {
+        return Promise.all([P.api('GET', '/api/tasks?userId=' + u.id + '&date=' + date), P.api('GET', '/api/week?userId=' + u.id + '&date=' + date), P.api('GET', '/api/followups-due?userId=' + u.id), P.api('GET', '/api/cust-followups?userId=' + u.id).catch(function () { return null; })]);
+      })).then(function (all) {
+        el.innerHTML = miniWeek(all.map(function (x) { return x[1]; }), date) + '<div class="twgrid">' + people.map(function (u, i) { return column(u, all[i][0], all[i][1], all[i][2].followups, all[i][3]); }).join('') + '</div>';
+        if (!wired) { wired = true; wireTasks(el, false, [], null); wireWeek(el, state, {}, function () { load().catch(P.fail); }); }
+      });
+    }
+    return load();
+  } });
+
+  // ---------------- the task designer (owner) ----------------
+  function colRow(c) {
+    return '<div class="col-edit" data-col><label>Column name<input name="label" value="' + esc(c.label || '') + '" maxlength="30"></label><label>Type<select name="type">' + [['text', 'text'], ['phone', 'phone'], ['choice', 'choice (pick one)'], ['multi', 'multi-choice (pick several)'], ['date', 'date'], ['number', 'number']].map(function (t) { return '<option value="' + t[0] + '"' + (c.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></label>' +
+      '<label>Choices (comma separated)<input name="options" value="' + esc((c.options || []).join(', ')) + '" placeholder="only for the choice types"></label><div class="chips"><label class="check"><input type="checkbox" name="required"' + (c.required ? ' checked' : '') + '> must fill</label><label class="check" data-fu-box><input type="checkbox" name="followUp"' + (c.followUp ? ' checked' : '') + '> this is the follow-up date</label></div><button class="btn ghost sm" type="button" data-del-col>Remove</button></div>';
+  }
+  function designForm(t, defaults) {
+    t = t || { kind: 'count', schedule: 'daily', assignees: [], active: true, rowCount: 10, columns: defaults, steps: [], target: 1, unit: 'done', carry: true };
+    return '<form class="card" id="design"><div class="between"><h3>' + (t.id ? 'Change this task' : 'Design a new task') + '</h3>' + (t.id ? '<button class="btn ghost sm" type="button" data-cancel>Cancel</button>' : '') + '</div>' +
+      '<div class="row"><label style="flex:3 1 240px">Task name<input name="name" value="' + esc(t.name || '') + '" maxlength="80" required placeholder="e.g. Call 10 people"></label>' +
+      '<label>What kind of task<select name="kind"><option value="rows"' + (t.kind === 'rows' ? ' selected' : '') + '>Fill in rows (calls, visits, entries)</option><option value="checklist"' + (t.kind === 'checklist' ? ' selected' : '') + '>Checklist (steps to tick)</option><option value="count"' + (t.kind === 'count' ? ' selected' : '') + '>Counter (a number and a note)</option></select></label>' +
+      '<label>How often<select name="schedule">' + Object.keys(SCHED).map(function (k) { return '<option value="' + k + '"' + (t.schedule === k ? ' selected' : '') + '>' + SCHED[k] + (k === 'daily' ? ' (working days)' : k === 'once' ? ' (stays until done)' : ' (Monday to Sunday)') + '</option>'; }).join('') + '</select></label>' +
+      '<label data-due>Due date<input type="date" name="dueDate" value="' + esc(t.dueDate || '') + '"></label></div>' +
+      '<div data-kind="rows"><div class="row"><label>How many rows<input type="number" name="rowCount" min="1" max="200" value="' + (t.rowCount || 10) + '"></label></div>' +
+      '<div class="muted small" style="margin:6px 0">Each row gets these columns. A row counts as done when the columns marked "must fill" are filled. One date column can be the follow-up date: the call comes back by itself on that day.</div><div class="list" id="cols">' + (t.columns || defaults).map(colRow).join('') + '</div><div style="margin-top:8px"><button class="btn ghost sm" type="button" data-add-col>+ Add a column</button></div></div>' +
+      '<div data-kind="checklist"><label>Steps (one per line)<textarea name="steps" placeholder="Check stock&#10;Update the sheet&#10;Send the report">' + esc((t.steps || []).join('\n')) + '</textarea></label></div>' +
+      '<div data-kind="count"><div class="row"><label>Target number<input type="number" name="target" min="1" value="' + (t.target || 1) + '"></label><label>Unit<input name="unit" maxlength="20" value="' + esc(t.unit || 'done') + '" placeholder="photos, posts, calls"></label></div></div>' +
+      '<div data-carry class="row"><label class="check"><input type="checkbox" name="carry"' + (t.carry !== false ? ' checked' : '') + '> Carry forward what was missed (8 of 10 done means 12 next time)</label><label>Most that can carry over each time<input type="number" name="maxCarry" min="0" max="1000" value="' + (t.maxCarry === undefined ? '' : t.maxCarry) + '" placeholder="same as the target"></label></div>' +
+      '<label>Instructions for the team (optional)<textarea name="instructions" maxlength="1000">' + esc(t.instructions || '') + '</textarea></label>' +
+      '<div><div class="muted small" style="margin-bottom:6px">Who does this task</div><div class="chips">' + people().filter(function (u) { return u.active; }).map(function (u) { return '<label class="check"><input type="checkbox" name="assignee" value="' + esc(u.id) + '"' + ((t.assignees || []).indexOf(u.id) >= 0 ? ' checked' : '') + '> ' + esc(u.name) + '</label>'; }).join('') + '</div></div>' +
+      '<div class="actions"><button class="btn" type="submit">' + (t.id ? 'Save changes' : 'Create task') + '</button></div></form>';
+  }
+  function readDesign(f) {
+    var cols = [].map.call(f.querySelectorAll('[data-col]'), function (r) { return { label: r.querySelector('[name=label]').value, type: r.querySelector('[name=type]').value, options: r.querySelector('[name=options]').value, required: r.querySelector('[name=required]').checked, followUp: r.querySelector('[name=followUp]').checked }; }).filter(function (c) { return c.label.trim(); });
+    return { name: f.name.value, kind: f.kind.value, schedule: f.schedule.value, dueDate: f.dueDate.value, rowCount: f.rowCount.value, columns: cols, steps: f.steps.value, target: f.target.value, unit: f.unit.value, instructions: f.instructions.value, carry: f.carry.checked, maxCarry: f.maxCarry.value,
+      assignees: [].filter.call(f.querySelectorAll('[name=assignee]'), function (c) { return c.checked; }).map(function (c) { return c.value; }) };
+  }
+  function syncKind(f) {
+    [].forEach.call(f.querySelectorAll('[data-kind]'), function (b) { b.hidden = b.dataset.kind !== f.kind.value; });
+    f.querySelector('[data-due]').hidden = f.schedule.value !== 'once';
+    f.querySelector('[data-carry]').hidden = f.schedule.value === 'once' || f.kind.value === 'checklist';
+    [].forEach.call(f.querySelectorAll('[data-col]'), function (r) { r.querySelector('[data-fu-box]').hidden = r.querySelector('[name=type]').value !== 'date'; });
+  }
+  function people() { return [{ id: 'admin', name: 'Admin (me)', active: true }].concat(P.users); }
+  function memberChecks(name, pre) {
+    return people().filter(function (u) { return u.active; }).map(function (u) { return '<label class="check"><input type="checkbox" name="' + name + '" value="' + esc(u.id) + '"' + (u.id !== 'admin' && pre(u) ? ' checked' : '') + '> ' + esc(u.name) + '</label>'; }).join('');
+  }
+  // a task from the owner's own Admin tasks list, shown in the Admin column (it is edited in the Admin tasks tab)
+  function adminTaskItem(a) {
+    var key = 'a' + a.id, open = Boolean(openItems[key]);
+    var rep = a.repeat === 'daily' ? 'Every day' : a.repeat === 'weekly' ? 'Every week' : a.repeat === 'monthly' ? 'Every month' : 'One time';
+    return '<div class="item dti"><div class="dtih" data-itog="' + key + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b>' + esc(a.title) + '</b><span class="chips">' + P.pill('Admin task') + P.pill(rep) + (a.state === 'overdue' ? P.pill(a.daysLate + ' day' + (a.daysLate === 1 ? '' : 's') + ' late', 'overdue') : a.state === 'today' ? P.pill('Due today', 'due') : P.pill('Next ' + P.fmtDate(a.nextDue))) + '</span></div>' +
+      '<div class="dtib"' + (open ? '' : ' hidden') + '>' + (a.notes ? '<div class="muted">' + esc(a.notes) + '</div>' : '') + '<div class="actions"><a class="btn ghost sm" href="#admintasks">Open in Admin tasks</a></div></div></div>';
+  }
+  function templateItem(t) {
+    var names = t.assignees.map(function (id) { return esc((people().filter(function (u) { return u.id === id; })[0] || {}).name || '?'); }).join(', ') || 'nobody';
+    var open = Boolean(openItems[t.id]);
+    return '<div class="item dti ' + (t.active ? '' : 'warn') + '"><div class="dtih" data-itog="' + t.id + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><b>' + esc(t.name) + '</b><span class="chips">' + P.pill(KIND[t.kind]) + P.pill(SCHED[t.schedule]) + (t.carry ? P.pill('carries over') : '') + (t.active ? '' : P.pill('Switched off', 'overdue')) + '</span></div>' +
+      '<div class="dtib"' + (open ? '' : ' hidden') + '><div class="meta"><span>' + (t.kind === 'rows' ? t.rowCount + ' rows: ' + t.columns.map(function (c) { return esc(c.label); }).join(', ') : t.kind === 'checklist' ? t.steps.length + ' steps' : 'target ' + t.target + ' ' + esc(t.unit)) + '</span><span>For: <b>' + names + '</b></span>' + (t.dueDate ? '<span>Due ' + P.fmtDate(t.dueDate) + '</span>' : '') + '</div>' +
+      '<div class="actions">' + (t.adhoc ? '' : '<button class="btn ghost sm" data-edit="' + t.id + '" type="button">Change</button>') + (t.active ? '<button class="btn ghost sm" data-off="' + t.id + '" type="button">Switch off</button>' : '<button class="btn ghost sm" data-on="' + t.id + '" type="button">Switch on</button>') + '<button class="btn ghost sm" style="color:#b91c1c" data-delete="' + t.id + '" data-name="' + esc(t.name) + '" type="button">Delete</button></div></div></div>';
+  }
+  // every block of the designer is a tile that folds to its title; what is open is remembered while the screen is on
+  var openTiles = { create: true, designed: true }, openItems = {};
+  function tile(id, title, sub, body, small) {
+    var open = openTiles[id] !== undefined ? openTiles[id] : true;
+    return '<section class="dtile' + (small ? ' small' : '') + '"><div class="dthead" data-tog="' + id + '" role="button" tabindex="0"><span class="caret">' + (open ? '&#9662;' : '&#9656;') + '</span><h3>' + title + '</h3><span class="muted small">' + (sub || '') + '</span></div><div class="dtbody"' + (open ? '' : ' hidden') + '>' + body + '</div></section>';
+  }
+
+  P.register({ id: 'designer', label: 'Task designer', roles: ['admin'], order: 1, render: function (el) {
+    var editing = null, state = { list: [], presets: [] };
+    function load() {
+      return Promise.all([P.api('GET', '/api/templates'), P.api('GET', '/api/users'), P.api('GET', '/api/admin-tasks').catch(function () { return { tasks: [] }; })]).then(function (r) {
+        P.users = r[1].users; var adminTasks = r[2].tasks.filter(function (a) { return a.state !== 'done'; });
+        var list = r[0].templates, defaults = r[0].defaultColumns; state.list = list; state.presets = r[0].presets;
+        var designed = list.filter(function (t) { return !t.adhoc && t.active; }), oneTime = list.filter(function (t) { return t.adhoc && t.active; }), switchedOff = list.filter(function (t) { return !t.active; });
+        var perPerson = function (u) { return list.filter(function (t) { return t.active && t.assignees.indexOf(u.id) >= 0; }); };
+        var columns = people().filter(function (u) { return u.active; }).map(function (u) {
+          var mine = perPerson(u), own = u.id === 'admin' ? adminTasks : [];
+          return tile('col-' + u.id, esc(u.name) + ' <span class="muted small">(' + (mine.length + own.length) + ')</span>', '', (mine.length || own.length) ? '<div class="list">' + mine.map(templateItem).join('') + own.map(adminTaskItem).join('') + '</div>' : '<div class="muted small">Nothing assigned.</div>', true);
+        }).join('');
+        var createTile = tile('create', 'Create new tasks', 'for you and your team', designForm(editing, defaults));
+        el.innerHTML = tile('designed', 'Designed tasks', 'one column per person; a task for two people shows in both', '<div class="dcols">' + columns + '</div><div class="muted small">A change applies from the next day or week. Work people already started keeps its old shape.</div>') +
+          createTile + (switchedOff.length ? tile('off', 'Switched off (' + switchedOff.length + ')', 'no longer shown to anybody', '<div class="muted small">Switch one on to bring it back, or delete it for good (this also erases the work done under it).</div><div class="list">' + switchedOff.map(templateItem).join('') + '</div>') : '');
+        var f = el.querySelector('#design'); syncKind(f);
+        f.kind.addEventListener('change', function () { syncKind(f); }); f.schedule.addEventListener('change', function () { syncKind(f); });
+        f.addEventListener('change', function (e) { if (e.target.name === 'type') syncKind(f); });
+        f.addEventListener('submit', function (e) {
+          e.preventDefault();
+          P.api(editing ? 'PUT' : 'POST', '/api/templates' + (editing ? '/' + editing.id : ''), readDesign(f)).then(function () { P.toast(editing ? 'Saved' : 'Task created and given to the team'); editing = null; return load(); }).catch(P.fail);
+        });
+        if (el.__wired) return; el.__wired = true; // the click handler is attached once, however often the screen is redrawn
+        el.addEventListener('click', function (e) {
+          var t = e.target, ff = el.querySelector('#design');
+          if (t.closest('[data-add-col]')) { var d = document.createElement('div'); d.innerHTML = colRow({ type: 'text' }); ff.querySelector('#cols').appendChild(d.firstChild); syncKind(ff); return; }
+          var dc = t.closest('[data-del-col]'); if (dc) { dc.closest('[data-col]').remove(); return; }
+          if (t.closest('[data-cancel]')) { editing = null; load().catch(P.fail); return; }
+          var tg = t.closest('[data-tog]'); if (tg) { var k = tg.dataset.tog, now = openTiles[k] === undefined ? false : !openTiles[k]; openTiles[k] = now; tg.nextElementSibling.hidden = !now; tg.querySelector('.caret').innerHTML = now ? '&#9662;' : '&#9656;'; return; }
+          var ig = t.closest('[data-itog]'); if (ig) { var open = ig.nextElementSibling.hidden; openItems[ig.dataset.itog] = open; ig.nextElementSibling.hidden = !open; ig.querySelector('.caret').innerHTML = open ? '&#9662;' : '&#9656;'; return; }
+          var ed = t.closest('[data-edit]'); if (ed) { openTiles.create = true; editing = state.list.filter(function (x) { return x.id === ed.dataset.edit; })[0]; load().then(function () { window.scrollTo(0, 0); }).catch(P.fail); return; }
+          var del = t.closest('[data-delete]');
+          if (del) {
+            if (!window.confirm('Delete "' + del.dataset.name + '" for good?\n\nThis also erases all the work your team has done under it (every day, for everybody) and cannot be undone.\n\nTo keep the history and just stop it, use "Switch off" instead.')) return;
+            P.api('DELETE', '/api/templates/' + del.dataset.delete + '?permanent=1').then(function (r) { P.toast('Deleted' + (r.removedWork ? ' with ' + r.removedWork + ' day' + (r.removedWork === 1 ? '' : 's') + ' of work' : '')); return load(); }).catch(P.fail);
+            return;
+          }
+          var off = t.closest('[data-off]'); if (off) { P.api('DELETE', '/api/templates/' + off.dataset.off).then(function () { P.toast('Switched off'); return load(); }).catch(P.fail); return; }
+          var on = t.closest('[data-on]'); if (on) { P.api('PUT', '/api/templates/' + on.dataset.on, { active: true }).then(function () { P.toast('Switched on'); return load(); }).catch(P.fail); }
+        });
+      });
+    }
+    return load();
+  } });
+})();

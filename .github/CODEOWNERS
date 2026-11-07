@@ -1,0 +1,6 @@
+# Everything needs the owner's review. These paths are the sensitive ones.
+*                       @saurabh257257
+/.github/               @saurabh257257
+/scripts/               @saurabh257257
+/server.js              @saurabh257257
+/lib/                   @saurabh257257

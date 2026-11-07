@@ -8,8 +8,22 @@ import { fileURLToPath } from 'node:url'
 import { posts as materialPosts, guides } from './blog-content.mjs'
 import { posts as howtoPosts } from './blog-content-howto.mjs'
 import { posts as morePosts } from './blog-content-more.mjs'
+import { posts as productPostsA } from './blog-content-products-a.mjs'
+import { posts as productPostsB } from './blog-content-products-b.mjs'
+import { posts as productPostsC } from './blog-content-products-c.mjs'
+import { posts as productPostsD } from './blog-content-products-d.mjs'
+import { posts as productPostsE } from './blog-content-products-e.mjs'
+import { posts as productPostsF } from './blog-content-products-f.mjs'
+import { posts as productPostsG } from './blog-content-products-g.mjs'
+import { posts as productPostsH } from './blog-content-products-h.mjs'
 
-const posts = [...materialPosts, ...howtoPosts, ...morePosts]
+const posts = [...materialPosts, ...howtoPosts, ...morePosts, ...productPostsA, ...productPostsB, ...productPostsC, ...productPostsD, ...productPostsE, ...productPostsF, ...productPostsG, ...productPostsH]
+
+const slugs = new Set()
+for (const post of posts) {
+  if (slugs.has(post.slug)) throw new Error('Duplicate blog slug: ' + post.slug)
+  slugs.add(post.slug)
+}
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public')
 const OUT = path.join(ROOT, 'blog')
@@ -95,17 +109,24 @@ for (const post of posts) {
     const hit = byName.get(norm(n))
     if (hit && !listed.includes(hit)) listed.push(hit)
   }
+  const missing = names.filter((n) => !byName.get(norm(n)))
+  if (missing.length) {
+    const msg = 'Post ' + post.slug + ' links products that are not in the catalogue: ' + missing.join(' | ')
+    if (post.short) throw new Error(msg)
+    console.warn('warning: ' + msg)
+  }
   if (!listed.length) {
     const cat = String(post.category).split(',')[0].trim()
     for (const it of (byCategory.get(cat) || []).slice(0, 3)) listed.push(it)
   }
   const withPhoto = listed.filter((x) => x.image)
-  if (!withPhoto.length) throw new Error('No product photo available for post ' + post.slug)
   post.listed = listed
   // prefer a listed product whose photo no other post has used yet, so the tiles do not all look the same
   const cats = String(post.category).split(',').map((c) => c.trim())
   const pool = [...withPhoto, ...cats.flatMap((c) => (byCategory.get(c) || []).filter((x) => x.image))]
-  const hero = pool.find((x) => !usedHeroes.has(x.image)) || withPhoto[0]
+  // products without a photo of their own (some BMS boards) borrow one from the same category
+  const hero = pool.find((x) => !usedHeroes.has(x.image)) || withPhoto[0] || pool[0]
+  if (!hero) throw new Error('No product photo available for post ' + post.slug)
   usedHeroes.add(hero.image)
   post.heroImage = hero.image
   post.heroProduct = hero
@@ -116,7 +137,7 @@ for (const post of posts) {
     const hit = byName.get(norm(decodeURIComponent(enc)))
     return hit ? 'href="' + hit.url + '"' : m
   })
-  const [headline, sub] = SHORT[post.slug] || [post.title, post.teaser]
+  const [headline, sub] = SHORT[post.slug] || post.short || [post.title, post.teaser]
   post.headline = headline
   post.metaTitle = `${headline} | Arambhika Blog`.length <= 60 ? `${headline} | Arambhika Blog` : `${headline} | Arambhika`
   post.subline = sub
@@ -338,6 +359,7 @@ function renderIndex(all) {
 
 // Home page: refresh the featured blog tiles between the markers in index.html.
 const BOOK_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:4px"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h6M8 11h6"/></svg>'
+const HOME_POSTS = 9 // the home page shows a handful of featured guides; every post is on /blog/
 const homeTile = (p) => `
           <a class="blog-tile" href="/blog/${p.slug}.html">
             <div class="blog-tile-img"><img src="${p.heroImage}?w=300" alt="${esc(p.imageAlt)}" loading="lazy" /></div>
@@ -351,7 +373,7 @@ const homeGuideTile = (g) => `
 const homeHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
 fs.writeFileSync(path.join(ROOT, 'index.html'), homeHtml.replace(
   /<!-- blog-tiles:start -->[\s\S]*?<!-- blog-tiles:end -->/,
-  () => `<!-- blog-tiles:start -->${posts.map(homeTile).join('')}${guides.map(homeGuideTile).join('')}\n        <!-- blog-tiles:end -->`,
+  () => `<!-- blog-tiles:start -->${posts.slice(0, HOME_POSTS).map(homeTile).join('')}${guides.map(homeGuideTile).join('')}\n        <!-- blog-tiles:end -->`,
 ))
 
 fs.mkdirSync(OUT, { recursive: true })

@@ -35,6 +35,11 @@ describe('production server', () => {
     }
   })
 
+  test('the home page has no "Browse all products" list of every product link', async () => {
+    const home = await app.newClient().get('/')
+    assert.doesNotMatch(home.text, /Browse all products|seo-browse|browse:start/)
+  })
+
   test('the admin pages refuse requests without the token', async () => {
     const c = app.newClient()
     for (const p of ['/admin/zoho-connect', '/admin/zoho-orders', '/admin/zoho-status']) {

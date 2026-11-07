@@ -12,3 +12,12 @@ No-test-reason:
 
 ## Secrets / config
 - [ ] No credentials in code, tests or docs; new settings are added as GitHub environment secrets/variables and to `scripts/deploy.sh`
+
+## Contributors
+- [ ] This pull request is into `dev` (never `main`)
+- [ ] `npm test` and `npm run check` pass
+- [ ] No `.env` values, customer data or product data are included (products come from Zoho only)
+- [ ] I did not edit `.github/workflows/`, `scripts/deploy*.sh` or login/payment code (or the owner asked me to)
+
+## How I tested it
+<!-- What you ran and what you looked at on screen. Add screenshots (desktop and phone width) for anything visible. -->
