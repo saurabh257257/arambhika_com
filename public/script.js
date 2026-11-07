@@ -176,7 +176,7 @@ const renderFilters = (categories) => {
   setFilterButtonState(currentCategoryFilter);
 };
 
-// "Shop by cell": the collections from Zoho Commerce (18650, 21700, 32650 ...), exactly as set up there.
+// "Shop by Collections": the collections from Zoho Commerce (18650, 21700, 32650 ...), exactly as set up there.
 // Only a catalogue saved before collections existed falls back to reading sizes out of product names.
 let currentCellCodes = null;
 const renderCellPills = (categories) => {
@@ -197,7 +197,7 @@ const renderCellPills = (categories) => {
   if (!groups.length) return;
   const label = document.createElement("span");
   label.className = "cell-pills-label";
-  label.textContent = "Shop by cell:";
+  label.textContent = "Shop by Collections:";
   holder.appendChild(label);
   groups.forEach((g) => {
     const pill = document.createElement("button");

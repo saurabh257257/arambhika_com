@@ -270,7 +270,7 @@ describe('requesting an unavailable product', () => {
   })
 })
 
-describe('Shop by cell comes from the Zoho collections', () => {
+describe('Shop by Collections comes from the Zoho collections', () => {
   test('the catalogue carries the collections exactly as set up in Zoho', async () => {
     const { buildCatalog } = await import('../lib/catalog.js')
     const zoho = {
