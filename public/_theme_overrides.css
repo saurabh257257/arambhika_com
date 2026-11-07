@@ -2333,7 +2333,7 @@ html { font-size: 13px; }
 .prod-name { font-size: 0.86rem; font-weight: 500; }
 .prod-price { font-size: 0.95rem; }
 
-/* categories on the left, "Shop by cell" beside them on the right (stacks on narrow screens) */
+/* categories and "Shop by Collections" (the latter is stacked under the former further down) */
 .catalog-wrap { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); align-items: center; column-gap: 24px; }
 .catalog-wrap > .catalog-grid { grid-column: 1 / -1; }
 .cell-pills { align-self: center; padding: 8px 10px; background: rgba(255, 255, 255, 0.7); border: 1px solid #dbe8e5; border-radius: 10px; }
@@ -2886,3 +2886,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--m-teal) !importa
 
 .cat-bar, .cat-scroller { background: #fff !important; }
 .header-search { border: 0 !important; background: transparent !important; box-shadow: none !important; }
+
+/* ===== layout: all categories on top, "Shop by Collections" on its own row underneath ===== */
+.cat-bar { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+.cat-bar .cell-pills { align-self: stretch; margin: 0 0 4px; padding: 3px 2px; background: transparent; border: 0; border-radius: 0; }
+@media (max-width: 1180px) {
+  .cat-bar { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .cat-bar .cat-tiles { position: static; box-shadow: none; margin: 0; padding-left: 2px; padding-right: 2px; background: transparent; backdrop-filter: none; }
+  .cat-bar .cell-pills { margin: 0 0 4px; }
+}
