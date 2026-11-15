@@ -73,8 +73,7 @@ cd '$REL'
 install -m 600 .env.new '$BASE/shared/.env'
 rm -f .env.new
 ln -sfn '$BASE/shared/.env' .env
-node -e 'process.exit(Number(process.versions.node.split(String.fromCharCode(46))[0]) >= 22 ? 0 : 1)' || { echo 'Portal needs Node 22.13 or newer on the droplet'; exit 1; }
-npm ci --omit=dev --no-audit --no-fund
+npm ci --omit=dev --no-audit --no-fund || { echo '::error::npm ci failed on the droplet'; exit 1; }
 ln -sfn '$REL' '$BASE/current.new'
 mv -Tf '$BASE/current.new' '$BASE/current'
 pm2 delete '$PM2_NAME' >/dev/null 2>&1 || true

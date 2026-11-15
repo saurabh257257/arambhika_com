@@ -9,7 +9,7 @@ Nothing else can be changed from the web. Data changes will come only from the M
 
 ## Storage
 
-SQLite in `DATA_DIR/portal.db` (Node's built-in `node:sqlite`, so Node 22.13 or newer) and uploaded files in `DATA_DIR/files` under random names. Pictures show in the page; any other file is only ever sent as a download.
+SQLite in `DATA_DIR/portal.db` (Node 22.13+ built-in `node:sqlite`; on Node 20, which the droplet runs, the `better-sqlite3` package) and uploaded files in `DATA_DIR/files` under random names. Pictures show in the page; any other file is only ever sent as a download.
 
 ## Run it
 

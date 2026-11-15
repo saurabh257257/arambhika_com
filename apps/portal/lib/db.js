@@ -5,7 +5,9 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { DatabaseSync } = require('node:sqlite');
+// Node 22.13+ has SQLite built in; the dev droplet runs Node 20, where the better-sqlite3 package does the same job (same calls)
+let Database;
+try { Database = require('node:sqlite').DatabaseSync; } catch (e) { Database = require('better-sqlite3'); }
 
 const TYPES = ['note', 'call', 'whatsapp', 'visit', 'quote', 'order', 'payment', 'dispatch', 'followup'];
 const now = () => new Date().toISOString();
@@ -26,7 +28,7 @@ function checkPassword(pw, stored) {
 
 function open(dataDir) {
   fs.mkdirSync(path.join(dataDir, 'files'), { recursive: true });
-  const db = new DatabaseSync(path.join(dataDir, 'portal.db'));
+  const db = new Database(path.join(dataDir, 'portal.db'));
   db.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
