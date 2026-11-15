@@ -9,7 +9,8 @@ try {
   app = createApp({
     dataDir: process.env.DATA_DIR || path.join(__dirname, 'data'),
     adminPassword: process.env.ADMIN_PASSWORD || '',
-    sessionSecret: process.env.SESSION_SECRET || '',
+    // derived, so sharing the Admin Panel's secret never lets one app's cookie work in the other
+    sessionSecret: process.env.SESSION_SECRET ? require('crypto').createHmac('sha256', process.env.SESSION_SECRET).update('portal').digest('hex') : '',
   });
 } catch (err) {
   console.error(err.message);

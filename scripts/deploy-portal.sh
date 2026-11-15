@@ -28,7 +28,7 @@ if [ -z "${ADMIN_PASSWORD:-}" ]; then
   exit 0
 fi
 
-DOMAIN="${PORTAL_DOMAIN:-portal.arambhika.com}"
+DOMAIN="${PORTAL_DOMAIN:-}" # empty: no web address yet, so the portal is reached by the droplet address and its port
 APP_PORT="${PORTAL_PORT:-4200}"
 PM2_NAME="portal"
 BASE="/root/portal"
@@ -100,6 +100,11 @@ if [ "$healthy" -ne 1 ]; then
   exit 1
 fi
 
+# --- no web address yet: open the port so http://<droplet address>:$APP_PORT works (plain http, so use it only while testing) ---
+if [ -z "$DOMAIN" ]; then
+  remote "if command -v ufw >/dev/null && ufw status | grep -q 'Status: active'; then ufw allow $APP_PORT/tcp >/dev/null; fi"
+  echo "Portal is at http://$SSH_HOST:$APP_PORT (no DNS name, no HTTPS)"
+else
 # --- web address: an nginx site for the domain, and a certificate once the DNS record points here ---
 remote "set -e
 SITE=/etc/nginx/sites-available/$DOMAIN
@@ -131,6 +136,8 @@ if [ ! -d /etc/letsencrypt/live/$DOMAIN ]; then
   fi
 fi
 "
+
+fi
 
 # keep the three newest releases
 remote "cd '$BASE/releases' && ls -1dt */ | tail -n +4 | xargs -r rm -rf"

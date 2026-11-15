@@ -59,6 +59,6 @@ jobs:
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
           PORTAL_PORT: ${{ vars.PORTAL_PORT }}
           PORTAL_DOMAIN: ${{ vars.PORTAL_DOMAIN }}
-          # credentials, kept only as environment secrets (add these two in the GitHub dev environment)
-          ADMIN_PASSWORD: ${{ secrets.PORTAL_ADMIN_PASSWORD }}
-          SESSION_SECRET: ${{ secrets.PORTAL_SESSION_SECRET }}
+          # credentials, kept only as environment secrets (PORTAL_ADMIN_PASSWORD and PORTAL_SESSION_SECRET when set, otherwise the Admin Panel ones)
+          ADMIN_PASSWORD: ${{ secrets.PORTAL_ADMIN_PASSWORD || secrets.ADMIN_PANEL_PASSWORD }}
+          SESSION_SECRET: ${{ secrets.PORTAL_SESSION_SECRET || secrets.ADMIN_PANEL_SESSION_SECRET }}
