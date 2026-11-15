@@ -329,6 +329,12 @@ describe('mcp', () => {
       const key = (await lok.post('/api/my-connection/key')).data.key;
       assert.match(key, /^pk_/);
       assert.equal(JSON.stringify(s.app.repo.members()).includes(key), false, 'only a hash is stored');
+      const health = await (await fetch(s.base + '/health')).json();
+      assert.equal(health.status, 'ok'); assert.match(health.schema, /^[0-9a-f]{8}$/); assert.ok(health.tools >= 20, 'the server says which tool set it serves');
+      const v2 = await fetch(s.base + '/mcp/v2', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) });
+      const addVendorTool = (await v2.json()).result.tools.find((t) => t.name === 'add_vendor');
+      assert.ok(addVendorTool.inputSchema.properties.item_ids && addVendorTool.inputSchema.required.includes('item_ids'), '/mcp/v2 serves the current add_vendor with item_ids');
+      assert.equal((await fetch(s.base + '/mcp/v2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401, 'the fresh address needs sign-in too');
       assert.equal((await rpc(s.base, '', 'initialize', {})).status, 401, 'no key');
       assert.equal((await rpc(s.base, 'pk_wrongwrongwrongwrongwrong', 'initialize', {})).status, 401, 'wrong key');
       assert.equal((await fetch(s.base + '/mcp', { headers: { Authorization: 'Bearer ' + key } })).status, 405);
@@ -509,8 +515,9 @@ describe('oauth sign-in for the Claude apps', () => {
       // Claude finds out how to sign in from the 401 and the well-known pages
       const r401 = await fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       assert.equal(r401.status, 401);
-      assert.match(r401.headers.get('www-authenticate'), /resource_metadata="http:\/\/127\.0\.0\.1:\d+\/\.well-known\/oauth-protected-resource"/);
-      const pr = await (await fetch(s.base + '/.well-known/oauth-protected-resource')).json();
+      assert.match(r401.headers.get('www-authenticate'), /resource_metadata="http:\/\/127\.0\.0\.1:\d+\/\.well-known\/oauth-protected-resource\/mcp"/);
+      const pr = await (await fetch(s.base + '/.well-known/oauth-protected-resource/mcp')).json();
+      assert.equal((await (await fetch(s.base + '/.well-known/oauth-protected-resource/mcp/v2')).json()).resource, s.base + '/mcp/v2', 'the fresh address is its own resource');
       assert.equal(pr.resource, s.base + '/mcp'); assert.deepEqual(pr.authorization_servers, [s.base]);
       const as = await (await fetch(s.base + '/.well-known/oauth-authorization-server')).json();
       assert.deepEqual(as.code_challenge_methods_supported, ['S256']);

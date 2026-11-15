@@ -25,10 +25,11 @@ function install(app, repo, tries) {
     issuer: origin(req), authorization_endpoint: origin(req) + '/oauth/authorize', token_endpoint: origin(req) + '/oauth/token', registration_endpoint: origin(req) + '/oauth/register',
     response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'], code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'],
   });
-  const resource = (req) => ({ resource: origin(req) + '/mcp', authorization_servers: [origin(req)], bearer_methods_supported: ['header'] });
+  // the protected resource is the address Claude connected to: /mcp, or /mcp/v2 (asked for as .../oauth-protected-resource/mcp/v2)
+  const resource = (req) => ({ resource: origin(req) + (req.params[0] === 'mcp/v2' ? '/mcp/v2' : '/mcp'), authorization_servers: [origin(req)], bearer_methods_supported: ['header'] });
   app.get('/.well-known/oauth-authorization-server', (req, res) => res.json(meta(req)));
   app.get('/.well-known/oauth-authorization-server/*', (req, res) => res.json(meta(req)));
-  app.get('/.well-known/oauth-protected-resource', (req, res) => res.json(resource(req)));
+  app.get('/.well-known/oauth-protected-resource', (req, res) => { req.params = [""]; res.json(resource(req)); });
   app.get('/.well-known/oauth-protected-resource/*', (req, res) => res.json(resource(req)));
 
   app.post('/oauth/register', (req, res) => {

@@ -171,4 +171,7 @@ async function handle(ctx, me, msg) {
   }
 }
 
-module.exports = { handle, TOOLS };
+// a short fingerprint of every tool definition, shown on /health, so it is easy to tell which version a server is serving
+const schemaHash = () => require('crypto').createHash('sha256').update(JSON.stringify(TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })))).digest('hex').slice(0, 8);
+
+module.exports = { handle, TOOLS, schemaHash };

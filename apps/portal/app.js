@@ -73,7 +73,7 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
     res.json({ ok: true });
   });
   app.post('/api/auth/logout', (req, res) => { res.clearCookie(COOKIE, { path: '/' }); res.json({ ok: true }); });
-  app.get('/health', (req, res) => res.json({ status: 'ok' }));
+  app.get('/health', (req, res) => res.json({ status: 'ok', tools: mcp.TOOLS.length, schema: mcp.schemaHash() }));
 
   // ---- pages: only the sign-in page is open ----
   const pub = path.join(__dirname, 'public');
@@ -88,13 +88,13 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
   oauth.install(app, repo, tries);
 
   // ---- MCP: signed in with a member's own key, or the token the Claude apps get after signing in (not the browser cookie) ----
-  app.all('/mcp', async (req, res) => {
+  app.all(['/mcp', '/mcp/v2'], async (req, res) => {
     if (req.method !== 'POST') return res.status(405).set('Allow', 'POST').json({ error: 'Use POST' });
     const t = Date.now(), recent = (tries.get('mcp' + req.ip) || []).filter((x) => x > t - 10 * 60 * 1000);
     if (recent.length >= 30) return res.status(429).json({ error: 'Too many wrong keys. Please wait a few minutes.' });
     const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     const m = repo.memberByKey(bearer) || repo.memberByAccessToken(bearer);
-    if (!m) { recent.push(t); tries.set('mcp' + req.ip, recent); return res.status(401).set('WWW-Authenticate', 'Bearer resource_metadata="' + req.protocol + '://' + req.get('host') + '/.well-known/oauth-protected-resource"').json({ error: 'Missing or wrong key. Make a new one under My connection in the portal.' }); }
+    if (!m) { recent.push(t); tries.set('mcp' + req.ip, recent); return res.status(401).set('WWW-Authenticate', 'Bearer resource_metadata="' + req.protocol + '://' + req.get('host') + '/.well-known/oauth-protected-resource' + req.path + '"').json({ error: 'Missing or wrong key. Make a new one under My connection in the portal.' }); }
     tries.delete('mcp' + req.ip);
     const body = req.body;
     if (Array.isArray(body)) { const out = (await Promise.all(body.map((x) => mcp.handle(ctx, m, x)))).filter(Boolean); return out.length ? res.json(out) : res.status(202).end(); }
