@@ -118,8 +118,8 @@
       if (my !== seq) return;
       var rows = r.vendors;
       view.innerHTML = '<div class="card"><div class="between"><h2>Vendors</h2><span class="muted">' + rows.length + ' shown</span></div><label>Search<input id="vq" value="' + esc(vq) + '" placeholder="Vendor, mobile, city, or a material like nickel strip"></label>' +
-        (rows.length ? '<table><thead><tr><th>Vendor</th><th class="hide-sm">City</th><th>Materials</th><th>Last rate</th></tr></thead><tbody>' + rows.map(function (v) {
-          return '<tr class="go" data-go="vendor/' + v.mobile + '"><td><b>' + esc(v.name) + '</b><div class="muted small">' + esc([v.company, v.mobile].filter(Boolean).join(' · ')) + '</div></td><td class="hide-sm">' + esc(v.city) + '</td><td>' + v.materials + '</td><td>' + (v.last_offer ? date(v.last_offer) : '') + '</td></tr>';
+        (rows.length ? '<table><thead><tr><th>Vendor</th><th class="hide-sm">City</th><th>Our items they supply</th><th>Last rate</th></tr></thead><tbody>' + rows.map(function (v) {
+          return '<tr class="go" data-go="vendor/' + v.mobile + '"><td><b>' + esc(v.name) + '</b><div class="muted small">' + esc([v.company, v.mobile].filter(Boolean).join(' · ')) + '</div></td><td class="hide-sm">' + esc(v.city) + '</td><td>' + (v.materials ? v.materials : pill('No item linked', 'off')) + '</td><td>' + (v.last_offer ? date(v.last_offer) : '') + '</td></tr>';
         }).join('') + '</tbody></table>' : '<div class="empty">No vendors yet. Tell Claude: "Add vendor Saurav, 98xxxxxx, he supplies nickel strip at 700 a kg".</div>') + '</div>';
       var q = $('vq'); debounce(q, function () { vq = q.value; vendorsScreen().then(function () { var n = $('vq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); });
     });
@@ -132,6 +132,10 @@
       var mat = function (o) { return o.item_id ? '<a href="#item/' + o.item_id + '">' + esc(o.item_name) + '</a>' : esc(o.item_text) + ' <span class="pill due">not linked</span>'; };
       view.innerHTML = '<a class="btn ghost sm back" href="#vendors">&larr; All vendors</a>' +
         '<div class="card"><h2>' + esc(v.name) + '</h2><div class="muted">' + esc(v.company) + '</div>' + facts([['Mobile (key)', v.mobile], ['Email', v.email], ['City', [v.city, v.state].filter(Boolean).join(', ')], ['GST', v.gstin], ['Added', when(v.created_at) + (v.created_by_name ? ' by ' + v.created_by_name : '')]]) + (v.notes ? '<div>' + esc(v.notes) + '</div>' : '') + '</div>' +
+        (v.items.length ? '' : '<div class="banner"><b>This vendor has no matching item.</b> A vendor must be linked to at least one of our items. Ask Claude to link the items they supply' + (me.role === 'admin' ? ', or delete this vendor below.' : '.') + '</div>') +
+        '<div class="card"><h3>Our items they supply (' + v.items.length + ')</h3>' + (v.items.length ? '<table><thead><tr><th>Item</th><th>Latest rate</th><th>As of</th></tr></thead><tbody>' + v.items.map(function (i) {
+          return '<tr class="go" data-go="item/' + i.id + '"><td><b>' + esc(i.name) + '</b><div class="muted small">' + esc(i.sku) + '</div></td><td>' + (i.rate != null ? '<b>' + money(i.rate) + '</b>' + (i.unit ? ' / ' + esc(i.unit) : '') : '<span class="muted">No rate yet</span>') + '</td><td>' + date(i.offer_date) + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<div class="empty">None linked.</div>') + '</div>' +
         '<div class="card"><h3>What they supply now (latest rate for each material)</h3>' + (v.latest.length ? '<table><thead><tr><th>Material</th><th>Rate</th><th class="hide-sm">Available</th><th class="hide-sm">Valid till</th><th>As of</th></tr></thead><tbody>' + v.latest.map(function (o) {
           return '<tr><td>' + mat(o) + '</td><td><b>' + money(o.rate) + '</b>' + (o.unit ? ' / ' + esc(o.unit) : '') + '</td><td class="hide-sm">' + esc(o.quantity) + '</td><td class="hide-sm">' + (o.valid_till ? (o.valid_till < today ? pill('Expired ' + date(o.valid_till), 'off') : date(o.valid_till)) : '') + '</td><td>' + date(o.offer_date) + '</td></tr>';
         }).join('') + '</tbody></table>' : '<div class="empty">No rates yet.</div>') + '</div>' +
@@ -175,8 +179,8 @@
         '<div class="card"><div class="between"><div><h2>' + esc(i.name) + '</h2><div class="muted">' + esc(i.sku) + (i.category ? ' &middot; ' + esc(i.category) : '') + '</div></div>' + (i.image_url ? '<img class="thumb big" src="' + esc(i.image_url) + '" alt="">' : '') + '</div>' +
         facts([['Our price', money(i.price)], ['In stock', i.stock == null ? '' : String(i.stock)], ['Unit', i.unit], ['Minimum order', i.moq == null ? '' : String(i.moq)], ['Collections', (i.collections || []).join(', ')]]) + (i.description ? '<div class="desc">' + esc(i.description) + '</div>' : '') + '</div>' +
         '<div class="card"><h3>Who supplies this (cheapest first)</h3>' + (i.suppliers.length ? '<table><thead><tr><th>Vendor</th><th>Rate</th><th class="hide-sm">Available</th><th>As of</th></tr></thead><tbody>' + i.suppliers.map(function (s) {
-          return '<tr class="go" data-go="vendor/' + s.vendor_mobile + '"><td><b>' + esc(s.vendor_name) + '</b><div class="muted small">' + esc([s.vendor_company, s.vendor_city, s.vendor_mobile].filter(Boolean).join(' · ')) + '</div></td><td><b>' + money(s.rate) + '</b>' + (s.unit ? ' / ' + esc(s.unit) : '') + '</td><td class="hide-sm">' + esc(s.quantity) + (s.expired ? ' ' + pill('Expired', 'off') : '') + '</td><td>' + date(s.offered_on) + '</td></tr>';
-        }).join('') + '</tbody></table>' : '<div class="empty">No vendor has given a rate for this yet. Tell Claude: "Saurav has this at 700 a kg today".</div>') + '</div>';
+          return '<tr class="go" data-go="vendor/' + s.vendor_mobile + '"><td><b>' + esc(s.vendor_name) + '</b><div class="muted small">' + esc([s.vendor_company, s.vendor_city, s.vendor_mobile].filter(Boolean).join(' · ')) + '</div></td><td>' + (s.rate != null ? '<b>' + money(s.rate) + '</b>' + (s.unit ? ' / ' + esc(s.unit) : '') : '<span class="muted">No rate yet</span>') + '</td><td class="hide-sm">' + esc(s.quantity) + (s.expired ? ' ' + pill('Expired', 'off') : '') + '</td><td>' + date(s.offered_on) + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<div class="empty">No vendor supplies this yet. Tell Claude: "Saurav has this at 700 a kg today".</div>') + '</div>';
     });
   }
 

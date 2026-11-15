@@ -52,3 +52,7 @@ The portal is also an OAuth server (`lib/oauth.js`): dynamic client registration
 ### Finishing a customer profile with Claude
 
 `complete_profile` returns what is unknown about a customer, in a sensible order, with the answer options and where to look. The server cannot call a member's other connected tools (Zoho Books, email, calendar...), so its instructions and prompts (`new_lead`, `complete_customer_profile`, `sync_from_zoho`, `log_vendor_rates`) tell Claude to look there first, save what it finds, and ask the user only for the rest, two or three questions at a time.
+
+### The vendor rule
+
+A vendor exists only with at least one of our items linked to them (`vendor_items`), and a rate is saved only for one of our items. `add_vendor` needs `item_ids` (from `search_items`); `log_vendor_rate` needs an `item_id`, or a name that matches exactly one item, otherwise nothing is saved and the answer lists the candidates; `link_vendor_items` adds more items. A vendor saved before this rule with no item is shown with a red "No item linked" tag so it can be fixed (link items) or deleted by the admin.

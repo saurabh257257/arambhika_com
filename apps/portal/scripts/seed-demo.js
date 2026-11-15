@@ -24,12 +24,12 @@ repo.replaceItems([
   { id: 'p3', sku: 'BMS-4S', name: 'BMS 4S 30A', category: 'BMS', price: 650, stock: 12, unit: 'pcs', description: 'Balanced BMS for 4S lithium packs.' },
   { id: 'p4', sku: 'CB-552', name: 'Copper busbar 55x20x2 mm', category: 'Busbar', price: 480, stock: 40, unit: 'pcs' },
 ]);
-repo.addVendor({ name: 'Saurav Metals', mobile: '90000 00001', company: 'Saurav Metals', city: 'Mumbai', notes: 'Usually has nickel strip in stock. Pays supplier credit 15 days.' }, L.id);
-repo.addVendor({ name: 'Anil Traders', mobile: '90000 00002', city: 'Delhi' }, V.id);
+repo.addVendor({ name: 'Saurav Metals', mobile: '90000 00001', company: 'Saurav Metals', city: 'Mumbai', itemIds: ['p1', 'p4'], notes: 'Usually has nickel strip in stock. Pays supplier credit 15 days.' }, L.id);
+repo.addVendor({ name: 'Anil Traders', mobile: '90000 00002', city: 'Delhi', itemIds: ['p1'] }, V.id);
 repo.addOffer({ vendorMobile: '9000000001', itemId: 'p1', rate: 700, unit: 'kg', quantity: '200 kg', offerDate: day(-3) }, L.id);
 repo.addOffer({ vendorMobile: '9000000001', itemId: 'p1', rate: 685, unit: 'kg', quantity: '150 kg', validTill: day(5) }, L.id);
 repo.addOffer({ vendorMobile: '9000000002', itemId: 'p1', rate: 690, unit: 'kg', quantity: '500 kg' }, V.id);
-repo.addOffer({ vendorMobile: '9000000001', itemText: 'Copper busbar 55x20x2', rate: 340, unit: 'pcs' }, L.id);
+repo.addOffer({ vendorMobile: '9000000001', itemId: 'p4', rate: 340, unit: 'pcs' }, L.id);
 const rel = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10), line = [{ name: 'Nickel strip 0.15 mm x 8 mm', quantity: 20, rate: 750, total: 15000 }];
 repo.saveBooksDocs('9811100001', {
   invoices: [{ number: 'INV-000112', date: rel(60), due_date: rel(45), total: 20000, balance: 0, status: 'paid', lines: line }, { number: 'INV-000131', date: rel(30), due_date: rel(22), total: 15000, balance: 15000, status: 'sent', lines: line }],

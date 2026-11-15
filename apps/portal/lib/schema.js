@@ -40,6 +40,9 @@ const NEW_TABLES = `
     id TEXT PRIMARY KEY, sku TEXT NOT NULL DEFAULT '', name TEXT NOT NULL, category TEXT NOT NULL DEFAULT '', price REAL, stock REAL, unit TEXT NOT NULL DEFAULT '',
     moq REAL, description TEXT NOT NULL DEFAULT '', image_url TEXT NOT NULL DEFAULT '', collections TEXT NOT NULL DEFAULT '[]', handle TEXT NOT NULL DEFAULT '', synced_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS vendor_items (
+    vendor_mobile TEXT NOT NULL REFERENCES vendors(mobile), item_id TEXT NOT NULL REFERENCES items(id), added_by TEXT NOT NULL, added_at TEXT NOT NULL, PRIMARY KEY (vendor_mobile, item_id)
+  );
   CREATE TABLE IF NOT EXISTS vendor_offers (
     id TEXT PRIMARY KEY, vendor_mobile TEXT NOT NULL REFERENCES vendors(mobile), item_id TEXT REFERENCES items(id), item_text TEXT NOT NULL,
     rate REAL NOT NULL, unit TEXT NOT NULL DEFAULT '', quantity TEXT NOT NULL DEFAULT '', valid_till TEXT, note TEXT NOT NULL DEFAULT '',

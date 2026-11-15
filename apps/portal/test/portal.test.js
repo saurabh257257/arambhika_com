@@ -165,32 +165,51 @@ describe('portal', () => {
       assert.equal((await s.admin.get('/api/items?stock=1')).data.items.length, 2);
       assert.equal((await s.admin.get('/api/items?category=BMS')).data.items.length, 1);
 
-      const v = (m, n) => s.app.repo.addVendor({ name: n, mobile: m }, L.id);
-      assert.equal(v('+91 90000-00001', 'Saurav').vendor.mobile, '9000000001');
-      assert.equal(v('9000000001', 'Other').exists, true, 'one vendor per mobile');
-      v('9000000002', 'Anil'); v('9000000003', 'Meena');
-      assert.match(s.app.repo.addVendor({ name: 'Z', mobile: '55' }, L.id).error, /valid 10-digit Indian mobile/);
+      const v = (m, n, ids) => s.app.repo.addVendor({ name: n, mobile: m, itemIds: ids }, L.id);
+      // THE RULE: no vendor without one of our items
+      assert.match(v('9000000009', 'Nobody', undefined).error, /must supply at least one of our items/);
+      assert.match(v('9000000009', 'Nobody', []).error, /must supply at least one/);
+      assert.match(v('9000000009', 'Nobody', ['nope']).error, /do not exist/);
+      assert.equal(s.app.repo.vendor('9000000009'), null, 'nothing was created by the refusals');
+      assert.equal(v('+91 90000-00001', 'Saurav', ['p1']).vendor.mobile, '9000000001');
+      assert.equal(v('9000000001', 'Other', ['p1']).exists, true, 'one vendor per mobile');
+      v('9000000002', 'Anil', ['p1']); v('9000000003', 'Meena', ['p2']);
+      assert.match(s.app.repo.addVendor({ name: 'Z', mobile: '55', itemIds: ['p1'] }, L.id).error, /valid 10-digit Indian mobile/);
 
       const o1 = s.app.repo.addOffer({ vendorMobile: '9000000001', itemText: 'nickel strip 0.15', rate: 700, unit: 'kg', quantity: '200 kg' }, L.id);
       assert.equal(o1.mappedTo.id, 'p1', 'one clear match is linked');
       const o2 = s.app.repo.addOffer({ vendorMobile: '9000000002', itemId: 'p1', rate: 650, unit: 'kg', offerDate: '2026-11-01' }, L.id);
       assert.equal(o2.mappedTo.id, 'p1');
-      const o3 = s.app.repo.addOffer({ vendorMobile: '9000000003', itemText: 'nickel strip', rate: 900, unit: 'kg' }, L.id);
-      assert.equal(o3.mappedTo, null, 'two nickel strips: not guessed'); assert.equal(o3.candidates.length, 2);
+      // a rate with no clear item is refused, not saved
+      const vague = s.app.repo.addOffer({ vendorMobile: '9000000003', itemText: 'nickel strip', rate: 900, unit: 'kg' }, L.id);
+      assert.match(vague.error, /More than one of our items.*item_id p1.*Nothing was saved/s); assert.equal(vague.candidates.length, 2);
+      assert.match(s.app.repo.addOffer({ vendorMobile: '9000000003', itemText: 'graphene sheet', rate: 5 }, L.id).error, /None of our items matches/);
+      assert.match(s.app.repo.addOffer({ vendorMobile: '9000000003', rate: 5 }, L.id).error, /which of our items/);
+      assert.equal(s.app.repo.db.prepare('SELECT COUNT(*) AS n FROM vendor_offers WHERE vendor_mobile = ?').get('9000000003').n, 0, 'nothing saved for the refused rates');
+      assert.equal(s.app.repo.addOffer({ vendorMobile: '9000000003', itemId: 'p2', rate: 900, unit: 'kg' }, L.id).mappedTo.id, 'p2');
       assert.equal(s.app.repo.addOffer({ vendorMobile: '9000000001', itemText: 'x', rate: 0 }, L.id).error, 'The rate must be a number above zero');
       assert.equal(s.app.repo.addOffer({ vendorMobile: '9111111111', itemText: 'x', rate: 5 }, L.id).status, 404);
       assert.equal(s.app.repo.addOffer({ vendorMobile: '9000000001', itemId: 'nope', rate: 5 }, L.id).error.startsWith('That item id'), true);
+      // a rate for a new item links the vendor to it automatically; link_vendor_items adds items without a rate
+      assert.equal(s.app.repo.addOffer({ vendorMobile: '9000000001', itemId: 'p3', rate: 400, unit: 'pcs' }, L.id).mappedTo.id, 'p3');
+      assert.deepEqual(s.app.repo.vendor('9000000001').items.map((i) => i.id).sort(), ['p1', 'p3']);
+      assert.equal(s.app.repo.linkVendorItems('9000000002', ['p2', 'p2'], L.id).linked, 1);
+      assert.match(s.app.repo.linkVendorItems('9000000002', ['nope'], L.id).error, /do not exist/);
+      assert.match(s.app.repo.linkVendorItems('9000000002', [], L.id).error, /at least one item id/);
       // Saurav sends a new, lower rate the next day: it replaces the old one in "latest", the old one stays in history
       s.app.repo.addOffer({ vendorMobile: '9000000001', itemId: 'p1', rate: 640, unit: 'kg', offerDate: '2999-01-01' }, L.id);
 
       const sup = (await s.admin.get('/api/items/p1')).data.item.suppliers;
       assert.deepEqual(sup.map((x) => [x.vendor_name, x.rate]), [['Saurav', 640], ['Anil', 650]], 'cheapest first, one latest rate per vendor');
       assert.equal((await s.admin.get('/api/items')).data.items.find((i) => i.id === 'p1').best.rate, 640);
-      assert.deepEqual(s.app.repo.findSuppliers({ query: 'nickel strip' }).map((x) => x.vendor_name), ['Saurav', 'Anil', 'Meena'], 'unlinked rates are found by their words too');
-      assert.equal(s.app.repo.mapOffer(o3.offer.id, 'p2', L.id).ok, true);
+      // a vendor linked to an item but with no rate yet is listed last, with no rate
+      assert.deepEqual(s.app.repo.findSuppliers({ query: 'nickel strip' }).map((x) => [x.vendor_name, x.item.slice(0, 19), x.rate]), [['Saurav', 'Nickel strip 0.15 m', 640], ['Anil', 'Nickel strip 0.15 m', 650], ['Meena', 'Nickel strip 0.20 m', 900], ['Anil', 'Nickel strip 0.20 m', null]]);
       assert.equal(s.app.repo.findSuppliers({ itemId: 'p2' })[0].vendor_name, 'Meena');
+      // an older rate that was saved without an item can still be linked afterwards
+      s.app.repo.db.prepare("INSERT INTO vendor_offers (id, vendor_mobile, item_id, item_text, rate, unit, quantity, note, offer_date, by_member, at) VALUES ('legacy1', '9000000003', NULL, 'old rate', 5, '', '', '', '2026-01-01', ?, '2026-01-01')").run(L.id);
+      assert.equal(s.app.repo.mapOffer('legacy1', 'p2', L.id).ok, true);
       const vd = (await s.admin.get('/api/vendors/9000000001')).data.vendor;
-      assert.equal(vd.offers.length, 2); assert.equal(vd.latest.length, 1); assert.equal(vd.latest[0].rate, 640);
+      assert.equal(vd.offers.length, 3); assert.equal(vd.latest.length, 2); assert.equal(vd.latest.find((o) => o.item_id === 'p1').rate, 640); assert.equal(vd.items.find((i) => i.id === 'p1').rate, 640);
       assert.deepEqual((await s.admin.get('/api/vendors?q=nickel')).data.vendors.map((x) => x.name).sort(), ['Anil', 'Meena', 'Saurav']);
       assert.deepEqual((await s.admin.get('/api/vendors?q=9000000002')).data.vendors.map((x) => x.name), ['Anil']);
       assert.equal((await s.admin.get('/api/vendors/9111111111')).status, 404);
@@ -260,7 +279,7 @@ describe('portal', () => {
       const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
       const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
       await s.app.itemSync.sync();
-      s.app.repo.addVendor({ name: 'Saurav', mobile: '9000000001' }, L.id); s.app.repo.addVendor({ name: 'Anil', mobile: '9000000002' }, L.id);
+      s.app.repo.addVendor({ name: 'Saurav', mobile: '9000000001', itemIds: ['p1'] }, L.id); s.app.repo.addVendor({ name: 'Anil', mobile: '9000000002', itemIds: ['p1'] }, L.id);
       s.app.repo.addOffer({ vendorMobile: '9000000001', itemId: 'p1', rate: 700 }, L.id); s.app.repo.addOffer({ vendorMobile: '9000000002', itemId: 'p1', rate: 650 }, L.id);
       const del = (c, mobile, body) => c.raw('DELETE', '/api/vendors/' + mobile, body);
       assert.equal((await del(lok, '9000000001', { confirm: '9000000001' })).status, 403);
@@ -317,7 +336,7 @@ describe('mcp', () => {
       assert.equal(init.result.protocolVersion, '2025-06-18'); assert.match(init.result.instructions, /mobile number/);
       assert.equal((await fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) })).status, 202);
       const names = (await (await rpc(s.base, key, 'tools/list')).json()).result.tools.map((t) => t.name);
-      for (const n of ['add_customer', 'update_customer', 'customer_purchases', 'search_items', 'get_item', 'add_vendor', 'log_vendor_rate', 'map_vendor_rate', 'find_suppliers', 'get_vendor', 'search_vendors']) assert.ok(names.includes(n), n);
+      for (const n of ['add_customer', 'update_customer', 'customer_purchases', 'search_items', 'get_item', 'add_vendor', 'link_vendor_items', 'log_vendor_rate', 'map_vendor_rate', 'find_suppliers', 'get_vendor', 'search_vendors']) assert.ok(names.includes(n), n);
       assert.equal(names.some((n) => /delete|remove/.test(n)), false, 'nothing can be deleted');
       assert.equal(data(await call(s.base, key, 'who_am_i', {})).name, 'Lokesh');
 
@@ -363,17 +382,28 @@ describe('mcp', () => {
       await s.app.itemSync.sync();
       const found = data(await call(s.base, key, 'search_items', { query: 'nickel strip 0.15' }));
       assert.equal(found.length, 1); const itemId = found[0].id;
-      assert.equal(data(await call(s.base, key, 'add_vendor', { mobile: '90000 00001', name: 'Saurav', city: 'Mumbai' })).saved, true);
-      assert.equal((await call(s.base, key, 'add_vendor', { mobile: '9000000001', name: 'Dup' })).isError, true, 'one vendor per mobile');
+      // THE RULE through Claude: no item, no vendor
+      const noItem = await call(s.base, key, 'add_vendor', { mobile: '90000 00001', name: 'Rx Infotech', item_ids: [] });
+      assert.equal(noItem.isError, true); assert.match(noItem.content[0].text, /at least one of our items/);
+      assert.equal((await call(s.base, key, 'add_vendor', { mobile: '90000 00001', name: 'Rx Infotech' })).isError, true, 'item_ids missing');
+      assert.equal((await call(s.base, key, 'add_vendor', { mobile: '90000 00001', name: 'Rx Infotech', item_ids: ['made-up'] })).isError, true);
+      assert.equal(data(await call(s.base, key, 'search_vendors', { query: 'rx' })).length, 0, 'the refused vendor does not exist');
+      const addV = data(await call(s.base, key, 'add_vendor', { mobile: '90000 00001', name: 'Saurav', city: 'Mumbai', item_ids: [itemId] }));
+      assert.equal(addV.saved, true); assert.match(addV.supplies[0], /Nickel strip 0\.15/);
+      assert.equal((await call(s.base, key, 'add_vendor', { mobile: '9000000001', name: 'Dup', item_ids: [itemId] })).isError, true, 'one vendor per mobile');
       const rate = data(await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9000000001', material: 'nickel strip 0.15', rate: 700, unit: 'kg', quantity: '200 kg', valid_till: '2999-12-31' }));
-      assert.equal(rate.linked_to.id, itemId);
-      const vague = data(await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9000000001', material: 'nickel strip', rate: 810, unit: 'kg' }));
-      assert.equal(vague.linked_to, null); assert.ok(vague.not_linked_candidates.length >= 2);
-      assert.equal(data(await call(s.base, key, 'map_vendor_rate', { offer_id: vague.offer_id, item_id: itemId })).saved, true);
+      assert.equal(rate.item.id, itemId);
+      const vague = await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9000000001', material: 'nickel strip', rate: 810, unit: 'kg' });
+      assert.equal(vague.isError, true); assert.match(vague.content[0].text, /More than one of our items/); assert.match(vague.content[0].text, /Nothing was saved/);
+      assert.equal((await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9000000001', material: 'graphene', rate: 5 })).isError, true);
+      assert.equal(data(await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9000000001', item_id: itemId, rate: 810, unit: 'kg' })).saved, true);
+      const bms = data(await call(s.base, key, 'search_items', { query: 'bms' }))[0].id;
+      assert.equal(data(await call(s.base, key, 'link_vendor_items', { mobile: '9000000001', item_ids: [bms] })).newly_linked, 1);
+      assert.equal((await call(s.base, key, 'link_vendor_items', { mobile: '9000000001', item_ids: ['nope'] })).isError, true);
       assert.equal(data(await call(s.base, key, 'find_suppliers', { item_id: itemId }))[0].rate, 810, 'the latest rate wins');
       assert.equal(data(await call(s.base, key, 'find_suppliers', { query: 'nickel' })).length, 1);
       assert.equal(data(await call(s.base, key, 'get_item', { item_id: itemId })).suppliers.length, 1);
-      assert.equal(data(await call(s.base, key, 'get_vendor', { mobile: '9000000001' })).history.length, 2);
+      const gv = data(await call(s.base, key, 'get_vendor', { mobile: '9000000001' })); assert.equal(gv.history.length, 2); assert.equal(gv.supplies.length, 2); assert.equal(gv.supplies.find((x) => x.item_id === itemId).latest_rate, 810);
       assert.equal(data(await call(s.base, key, 'search_vendors', { query: 'nickel' })).length, 1);
       assert.equal((await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9123456789', material: 'x', rate: 5 })).isError, true);
 

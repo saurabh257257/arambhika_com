@@ -188,17 +188,36 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     filePath: (fid) => (/^[0-9a-f-]{36}$/.test(fid) ? path.join(dataDir, 'files', fid) : null),
 
     // ================= vendors (suppliers) =================
+    // THE RULE: a vendor exists only with at least one of our items linked to them (their rates are then for those items)
     addVendor(input, by) {
       const m = mobile(input.mobile);
       if (!m) return { error: 'A valid 10-digit Indian mobile number is needed in the "mobile" field (it is the vendor\'s key). Received: ' + (input.mobile == null ? 'nothing' : '"' + clean(input.mobile, 30) + '"') };
       const dup = get('SELECT name FROM vendors WHERE mobile = ?', m);
-      if (dup) return { error: 'A vendor with mobile ' + m + ' already exists: ' + dup.name, exists: true };
+      if (dup) return { error: 'A vendor with mobile ' + m + ' already exists: ' + dup.name + '. Use link_vendor_items to add the items they supply.', exists: true };
+      const ids = [...new Set((Array.isArray(input.itemIds) ? input.itemIds : []).map((x) => String(x).trim()).filter(Boolean))];
+      if (!ids.length) return { error: 'A vendor must supply at least one of our items, so it was not added. Find the item with search_items and send its id in item_ids. If none of our items matches what they supply, the vendor cannot be added.' };
+      const bad = ids.filter((x) => !get('SELECT id FROM items WHERE id = ?', x));
+      if (bad.length) return { error: 'These item ids do not exist: ' + bad.join(', ') + '. Use search_items to find the right ones.' };
       const p = profile(input); if (p.error) return p;
       if (!p.fields.name) return { error: 'The vendor needs a name' };
       const f = p.fields, t = now();
-      run('INSERT INTO vendors (mobile, name, company, email, city, state, gstin, notes, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', m, f.name, f.company || '', f.email || '', f.city || '', f.state || '', f.gstin || '', clean(input.notes, 1000), by, t, t);
-      audit(by, 'Added vendor ' + f.name + ' (' + m + ')');
+      tx(() => {
+        run('INSERT INTO vendors (mobile, name, company, email, city, state, gstin, notes, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', m, f.name, f.company || '', f.email || '', f.city || '', f.state || '', f.gstin || '', clean(input.notes, 1000), by, t, t);
+        for (const x of ids) run('INSERT INTO vendor_items (vendor_mobile, item_id, added_by, added_at) VALUES (?, ?, ?, ?)', m, x, by, t);
+      });
+      audit(by, 'Added vendor ' + f.name + ' (' + m + ') supplying ' + ids.length + ' item' + (ids.length === 1 ? '' : 's'));
       return { vendor: repo.vendor(m) };
+    },
+    linkVendorItems(m0, itemIds, by) {
+      const m = mobile(m0), v = m && get('SELECT name FROM vendors WHERE mobile = ?', m);
+      if (!v) return { error: 'No vendor with that mobile number', status: 404 };
+      const ids = [...new Set((Array.isArray(itemIds) ? itemIds : []).map((x) => String(x).trim()).filter(Boolean))];
+      if (!ids.length) return { error: 'Send at least one item id (from search_items)' };
+      const bad = ids.filter((x) => !get('SELECT id FROM items WHERE id = ?', x));
+      if (bad.length) return { error: 'These item ids do not exist: ' + bad.join(', ') + '. Use search_items to find the right ones.' };
+      let added = 0; for (const x of ids) { if (!get('SELECT 1 AS x FROM vendor_items WHERE vendor_mobile = ? AND item_id = ?', m, x)) { run('INSERT INTO vendor_items (vendor_mobile, item_id, added_by, added_at) VALUES (?, ?, ?, ?)', m, x, by, now()); added++; } }
+      if (added) audit(by, 'Linked ' + added + ' item' + (added === 1 ? '' : 's') + ' to vendor ' + v.name);
+      return { linked: added, vendor: repo.vendor(m) };
     },
     updateVendor(m0, input, by) {
       const m = mobile(m0), v = m && get('SELECT * FROM vendors WHERE mobile = ?', m);
@@ -215,18 +234,18 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       const m = mobile(m0), v = m && get('SELECT name FROM vendors WHERE mobile = ?', m);
       if (!v) return { error: 'Vendor not found', status: 404 };
       const n = get('SELECT COUNT(*) AS n FROM vendor_offers WHERE vendor_mobile = ?', m).n;
-      tx(() => { run('DELETE FROM vendor_offers WHERE vendor_mobile = ?', m); run('DELETE FROM vendors WHERE mobile = ?', m); });
+      tx(() => { run('DELETE FROM vendor_offers WHERE vendor_mobile = ?', m); run('DELETE FROM vendor_items WHERE vendor_mobile = ?', m); run('DELETE FROM vendors WHERE mobile = ?', m); });
       audit(by, 'DELETED vendor ' + v.name + ' (' + m + ') with ' + n + ' rate' + (n === 1 ? '' : 's'));
       return { ok: true, name: v.name, rates: n };
     },
     vendors({ q } = {}) {
       const term = clean(q, 60).toLowerCase(), dg = String(q || '').replace(/\D/g, '');
       const rows = all(`SELECT v.*, (SELECT COUNT(*) FROM vendor_offers o WHERE o.vendor_mobile = v.mobile) AS offers, (SELECT MAX(offer_date) FROM vendor_offers o WHERE o.vendor_mobile = v.mobile) AS last_offer,
-          (SELECT COUNT(DISTINCT COALESCE(item_id, lower(item_text))) FROM vendor_offers o WHERE o.vendor_mobile = v.mobile) AS materials FROM vendors v ORDER BY COALESCE(last_offer, v.created_at) DESC`).map(plain);
+          (SELECT COUNT(*) FROM vendor_items vi WHERE vi.vendor_mobile = v.mobile) AS materials FROM vendors v ORDER BY COALESCE(last_offer, v.created_at) DESC`).map(plain);
       if (!term) return rows;
+      const withItem = new Set(all('SELECT DISTINCT vi.vendor_mobile FROM vendor_items vi JOIN items i ON i.id = vi.item_id WHERE lower(i.name) LIKE ? ESCAPE \'\\\' OR lower(i.sku) LIKE ? ESCAPE \'\\\' OR lower(i.category) LIKE ? ESCAPE \'\\\'', like(term), like(term), like(term)).map((r) => r.vendor_mobile));
       const withText = new Set(all('SELECT DISTINCT vendor_mobile FROM vendor_offers WHERE lower(item_text) LIKE ? ESCAPE \'\\\'', like(term)).map((r) => r.vendor_mobile));
-      const withItem = new Set(all('SELECT DISTINCT o.vendor_mobile FROM vendor_offers o JOIN items i ON i.id = o.item_id WHERE lower(i.name) LIKE ? ESCAPE \'\\\' OR lower(i.sku) LIKE ? ESCAPE \'\\\'', like(term), like(term)).map((r) => r.vendor_mobile));
-      return rows.filter((v) => [v.name, v.company, v.city, v.state, v.notes, v.gstin].some((s) => String(s).toLowerCase().includes(term)) || (dg.length >= 3 && v.mobile.includes(dg)) || withText.has(v.mobile) || withItem.has(v.mobile));
+      return rows.filter((v) => [v.name, v.company, v.city, v.state, v.notes, v.gstin].some((x) => String(x).toLowerCase().includes(term)) || (dg.length >= 3 && v.mobile.includes(dg)) || withText.has(v.mobile) || withItem.has(v.mobile));
     },
     vendor(m0) {
       const m = mobile(m0), v = m && get('SELECT v.*, cb.name AS created_by_name FROM vendors v LEFT JOIN members cb ON cb.id = v.created_by WHERE v.mobile = ?', m);
@@ -234,7 +253,9 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       const offers = all('SELECT o.*, i.name AS item_name, i.sku AS item_sku, mm.name AS by_name FROM vendor_offers o LEFT JOIN items i ON i.id = o.item_id LEFT JOIN members mm ON mm.id = o.by_member WHERE o.vendor_mobile = ? ORDER BY o.offer_date DESC, o.at DESC, o.rowid DESC', m).map(plain);
       const seen = new Set(), latest = [];
       for (const o of offers) { const k = o.item_id || 'text:' + o.item_text.toLowerCase(); if (!seen.has(k)) { seen.add(k); latest.push(o); } }
-      return { ...v, offers, latest };
+      const rate = new Map(latest.filter((o) => o.item_id).map((o) => [o.item_id, o]));
+      const items = all('SELECT i.id, i.name, i.sku, i.category FROM vendor_items vi JOIN items i ON i.id = vi.item_id WHERE vi.vendor_mobile = ? ORDER BY i.name COLLATE NOCASE', m).map((i) => ({ ...plain(i), rate: rate.has(i.id) ? rate.get(i.id).rate : null, unit: rate.has(i.id) ? rate.get(i.id).unit : '', offer_date: rate.has(i.id) ? rate.get(i.id).offer_date : '' }));
+      return { ...v, offers, latest, items };
     },
 
     // ================= items (from Zoho Commerce) =================
@@ -282,22 +303,29 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     },
 
     // ================= vendor rates =================
-    // a vendor says "I have this material at this rate"; it is linked to one of our items when it can be done without guessing
+    // a vendor says "I have this material at this rate". It must be for one of our items: given by id, or named so that exactly one matches.
+    // Anything else is refused (not saved), and the answer lists the candidates.
     addOffer({ vendorMobile, itemId, itemText, rate, unit, quantity, validTill, note, offerDate }, by) {
       const vm = mobile(vendorMobile), v = vm && get('SELECT name FROM vendors WHERE mobile = ?', vm);
-      if (!v) return { error: 'No vendor with that mobile number. Add the vendor first.', status: 404 };
+      if (!v) return { error: 'No vendor with that mobile number. Add the vendor first (with the items they supply).', status: 404 };
       const r = Number(rate); if (!(r > 0)) return { error: 'The rate must be a number above zero' };
       for (const [k, d] of [['validTill', validTill], ['offerDate', offerDate]]) if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) return { error: k + ' must look like 2026-12-31' };
       let item = itemId ? get('SELECT id, name FROM items WHERE id = ?', String(itemId)) : null;
       if (itemId && !item) return { error: 'That item id does not exist. Use search_items to find it.' };
       const text = clean(itemText || (item && item.name), 200);
-      if (!text) return { error: 'Say which material it is (an item id, or the material\'s name)' };
-      let candidates = [];
-      if (!item) { candidates = repo.searchItems(text, 5); if (candidates.length === 1) item = { id: candidates[0].id, name: candidates[0].name }; }
-      const o = { id: id(), vendor_mobile: vm, item_id: item ? item.id : null, item_text: text, rate: r, unit: clean(unit, 20), quantity: clean(quantity, 60), valid_till: validTill || null, note: clean(note, 500), offer_date: offerDate || new Date().toISOString().slice(0, 10), by_member: by, at: now() };
-      run('INSERT INTO vendor_offers (id, vendor_mobile, item_id, item_text, rate, unit, quantity, valid_till, note, offer_date, by_member, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', o.id, o.vendor_mobile, o.item_id, o.item_text, o.rate, o.unit, o.quantity, o.valid_till, o.note, o.offer_date, o.by_member, o.at);
-      audit(by, 'Rate from ' + v.name + ': ' + text + ' at ' + r);
-      return { offer: o, mappedTo: item, candidates: item ? [] : candidates };
+      if (!item) {
+        if (!text) return { error: 'Say which of our items it is: its item_id from search_items, or its name.' };
+        const candidates = repo.searchItems(text, 5);
+        if (candidates.length !== 1) return { error: candidates.length ? 'More than one of our items matches "' + text + '": ' + candidates.map((c) => c.name + ' (item_id ' + c.id + ')').join('; ') + '. Send the right item_id. Nothing was saved.' : 'None of our items matches "' + text + '". A rate has to be for one of our items, so nothing was saved. Use search_items with different words.', candidates };
+        item = { id: candidates[0].id, name: candidates[0].name };
+      }
+      const o = { id: id(), vendor_mobile: vm, item_id: item.id, item_text: text, rate: r, unit: clean(unit, 20), quantity: clean(quantity, 60), valid_till: validTill || null, note: clean(note, 500), offer_date: offerDate || new Date().toISOString().slice(0, 10), by_member: by, at: now() };
+      tx(() => {
+        run('INSERT INTO vendor_offers (id, vendor_mobile, item_id, item_text, rate, unit, quantity, valid_till, note, offer_date, by_member, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', o.id, o.vendor_mobile, o.item_id, o.item_text, o.rate, o.unit, o.quantity, o.valid_till, o.note, o.offer_date, o.by_member, o.at);
+        if (!get('SELECT 1 AS x FROM vendor_items WHERE vendor_mobile = ? AND item_id = ?', vm, item.id)) run('INSERT INTO vendor_items (vendor_mobile, item_id, added_by, added_at) VALUES (?, ?, ?, ?)', vm, item.id, by, now());
+      });
+      audit(by, 'Rate from ' + v.name + ': ' + item.name + ' at ' + r);
+      return { offer: o, mappedTo: item, candidates: [] };
     },
     mapOffer(offerId, itemId, by) {
       const o = get('SELECT id FROM vendor_offers WHERE id = ?', String(offerId || '')), it = get('SELECT id, name FROM items WHERE id = ?', String(itemId || ''));
@@ -318,7 +346,12 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
         const k = o.vendor_mobile + '|' + (o.item_id || o.item_text.toLowerCase()); if (seen.has(k)) continue; seen.add(k);
         out.push({ vendor_mobile: o.vendor_mobile, vendor_name: o.vendor_name, vendor_company: o.vendor_company, vendor_city: o.vendor_city, item_id: o.item_id, item: o.item_name || o.item_text, linked: !!o.item_id, rate: o.rate, unit: o.unit, quantity: o.quantity, valid_till: o.valid_till, offered_on: o.offer_date, note: o.note, expired: !!(o.valid_till && o.valid_till < today), offer_id: o.id });
       }
-      return out.sort((a, b) => a.expired - b.expired || a.rate - b.rate);
+      // vendors who supply the item but have not given a rate yet
+      for (const l of all('SELECT vi.vendor_mobile, vi.item_id, v.name AS vendor_name, v.company AS vendor_company, v.city AS vendor_city, i.name AS item_name FROM vendor_items vi JOIN vendors v ON v.mobile = vi.vendor_mobile JOIN items i ON i.id = vi.item_id')) {
+        if (!ids.includes(l.item_id) || seen.has(l.vendor_mobile + '|' + l.item_id)) continue;
+        out.push({ vendor_mobile: l.vendor_mobile, vendor_name: l.vendor_name, vendor_company: l.vendor_company, vendor_city: l.vendor_city, item_id: l.item_id, item: l.item_name, linked: true, rate: null, unit: '', quantity: '', valid_till: null, offered_on: '', note: 'No rate given yet', expired: false, offer_id: null });
+      }
+      return out.sort((a, b) => (a.rate == null) - (b.rate == null) || a.expired - b.expired || a.rate - b.rate);
     },
   };
   return repo;
