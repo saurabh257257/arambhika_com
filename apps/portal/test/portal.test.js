@@ -110,9 +110,9 @@ describe('portal', () => {
     try {
       const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
       const add = (o) => s.app.repo.addCustomer(o, L.id);
-      assert.match(add({ name: 'X', mobile: '12345' }).error, /valid 10-digit mobile/);
-      assert.match(add({ name: 'X' }).error, /valid 10-digit mobile/);
-      assert.match(add({ name: 'X', mobile: '5811122233' }).error, /valid 10-digit mobile/, 'Indian mobiles start with 6 to 9');
+      assert.match(add({ name: 'X', mobile: '12345' }).error, /valid 10-digit Indian mobile/);
+      assert.match(add({ name: 'X' }).error, /valid 10-digit Indian mobile/);
+      assert.match(add({ name: 'X', mobile: '5811122233' }).error, /valid 10-digit Indian mobile/, 'Indian mobiles start with 6 to 9');
       const c = add({ name: 'Mr Rao', mobile: '+91 98111-22233', city: 'Pune', buyer_type: 'Non Trader', source: 'Email', looking_for: 'nickel strip 0.15 mm' });
       assert.equal(c.customer.mobile, '9811122233');
       assert.equal(c.customer.buyer_type, 'non_trader');
@@ -175,7 +175,7 @@ describe('portal', () => {
       assert.equal(v('+91 90000-00001', 'Saurav').vendor.mobile, '9000000001');
       assert.equal(v('9000000001', 'Other').exists, true, 'one vendor per mobile');
       v('9000000002', 'Anil'); v('9000000003', 'Meena');
-      assert.match(s.app.repo.addVendor({ name: 'Z', mobile: '55' }, L.id).error, /valid 10-digit mobile/);
+      assert.match(s.app.repo.addVendor({ name: 'Z', mobile: '55' }, L.id).error, /valid 10-digit Indian mobile/);
 
       const o1 = s.app.repo.addOffer({ vendorMobile: '9000000001', itemText: 'nickel strip 0.15', rate: 700, unit: 'kg', quantity: '200 kg' }, L.id);
       assert.equal(o1.mappedTo.id, 'p1', 'one clear match is linked');
@@ -334,6 +334,10 @@ describe('mcp', () => {
       const dup = await call(s.base, key, 'add_customer', { mobile: '9811122233', name: 'Rao again' });
       assert.equal(dup.isError, true); assert.match(dup.content[0].text, /already exists/);
       assert.equal((await call(s.base, key, 'add_customer', { name: 'No number' })).isError, true);
+      const noNum = await call(s.base, key, 'add_customer', { name: 'No number' });
+      assert.match(noNum.content[0].text, /Received: nothing/, 'the error says what it received');
+      // a Claude holding the older tool list sends "phone": still understood
+      assert.equal(data(await call(s.base, key, 'add_customer', { name: 'Old Style', phone: '99181 56211', company: 'Direct Computer Services' })).mobile, '9918156211');
       assert.equal(data(await call(s.base, key, 'update_customer', { mobile: '9811122233', state: 'Maharashtra', urgency: 'immediate' })).changed.length, 2);
       assert.equal((await call(s.base, key, 'update_customer', { mobile: '9811122233', buyer_type: 'bogus' })).isError, true);
       assert.equal((await call(s.base, key, 'log_interaction', { mobile: '9811122233', type: 'dance', summary: 'x' })).isError, true);

@@ -58,7 +58,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     // ================= customers =================
     addCustomer(input, by) {
       const m = mobile(input.mobile);
-      if (!m) return { error: 'A valid 10-digit mobile number is needed (it is the customer\'s key), for example 98111 22233' };
+      if (!m) return { error: 'A valid 10-digit Indian mobile number is needed in the "mobile" field (it is the customer\'s key), for example 98111 22233. Received: ' + (input.mobile == null ? 'nothing' : '"' + clean(input.mobile, 30) + '"') };
       const dup = get('SELECT name FROM customers WHERE mobile = ?', m);
       if (dup) return { error: 'A customer with mobile ' + m + ' already exists: ' + dup.name + '. Use update_customer to add more details.', exists: true };
       const p = profile(input); if (p.error) return p;
@@ -156,7 +156,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     // ================= vendors (suppliers) =================
     addVendor(input, by) {
       const m = mobile(input.mobile);
-      if (!m) return { error: 'A valid 10-digit mobile number is needed (it is the vendor\'s key)' };
+      if (!m) return { error: 'A valid 10-digit Indian mobile number is needed in the "mobile" field (it is the vendor\'s key). Received: ' + (input.mobile == null ? 'nothing' : '"' + clean(input.mobile, 30) + '"') };
       const dup = get('SELECT name FROM vendors WHERE mobile = ?', m);
       if (dup) return { error: 'A vendor with mobile ' + m + ' already exists: ' + dup.name, exists: true };
       const p = profile(input); if (p.error) return p;

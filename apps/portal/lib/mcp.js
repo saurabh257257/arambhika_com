@@ -129,6 +129,8 @@ async function handle(ctx, me, msg) {
       if (!tool) return error(-32602, 'Unknown tool');
       const args = (msg.params && msg.params.arguments) || {};
       if (typeof args !== 'object' || Array.isArray(args)) return reply(fail('The arguments must be an object'));
+      // a Claude that still holds the older tool list sends "phone"; treat it as the mobile number
+      if (args.mobile == null) { const alt = args.phone || args.mobile_number || args.phone_number; if (alt) args.mobile = alt; }
       try { return reply(await tool.run(ctx, me, args)); } catch (e) { return reply(fail('Something went wrong. Nothing was changed.')); }
     }
     default: return error(-32601, 'Method not found');
