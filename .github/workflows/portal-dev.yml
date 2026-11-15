@@ -63,3 +63,10 @@ jobs:
           # credentials, kept only as environment secrets (PORTAL_ADMIN_PASSWORD and PORTAL_SESSION_SECRET when set, otherwise the Admin Panel ones)
           ADMIN_PASSWORD: ${{ secrets.PORTAL_ADMIN_PASSWORD || secrets.ADMIN_PANEL_PASSWORD }}
           SESSION_SECRET: ${{ secrets.PORTAL_SESSION_SECRET || secrets.ADMIN_PANEL_SESSION_SECRET }}
+          # read-only access to Zoho Books (a customer's purchases and orders) and the Zoho Commerce store (items): the same values the website and Admin Panel already use
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_BOOKS_ORG_ID: ${{ secrets.ZOHO_BOOKS_ORG_ID }}
+          ZOHO_DC: ${{ vars.ZOHO_DC }}
+          ZOHO_STOREFRONT_DOMAIN: ${{ vars.ZOHO_STOREFRONT_DOMAIN }}

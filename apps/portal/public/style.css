@@ -43,7 +43,16 @@ tr.go { cursor: pointer; } tr.go:hover { background: #f0fdfa; }
 .tl { display: grid; grid-template-columns: 36px 1fr; gap: 10px; padding-bottom: 14px; position: relative; }
 .tl::before { content: ""; position: absolute; left: 17px; top: 36px; bottom: 0; width: 2px; background: var(--line); } .tl:last-child::before { display: none; }
 .dot { width: 36px; height: 36px; border-radius: 50%; background: #ccfbf1; display: grid; place-items: center; font-size: 17px; }
-.tl .what { font-weight: 600; text-transform: capitalize; } .tl p { margin: 2px 0 4px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.tl .what { font-weight: 600; } .tl p { margin: 2px 0 4px; overflow-wrap: anywhere; white-space: pre-wrap; }
 .files { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .file { border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: grid; gap: 6px; font-size: 13px; overflow-wrap: anywhere; } .file img { width: 100%; height: 100px; object-fit: cover; border-radius: 8px; }
 .back { justify-self: start; }
+/* customers, vendors, items */
+.thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: #fff; } .thumb.big { width: 96px; height: 96px; }
+.desc { white-space: pre-wrap; overflow-wrap: anywhere; color: #334155; max-height: 220px; overflow: auto; }
+h4 { margin: 4px 0 0; }
+.banner { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.todo { border: 1px solid #fed7aa; background: #fffbf5; border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; } .todoi { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+details.doc > summary { cursor: pointer; list-style: none; } details.doc > summary::-webkit-details-marker { display: none; } details.doc[open] > summary { background: #f0fdfa; }
+.docbody { padding: 8px 10px 12px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+td, th { overflow-wrap: anywhere; }

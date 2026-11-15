@@ -1,8 +1,10 @@
-// The MCP server: lets a team member's Claude read and update customer data. It speaks plain JSON-RPC over HTTP POST
+// The MCP server: lets a team member's Claude read and update the portal's data. It speaks plain JSON-RPC over HTTP POST
 // (the "streamable HTTP" transport, answering with JSON). Every call is made as one signed-in member, so every write is
-// stamped with their name. There is deliberately no tool that deletes anything.
+// stamped with their name. There is deliberately no tool that deletes anything. A customer or vendor is identified by
+// their mobile number, which is their key: a second one with the same number is refused.
 'use strict';
-const { TYPES } = require('./db');
+const { ENUMS } = require('./data');
+const books = require('./books');
 
 const VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const MAX_FILE = 5 * 1024 * 1024;
@@ -10,59 +12,107 @@ const today = () => new Date().toISOString().slice(0, 10);
 const text = (v) => ({ content: [{ type: 'text', text: typeof v === 'string' ? v : JSON.stringify(v, null, 2) }] });
 const fail = (msg) => ({ isError: true, content: [{ type: 'text', text: msg }] });
 const str = (s) => ({ type: 'string', description: s });
+const en = (list, s) => ({ type: 'string', enum: list, description: s });
+
+const MOBILE = str('Mobile number, 10 digits (+91 and spaces are fine). It is the unique key: one customer per number.');
+const PROFILE_PROPS = {
+  name: str('Contact person name'), company: str('Company or shop name'), email: str('Email'), city: str('City'), state: str('State'), pincode: str('6-digit pincode'), gstin: str('GST number, 15 characters'),
+  source: en(ENUMS.SOURCES, 'Where this customer came from'), source_detail: str('More about where from: which email, which ad, who referred them'),
+  buyer_type: en(ENUMS.BUYER_TYPES, 'trader = buys to resell; non_trader = uses it themselves'),
+  business: en(ENUMS.BUSINESSES, 'What kind of business they are'),
+  looking_for: str('What they are looking for: products, sizes, grades'), application: str('What they will use it for: e-bike, solar storage, power tool...'),
+  cell_format: str('Cell type or size: 18650, 21700, 32650, LiFePO4...'), monthly_volume: str('How much they need and how often'), urgency: en(ENUMS.URGENCY, 'How soon they need it'),
+};
+
+const customerOut = (c) => ({
+  mobile: c.mobile, name: c.name, company: c.company, email: c.email, city: c.city, state: c.state, pincode: c.pincode, gstin: c.gstin, source: c.source, source_detail: c.source_detail,
+  buyer_type: c.buyer_type, business: c.business, looking_for: c.looking_for, application: c.application, cell_format: c.cell_format, monthly_volume: c.monthly_volume, urgency: c.urgency, owner: c.owner_name,
+});
+const ownerOf = (repo, a) => { if (!a.owner_username) return { id: null }; const o = repo.memberByUsername(a.owner_username); return o ? { id: o.id } : { error: 'No active team member with that username' }; };
+const fill = (r) => (r.missing && r.missing.length ? { still_unknown: r.missing.map((m) => m.field), ask_the_user: r.missing.slice(0, 6).map((m) => m.ask) } : { still_unknown: [] });
 
 const TOOLS = [
   { name: 'who_am_i', description: 'Shows which team member you are signed in as. Everything you save is recorded under this name.', inputSchema: { type: 'object', properties: {} },
-    run: (repo, me) => text({ name: me.name, username: me.username, today: today() }) },
+    run: (c, me) => text({ name: me.name, username: me.username, today: today() }) },
   { name: 'list_team', description: 'Lists the active team members (names and usernames), for choosing an owner.', inputSchema: { type: 'object', properties: {} },
-    run: (repo) => text(repo.members().filter((m) => m.active).map((m) => ({ name: m.name, username: m.username }))) },
-  { name: 'search_customers', description: 'Finds customers by name, company, phone number or city. Leave the query empty to list the most recently active ones. Returns up to 25.',
-    inputSchema: { type: 'object', properties: { query: str('Part of a name, company, city, or a phone number'), owner_username: str('Only customers owned by this team member') } },
-    run: (repo, me, a) => {
-      let owner = '';
-      if (a.owner_username) { const o = repo.memberByUsername(a.owner_username); if (!o) return fail('No active team member with that username'); owner = o.id; }
-      return text(repo.customers({ q: a.query, owner }).slice(0, 25).map((c) => ({ id: c.id, name: c.name, company: c.company, phone: c.phone, city: c.city, owner: c.owner_name, last_interaction: c.last_at, interactions: c.interactions, next_follow_up: c.next_follow_up })));
-    } },
-  { name: 'get_customer', description: 'Shows one customer with their full history (calls, quotes, orders, payments and so on, newest first) and files.',
-    inputSchema: { type: 'object', properties: { customer_id: str('The customer id from search_customers') }, required: ['customer_id'] },
-    run: (repo, me, a) => {
-      const c = repo.customer(String(a.customer_id || ''));
-      if (!c) return fail('Customer not found');
-      return text({ id: c.id, name: c.name, company: c.company, phone: c.phone, email: c.email, city: c.city, owner: c.owner_name,
-        interactions: c.interactions.slice(0, 50).map((i) => ({ id: i.id, type: i.type, summary: i.summary, amount: i.amount, next_date: i.next_date, by: i.by_name, at: i.at })),
-        files: c.files.map((f) => ({ id: f.id, name: f.name, size: f.size, by: f.by_name, at: f.at })) });
-    } },
-  { name: 'add_customer', description: 'Adds a new customer. You become the owner unless you name someone else. Refuses a phone number that already belongs to a customer.',
-    inputSchema: { type: 'object', properties: { name: str('Customer or contact name'), company: str('Company'), phone: str('Phone number'), email: str('Email'), city: str('City'), owner_username: str('Owner, if not you') }, required: ['name'] },
-    run: (repo, me, a) => {
-      let owner = me.id;
-      if (a.owner_username) { const o = repo.memberByUsername(a.owner_username); if (!o) return fail('No active team member with that username'); owner = o.id; }
-      const r = repo.addCustomer({ name: a.name, company: a.company, phone: a.phone, email: a.email, city: a.city, ownerId: owner }, me.id);
-      return r.error ? fail(r.error) : text({ saved: true, id: r.customer.id, name: r.customer.name });
-    } },
+    run: (c) => text(c.repo.members().filter((m) => m.active).map((m) => ({ name: m.name, username: m.username }))) },
+
+  // ---------- customers ----------
+  { name: 'search_customers', description: 'Finds customers by name, company, mobile number, city, what they want, or any words from their history. Leave the query empty for the most recently active. Returns up to 25.',
+    inputSchema: { type: 'object', properties: { query: str('Words or a mobile number'), owner_username: str('Only customers owned by this team member'), buyer_type: en(ENUMS.BUYER_TYPES, 'Only traders or non-traders'), business: en(ENUMS.BUSINESSES, 'Only this kind of business') } },
+    run: (c, me, a) => { const o = ownerOf(c.repo, a); if (o.error) return fail(o.error);
+      return text(c.repo.customers({ q: a.query, owner: o.id || '', buyer: a.buyer_type, business: a.business }).slice(0, 25).map((x) => ({ ...customerOut(x), last_interaction: x.last_at, interactions: x.interactions, next_follow_up: x.next_follow_up }))); } },
+  { name: 'get_customer', description: 'Shows one customer by mobile number: their profile, which details are still unknown (with the question to ask), and their full history (newest first) and files.',
+    inputSchema: { type: 'object', properties: { mobile: MOBILE }, required: ['mobile'] },
+    run: (c, me, a) => { const x = c.repo.customer(a.mobile); if (!x) return fail('No customer with that mobile number');
+      return text({ ...customerOut(x), ...fill(x), interactions: x.interactions.slice(0, 50).map((i) => ({ id: i.id, type: i.type, summary: i.summary, amount: i.amount, next_date: i.next_date, by: i.by_name, at: i.at })), files: x.files.map((f) => ({ id: f.id, name: f.name, size: f.size, by: f.by_name, at: f.at })) }); } },
+  { name: 'add_customer', description: 'Adds a new customer. The mobile number is required and must not already belong to a customer (search first; if it exists, use update_customer). Fill in every detail you can find in what the user gave you (an email, a chat, a call note): company, city, where they came from, trader or not, what they are looking for. Then ask the user for the details that are still unknown.',
+    inputSchema: { type: 'object', properties: { mobile: MOBILE, ...PROFILE_PROPS, owner_username: str('Owner, if not you') }, required: ['mobile', 'name'] },
+    run: (c, me, a) => { const o = ownerOf(c.repo, a); if (o.error) return fail(o.error);
+      const r = c.repo.addCustomer({ ...a, ownerId: o.id }, me.id); return r.error ? fail(r.error) : text({ saved: true, ...customerOut(r.customer), ...fill(r) }); } },
+  { name: 'update_customer', description: 'Adds or corrects details on an existing customer, found by mobile number. Only the details you send are changed, and a blank never erases anything. Use it whenever you learn something new about them.',
+    inputSchema: { type: 'object', properties: { mobile: MOBILE, ...PROFILE_PROPS }, required: ['mobile'] },
+    run: (c, me, a) => { const r = c.repo.updateCustomer(a.mobile, a, me.id); return r.error ? fail(r.error) : text({ saved: true, changed: r.changed, ...fill(r) }); } },
   { name: 'log_interaction', description: 'Records something that happened with a customer: a call, WhatsApp chat, visit, quote, order, payment, dispatch or note. Add next_date (YYYY-MM-DD) when a follow-up is due, and amount for money.',
-    inputSchema: { type: 'object', properties: { customer_id: str('The customer id'), type: { type: 'string', enum: TYPES, description: 'What kind of event' }, summary: str('What happened, in a sentence or two'), amount: { type: 'number', description: 'Money involved in rupees, for quotes, orders and payments' }, next_date: str('Follow-up date, YYYY-MM-DD') }, required: ['customer_id', 'type', 'summary'] },
-    run: (repo, me, a) => {
-      const r = repo.addInteraction({ customerId: String(a.customer_id || ''), type: a.type, summary: a.summary, amount: a.amount, nextDate: a.next_date }, me.id);
-      return r.error ? fail(r.error) : text({ saved: true, id: r.interaction.id, type: r.interaction.type, next_date: r.interaction.next_date });
-    } },
-  { name: 'my_follow_ups', description: 'Lists your customers whose latest interaction has a follow-up date of today or earlier (overdue first).',
-    inputSchema: { type: 'object', properties: {} },
-    run: (repo, me) => text(repo.followUps(me.id, today()).map((f) => ({ customer_id: f.id, name: f.name, phone: f.phone, due: f.next_date, last_event: f.type, last_summary: f.summary }))) },
+    inputSchema: { type: 'object', properties: { mobile: MOBILE, type: en(ENUMS.TYPES, 'What kind of event'), summary: str('What happened, in a sentence or two'), amount: { type: 'number', description: 'Money involved in rupees' }, next_date: str('Follow-up date, YYYY-MM-DD') }, required: ['mobile', 'type', 'summary'] },
+    run: (c, me, a) => { const r = c.repo.addInteraction({ mobile: a.mobile, type: a.type, summary: a.summary, amount: a.amount, nextDate: a.next_date }, me.id);
+      return r.error ? fail(r.error) : text({ saved: true, id: r.interaction.id, type: r.interaction.type, next_date: r.interaction.next_date }); } },
+  { name: 'my_follow_ups', description: 'Lists your customers whose latest interaction has a follow-up date of today or earlier (overdue first).', inputSchema: { type: 'object', properties: {} },
+    run: (c, me) => text(c.repo.followUps(me.id, today()).map((f) => ({ mobile: f.mobile, name: f.name, due: f.next_date, last_event: f.type, last_summary: f.summary }))) },
   { name: 'add_file', description: 'Attaches a small file or picture (up to 5 MB, sent as base64) to a customer, optionally to one interaction, for example a payment screenshot.',
-    inputSchema: { type: 'object', properties: { customer_id: str('The customer id'), name: str('File name, e.g. payment.png'), mime_type: str('e.g. image/png, image/jpeg, application/pdf'), data_base64: str('The file contents as base64'), interaction_id: str('Optional: the interaction this belongs to') }, required: ['customer_id', 'name', 'data_base64'] },
-    run: (repo, me, a) => {
-      const data = String(a.data_base64 || '').replace(/^data:[^,]*,/, '');
-      if (!/^[A-Za-z0-9+/=\s]+$/.test(data)) return fail('data_base64 is not valid base64');
-      const buffer = Buffer.from(data, 'base64');
-      if (buffer.length > MAX_FILE) return fail('The file is too big (5 MB at most)');
-      const r = repo.addFile({ customerId: String(a.customer_id || ''), interactionId: a.interaction_id, name: a.name, mime: a.mime_type, buffer }, me.id);
-      return r.error ? fail(r.error) : text({ saved: true, id: r.file.id, name: r.file.name, size: r.file.size });
-    } },
+    inputSchema: { type: 'object', properties: { mobile: MOBILE, name: str('File name, e.g. payment.png'), mime_type: str('e.g. image/png, application/pdf'), data_base64: str('The file contents as base64'), interaction_id: str('Optional: the interaction this belongs to') }, required: ['mobile', 'name', 'data_base64'] },
+    run: (c, me, a) => { const data = String(a.data_base64 || '').replace(/^data:[^,]*,/, ''); if (!/^[A-Za-z0-9+/=\s]+$/.test(data)) return fail('data_base64 is not valid base64');
+      const buffer = Buffer.from(data, 'base64'); if (buffer.length > MAX_FILE) return fail('The file is too big (5 MB at most)');
+      const r = c.repo.addFile({ mobile: a.mobile, interactionId: a.interaction_id, name: a.name, mime: a.mime_type, buffer }, me.id); return r.error ? fail(r.error) : text({ saved: true, id: r.file.id, name: r.file.name, size: r.file.size }); } },
+  { name: 'customer_purchases', description: 'What Zoho Books says about a customer (found by mobile number): their invoices, quotes and sales orders, the items they bought, what they owe, and the next step for every open document (for example "order placed: move it to invoicing", "not delivered yet", "overdue: call for payment").',
+    inputSchema: { type: 'object', properties: { mobile: MOBILE }, required: ['mobile'] },
+    run: async (c, me, a) => { if (!c.repo.customer(a.mobile)) return fail('No customer with that mobile number');
+      const b = await books.forCustomer(c.zoho, a.mobile, today());
+      if (!b.found) return text({ found: false, note: b.note });
+      return text({ summary: b.summary, what_to_do: b.actions, items_bought: b.bought.slice(0, 20).map((x) => ({ item: x.name, quantity: x.quantity, value: x.value, last: x.last })),
+        orders: b.orders.slice(0, 10).map((o) => ({ number: o.number, date: o.date, total: o.total, status: o.status, delivery: o.shipped, invoicing: o.invoiced, next: o.next.action })),
+        invoices: b.invoices.slice(0, 10).map((i) => ({ number: i.number, date: i.date, total: i.total, balance: i.balance, status: i.status, due: i.dueDate, next: i.next.action })),
+        quotes: b.quotes.slice(0, 10).map((q) => ({ number: q.number, date: q.date, total: q.total, status: q.status, next: q.next.action })) }); } },
+
+  // ---------- items ----------
+  { name: 'search_items', description: 'Finds our own items (from Zoho Commerce) by words in the name, code or category, e.g. "nickel strip 0.15". Returns up to 10 with their id, price and stock. Use the id when linking a vendor rate.',
+    inputSchema: { type: 'object', properties: { query: str('Words from the item name, code or category'), category: str('Only this category') }, required: ['query'] },
+    run: (c, me, a) => text(c.repo.items({ q: a.query, category: a.category }).slice(0, 10).map((i) => ({ id: i.id, sku: i.sku, name: i.name, category: i.category, price: i.price, stock: i.stock, unit: i.unit, best_vendor_rate: i.best }))) },
+  { name: 'get_item', description: 'Shows one item with its description and every vendor who offers it, cheapest first.', inputSchema: { type: 'object', properties: { item_id: str('The item id from search_items') }, required: ['item_id'] },
+    run: (c, me, a) => { const i = c.repo.item(a.item_id); return i ? text({ id: i.id, sku: i.sku, name: i.name, category: i.category, price: i.price, stock: i.stock, unit: i.unit, moq: i.moq, collections: i.collections, description: i.description.slice(0, 1500), suppliers: i.suppliers }) : fail('Item not found'); } },
+
+  // ---------- vendors (suppliers) ----------
+  { name: 'add_vendor', description: 'Adds a supplier. The mobile number is required and unique (one vendor per number). Use log_vendor_rate afterwards for what they supply and at what rate.',
+    inputSchema: { type: 'object', properties: { mobile: MOBILE, name: str('Vendor name'), company: str('Company'), email: str('Email'), city: str('City'), state: str('State'), gstin: str('GST number'), notes: str('Anything useful: what they usually supply, terms, reliability') }, required: ['mobile', 'name'] },
+    run: (c, me, a) => { const r = c.repo.addVendor(a, me.id); return r.error ? fail(r.error) : text({ saved: true, mobile: r.vendor.mobile, name: r.vendor.name }); } },
+  { name: 'update_vendor', description: 'Adds or corrects a vendor\'s details, found by mobile number. Blanks never erase anything.',
+    inputSchema: { type: 'object', properties: { mobile: MOBILE, name: str('Vendor name'), company: str('Company'), email: str('Email'), city: str('City'), state: str('State'), gstin: str('GST number'), notes: str('Notes') }, required: ['mobile'] },
+    run: (c, me, a) => { const r = c.repo.updateVendor(a.mobile, a, me.id); return r.error ? fail(r.error) : text({ saved: true, changed: r.changed }); } },
+  { name: 'search_vendors', description: 'Finds vendors by name, company, city, mobile, notes, or a material they have offered. Empty query lists the most recently active.', inputSchema: { type: 'object', properties: { query: str('Words or a mobile number') } },
+    run: (c, me, a) => text(c.repo.vendors({ q: a.query }).slice(0, 25).map((v) => ({ mobile: v.mobile, name: v.name, company: v.company, city: v.city, materials: v.materials, last_rate_on: v.last_offer }))) },
+  { name: 'get_vendor', description: 'Shows one vendor by mobile number with the latest rate for each material they offered, and the full rate history.',
+    inputSchema: { type: 'object', properties: { mobile: MOBILE }, required: ['mobile'] },
+    run: (c, me, a) => { const v = c.repo.vendor(a.mobile); if (!v) return fail('No vendor with that mobile number');
+      const o = (x) => ({ offer_id: x.id, material: x.item_name || x.item_text, linked_item_id: x.item_id, rate: x.rate, unit: x.unit, quantity: x.quantity, valid_till: x.valid_till, offered_on: x.offer_date, note: x.note, by: x.by_name });
+      return text({ mobile: v.mobile, name: v.name, company: v.company, city: v.city, state: v.state, gstin: v.gstin, notes: v.notes, latest_rates: v.latest.map(o), history: v.offers.slice(0, 40).map(o) }); } },
+  { name: 'log_vendor_rate', description: 'Records that a vendor has a material available at a rate (done day after day as vendors send new prices). Give item_id from search_items when you know our item; otherwise give the material\'s name and it is linked automatically when exactly one of our items matches. If it could not be linked, the answer lists candidate items: pick the right one and call map_vendor_rate.',
+    inputSchema: { type: 'object', properties: { vendor_mobile: MOBILE, item_id: str('Our item id from search_items'), material: str('The material as the vendor describes it'), rate: { type: 'number', description: 'Rate in rupees' }, unit: str('Per what: kg, piece, metre...'), quantity: str('How much is available, or the minimum order'), valid_till: str('Rate valid until, YYYY-MM-DD'), note: str('Anything else'), offered_on: str('Date of the rate, YYYY-MM-DD, default today') }, required: ['vendor_mobile', 'rate'] },
+    run: (c, me, a) => { const r = c.repo.addOffer({ vendorMobile: a.vendor_mobile, itemId: a.item_id, itemText: a.material, rate: a.rate, unit: a.unit, quantity: a.quantity, validTill: a.valid_till, note: a.note, offerDate: a.offered_on }, me.id);
+      return r.error ? fail(r.error) : text({ saved: true, offer_id: r.offer.id, linked_to: r.mappedTo, ...(r.mappedTo ? {} : { not_linked_candidates: r.candidates, hint: 'Pick the matching item and call map_vendor_rate with offer_id and item_id, or leave it unlinked.' }) }); } },
+  { name: 'map_vendor_rate', description: 'Links a vendor rate that is not linked yet to one of our items.', inputSchema: { type: 'object', properties: { offer_id: str('The offer id'), item_id: str('Our item id') }, required: ['offer_id', 'item_id'] },
+    run: (c, me, a) => { const r = c.repo.mapOffer(a.offer_id, a.item_id, me.id); return r.error ? fail(r.error) : text({ saved: true, linked_to: r.item }); } },
+  { name: 'find_suppliers', description: 'Who can supply a material, cheapest first: each vendor\'s latest rate, with how old it is and whether it has expired. Give an item_id or words like "nickel strip 0.15".',
+    inputSchema: { type: 'object', properties: { item_id: str('Our item id'), query: str('Words describing the material') } },
+    run: (c, me, a) => { if (!a.item_id && !a.query) return fail('Give an item_id or some words'); return text(c.repo.findSuppliers({ itemId: a.item_id, query: a.query }).slice(0, 25)); } },
 ];
 
+const INSTRUCTIONS = (me) => 'You are connected as ' + me.name + '. Everything you save is recorded under this name. ' +
+  'A customer or vendor is identified by mobile number, which must be unique: search first, and if one exists use update_ instead of add_. ' +
+  'When the user gives you an email, a chat or call notes about a prospect, pull out everything you can (mobile, name, company, city and state, where they came from, trader or non-trader, what business, what they are looking for, what for, cell type, volume, urgency) and save it with add_customer or update_customer, then ask for the details still unknown. A mobile number is required: ask for it if it is missing. ' +
+  'Customers buy nickel strip, battery cells, BMS, busbars and holders, so ask about those. Use customer_purchases to see what Zoho Books says about a customer and what to do next. Never invent a detail you were not given.';
+
 // one JSON-RPC message in, one reply out (null when no reply is wanted)
-function handle(repo, me, msg) {
+async function handle(ctx, me, msg) {
   const reply = (result) => ({ jsonrpc: '2.0', id: msg.id, result });
   const error = (code, message) => ({ jsonrpc: '2.0', id: msg.id == null ? null : msg.id, error: { code, message } });
   if (!msg || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') return error(-32600, 'Invalid request');
@@ -70,8 +120,7 @@ function handle(repo, me, msg) {
   switch (msg.method) {
     case 'initialize': {
       const asked = msg.params && msg.params.protocolVersion;
-      return reply({ protocolVersion: VERSIONS.includes(asked) ? asked : VERSIONS[0], capabilities: { tools: {} }, serverInfo: { name: 'arambhika-portal', version: '1.0.0' },
-        instructions: 'You are connected as ' + me.name + '. Search for a customer before adding one, so you do not create duplicates. Everything you save is recorded under ' + me.name + '.' });
+      return reply({ protocolVersion: VERSIONS.includes(asked) ? asked : VERSIONS[0], capabilities: { tools: {} }, serverInfo: { name: 'arambhika-portal', version: '2.0.0' }, instructions: INSTRUCTIONS(me) });
     }
     case 'ping': return reply({});
     case 'tools/list': return reply({ tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
@@ -80,7 +129,7 @@ function handle(repo, me, msg) {
       if (!tool) return error(-32602, 'Unknown tool');
       const args = (msg.params && msg.params.arguments) || {};
       if (typeof args !== 'object' || Array.isArray(args)) return reply(fail('The arguments must be an object'));
-      try { return reply(tool.run(repo, me, args)); } catch (e) { return reply(fail('Something went wrong saving that. Nothing was changed.')); }
+      try { return reply(await tool.run(ctx, me, args)); } catch (e) { return reply(fail('Something went wrong. Nothing was changed.')); }
     }
     default: return error(-32601, 'Method not found');
   }

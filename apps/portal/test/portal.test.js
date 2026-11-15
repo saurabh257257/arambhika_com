@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { createApp } = require('../app');
+const { orderAction, invoiceAction, quoteAction } = require('../lib/books');
 
 function client(base) {
   let cookie = '';
@@ -17,9 +18,48 @@ function client(base) {
   };
   return { get: (u) => call('GET', u), post: (u, b) => call('POST', u, b === undefined ? {} : b), patch: (u, b) => call('PATCH', u, b) };
 }
-async function boot() {
+
+// a pretend Zoho Commerce storefront: two nickel strips and a BMS, one collection
+function storefrontFetch() {
+  const prods = [
+    { product_id: 'p1', name: 'Nickel strip 0.15 mm x 8 mm', category_id: 'c1', handle: 'ns015', description: '<p>Pure nickel &amp; flexible</p>', unit: 'kg', variants: [{ sku: 'NS-015', selling_price: 900, stock_available: 5, minimum_order_quantity: 1 }], images: [{ id: '1', url: '/product-images/ns015.jpg/1/500x500' }] },
+    { product_id: 'p2', name: 'Nickel strip 0.20 mm x 8 mm', category_id: 'c1', handle: 'ns020', description: '', unit: 'kg', variants: [{ sku: 'NS-020', selling_price: 1100, stock_available: 0 }], images: [] },
+    { product_id: 'p3', name: 'BMS 4S 30A', category_id: 'c2', handle: 'bms4s', description: '', unit: 'pcs', variants: [{ sku: 'BMS-4S', selling_price: 650, stock_available: 7 }], images: [] },
+  ];
+  return async (url) => {
+    const u = new URL(url), p = u.pathname.replace('/storefront/api/v1', '');
+    const payload = p === '/categories' ? { categories: [{ category_id: 'c1', name: 'Nickel strip' }, { category_id: 'c2', name: 'BMS' }], pagination: { has_more_page: false } }
+      : p === '/collections' ? { collections: [{ id: 'col1', name: '18650' }], pagination: { has_more_page: false } }
+        : { products: u.searchParams.get('collection_id') ? [prods[0]] : prods, pagination: { has_more_page: false } };
+    return { ok: true, status: 200, json: async () => ({ status_code: '0', payload }) };
+  };
+}
+
+// a pretend Zoho Books: dates are relative to today so "overdue by 22 days" stays true
+const rel = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+function fakeZoho() {
+  const line = [{ itemId: 'p1', name: 'Nickel strip 0.15', quantity: 20, rate: 750, total: 15000 }];
+  return {
+    configured: true,
+    customers: async () => ({ source: 'contacts', list: [{ id: 'z1', name: 'Mr Rao', company: 'Rao Traders', phones: ['+91 98111 22233'], phone: '+91 98111 22233' }, { id: 'z2', name: 'Other', company: '', phones: ['9000011111'], phone: '9000011111' }] }),
+    invoices: async () => [
+      { id: 'i1', number: 'INV-1', customerId: 'z1', date: rel(60), dueDate: rel(30), total: 20000, balance: 0, status: 'paid', paymentExpected: '' },
+      { id: 'i2', number: 'INV-2', customerId: 'z1', date: rel(30), dueDate: rel(22), total: 10000, balance: 10000, status: 'sent', paymentExpected: '' },
+      { id: 'i9', number: 'INV-9', customerId: 'z2', date: rel(3), dueDate: rel(1), total: 99999, balance: 99999, status: 'sent', paymentExpected: '' },
+    ],
+    salesOrders: async () => [
+      { id: 's1', number: 'SO-1', customerId: 'z1', date: rel(60), total: 20000, status: 'closed', shipped: 'shipped', invoiced: 'invoiced' },
+      { id: 's2', number: 'SO-2', customerId: 'z1', date: rel(10), total: 5000, status: 'open', shipped: 'not_shipped', invoiced: 'not_invoiced' },
+      { id: 's3', number: 'SO-3', customerId: 'z1', date: rel(5), total: 7000, status: 'open', shipped: 'shipped', invoiced: 'not_invoiced' },
+    ],
+    estimates: async () => [{ id: 'e1', number: 'EST-1', customerId: 'z1', date: rel(3), expiry: '', total: 8000, status: 'accepted' }],
+    invoiceLines: async () => line, orderLines: async () => line,
+  };
+}
+
+async function boot(opts = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'portal-'));
-  const app = createApp({ dataDir: dir, adminPassword: 'admin-secret-1', sessionSecret: 'test-secret' });
+  const app = createApp({ dataDir: dir, adminPassword: 'admin-secret-1', sessionSecret: 'test-secret', zoho: opts.zoho || { configured: false }, fetchFn: storefrontFetch() });
   const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
   const base = 'http://127.0.0.1:' + server.address().port;
   const admin = client(base), ann = client(base);
@@ -65,49 +105,152 @@ describe('portal', () => {
     } finally { await s.stop(); }
   });
 
-  test('customers are view-only over HTTP; each has a timeline, who did it, and files', async () => {
+  test('a mobile number is the key: cleaned to 10 digits, never twice; the profile fills in without ever being wiped; search reads the history too', async () => {
     const s = await boot();
     try {
       const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
-      const V = s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' }).member;
-      const c = s.app.repo.addCustomer({ name: 'Shakti Batteries', phone: '+91 98111 00001', ownerId: L.id }, L.id).customer;
-      s.app.repo.addCustomer({ name: 'Volt Works', phone: '9811100002' }, V.id);
-      assert.equal(s.app.repo.addInteraction({ customerId: c.id, type: 'dance', summary: 'x' }, L.id).error.startsWith('Type must be'), true);
-      assert.equal(s.app.repo.addInteraction({ customerId: c.id, type: 'call', summary: '  ' }, L.id).error, 'Say what happened');
-      const call = s.app.repo.addInteraction({ customerId: c.id, type: 'call', summary: 'Asked about nickel strip', nextDate: '2999-01-01' }, L.id).interaction;
-      s.app.repo.addInteraction({ customerId: c.id, type: 'order', summary: 'Order confirmed', amount: 15000 }, V.id);
+      const add = (o) => s.app.repo.addCustomer(o, L.id);
+      assert.match(add({ name: 'X', mobile: '12345' }).error, /valid 10-digit mobile/);
+      assert.match(add({ name: 'X' }).error, /valid 10-digit mobile/);
+      assert.match(add({ name: 'X', mobile: '5811122233' }).error, /valid 10-digit mobile/, 'Indian mobiles start with 6 to 9');
+      const c = add({ name: 'Mr Rao', mobile: '+91 98111-22233', city: 'Pune', buyer_type: 'Non Trader', source: 'Email', looking_for: 'nickel strip 0.15 mm' });
+      assert.equal(c.customer.mobile, '9811122233');
+      assert.equal(c.customer.buyer_type, 'non_trader');
+      assert.ok(c.missing.some((m) => m.field === 'company'), 'tells what is still unknown');
+      for (const same of ['9811122233', '098111 22233', '+919811122233']) assert.equal(add({ name: 'Again', mobile: same }).exists, true, same + ' is the same customer');
+      assert.match(add({ name: 'Y', mobile: '9811122234', buyer_type: 'wholesaler' }).error, /buyer_type must be one of/);
+      assert.match(add({ name: 'Y', mobile: '9811122234', gstin: '123' }).error, /GST/);
+      assert.equal(s.app.repo.db.prepare('SELECT COUNT(*) AS n FROM customers').get().n, 1);
+      assert.throws(() => s.app.repo.db.prepare("INSERT INTO customers (mobile, name, created_at, updated_at) VALUES ('9811122233', 'Raw', 'x', 'x')").run(), /UNIQUE|constraint/i, 'the database itself refuses a duplicate');
+
+      const u = s.app.repo.updateCustomer('98111 22233', { company: 'Rao Traders', gstin: '27abcde1234f1z5', state: 'Maharashtra', looking_for: '', city: '' }, L.id);
+      assert.deepEqual(u.changed.sort(), ['company', 'gstin', 'state']);
+      const after = s.app.repo.customer('9811122233');
+      assert.equal(after.gstin, '27ABCDE1234F1Z5'); assert.equal(after.city, 'Pune', 'a blank never erases'); assert.equal(after.looking_for, 'nickel strip 0.15 mm');
+      assert.equal(s.app.repo.updateCustomer('9000000000', { company: 'x' }, L.id).status, 404);
+
+      s.app.repo.addInteraction({ mobile: '9811122233', type: 'call', summary: 'Asked about copper busbar for an inverter', nextDate: '2999-01-01' }, L.id);
+      assert.equal(s.app.repo.addInteraction({ mobile: '9811122233', type: 'dance', summary: 'x' }, L.id).error.startsWith('Type must be'), true);
+      assert.equal(s.app.repo.addInteraction({ mobile: '9000000000', type: 'call', summary: 'x' }, L.id).status, 404);
+      add({ name: 'Volt Works', mobile: '9811100002', city: 'Indore', buyer_type: 'trader', business: 'reseller_dealer' });
+
+      const q = async (qs) => (await s.admin.get('/api/customers?' + qs)).data.customers.map((c) => c.name);
+      assert.deepEqual(await q('q=copper%20busbar'), ['Mr Rao'], 'finds words from the history');
+      assert.deepEqual(await q('q=98111%2022233'), ['Mr Rao'], 'by mobile');
+      assert.deepEqual(await q('q=pune'), ['Mr Rao']);
+      assert.deepEqual(await q('q=nickel'), ['Mr Rao'], 'by what they want');
+      assert.deepEqual(await q('buyer=trader'), ['Volt Works']);
+      assert.deepEqual(await q('business=reseller_dealer'), ['Volt Works']);
+      const d = (await s.admin.get('/api/customers/098111-22233')).data.customer;
+      assert.equal(d.mobile, '9811122233'); assert.equal(d.interactions.length, 1); assert.ok(Array.isArray(d.missing));
+      assert.equal((await s.admin.get('/api/customers/9000000000')).status, 404);
+      for (const [m, u2] of [['post', '/api/customers'], ['post', '/api/customers/9811122233/interactions'], ['patch', '/api/customers/9811122233']]) assert.equal((await s.admin[m](u2, { name: 'x' })).status, 404, 'view only: ' + m + ' ' + u2);
+
       const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
-      const img = s.app.repo.addFile({ customerId: c.id, interactionId: call.id, name: 'shot.png', mime: 'image/png', buffer: png }, V.id).file;
-      const page = s.app.repo.addFile({ customerId: c.id, name: 'x.html', mime: 'text/html', buffer: Buffer.from('<script>alert(1)</script>') }, V.id).file;
-
-      const list = (await s.admin.get('/api/customers')).data.customers;
-      assert.equal(list.length, 2);
-      assert.equal(list[0].name, 'Shakti Batteries', 'most recent activity first');
-      assert.equal(list[0].interactions, 2);
-      assert.equal((await s.admin.get('/api/customers?q=98111%2000001')).data.customers.length, 1, 'search by phone digits');
-      assert.equal((await s.admin.get('/api/customers?q=volt')).data.customers[0].name, 'Volt Works');
-      assert.equal((await s.admin.get('/api/customers?owner=' + L.id)).data.customers.length, 1);
-
-      const d = (await s.admin.get('/api/customers/' + c.id)).data.customer;
-      assert.deepEqual(d.interactions.map((i) => [i.type, i.by_name]), [['order', 'Vikas'], ['call', 'Lokesh']], 'newest first, with who');
-      assert.equal(d.interactions[1].next_date, '2999-01-01');
-      assert.equal(d.files.length, 2);
-      assert.equal((await s.admin.get('/api/customers/nope')).status, 404);
-
-      // nothing can be changed through the web
-      for (const [m, u] of [['post', '/api/customers'], ['post', '/api/customers/' + c.id + '/interactions'], ['patch', '/api/customers/' + c.id]]) {
-        assert.equal((await s.admin[m](u, { name: 'x' })).status, 404, m + ' ' + u);
-      }
-
-      // pictures show in the page; anything else is only a download
-      const shown = await s.admin.get('/api/files/' + img.id);
-      assert.equal(shown.status, 200); assert.match(shown.headers.get('content-disposition'), /^inline/);
+      const img = s.app.repo.addFile({ mobile: '9811122233', name: 'shot.png', mime: 'image/png', buffer: png }, L.id).file;
+      const page = s.app.repo.addFile({ mobile: '9811122233', name: 'x.html', mime: 'text/html', buffer: Buffer.from('<script>alert(1)</script>') }, L.id).file;
+      assert.match((await s.admin.get('/api/files/' + img.id)).headers.get('content-disposition'), /^inline/);
       const dl = await s.admin.get('/api/files/' + page.id);
       assert.match(dl.headers.get('content-disposition'), /^attachment/); assert.equal(dl.headers.get('content-type'), 'application/octet-stream');
-      assert.match((await s.admin.get('/api/files/' + img.id + '?download=1')).headers.get('content-disposition'), /^attachment/);
       assert.equal((await s.admin.get('/api/files/..%2F..%2Fportal.db')).status, 404);
       assert.equal((await client(s.base).get('/api/files/' + img.id)).status, 401);
     } finally { await s.stop(); }
+  });
+
+  test('items come from the Zoho Commerce storefront; vendors are keyed by mobile; rates link to items and the cheapest comes first', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      assert.equal((await s.app.itemSync.sync()).ok, true);
+      const items = (await s.admin.get('/api/items')).data;
+      assert.equal(items.items.length, 3);
+      const n15 = items.items.find((i) => i.sku === 'NS-015');
+      assert.equal(n15.category, 'Nickel strip'); assert.equal(n15.price, 900); assert.deepEqual(n15.collections, ['18650']); assert.match(n15.description, /Pure nickel & flexible/);
+      assert.match(n15.image_url, /^https:\/\/armabhika\.zohoecommerce\.in\/product-images\//);
+      assert.deepEqual((await s.admin.get('/api/items?q=nickel%200.15')).data.items.map((i) => i.sku), ['NS-015']);
+      assert.equal((await s.admin.get('/api/items?stock=1')).data.items.length, 2);
+      assert.equal((await s.admin.get('/api/items?category=BMS')).data.items.length, 1);
+
+      const v = (m, n) => s.app.repo.addVendor({ name: n, mobile: m }, L.id);
+      assert.equal(v('+91 90000-00001', 'Saurav').vendor.mobile, '9000000001');
+      assert.equal(v('9000000001', 'Other').exists, true, 'one vendor per mobile');
+      v('9000000002', 'Anil'); v('9000000003', 'Meena');
+      assert.match(s.app.repo.addVendor({ name: 'Z', mobile: '55' }, L.id).error, /valid 10-digit mobile/);
+
+      const o1 = s.app.repo.addOffer({ vendorMobile: '9000000001', itemText: 'nickel strip 0.15', rate: 700, unit: 'kg', quantity: '200 kg' }, L.id);
+      assert.equal(o1.mappedTo.id, 'p1', 'one clear match is linked');
+      const o2 = s.app.repo.addOffer({ vendorMobile: '9000000002', itemId: 'p1', rate: 650, unit: 'kg', offerDate: '2026-11-01' }, L.id);
+      assert.equal(o2.mappedTo.id, 'p1');
+      const o3 = s.app.repo.addOffer({ vendorMobile: '9000000003', itemText: 'nickel strip', rate: 900, unit: 'kg' }, L.id);
+      assert.equal(o3.mappedTo, null, 'two nickel strips: not guessed'); assert.equal(o3.candidates.length, 2);
+      assert.equal(s.app.repo.addOffer({ vendorMobile: '9000000001', itemText: 'x', rate: 0 }, L.id).error, 'The rate must be a number above zero');
+      assert.equal(s.app.repo.addOffer({ vendorMobile: '9111111111', itemText: 'x', rate: 5 }, L.id).status, 404);
+      assert.equal(s.app.repo.addOffer({ vendorMobile: '9000000001', itemId: 'nope', rate: 5 }, L.id).error.startsWith('That item id'), true);
+      // Saurav sends a new, lower rate the next day: it replaces the old one in "latest", the old one stays in history
+      s.app.repo.addOffer({ vendorMobile: '9000000001', itemId: 'p1', rate: 640, unit: 'kg', offerDate: '2999-01-01' }, L.id);
+
+      const sup = (await s.admin.get('/api/items/p1')).data.item.suppliers;
+      assert.deepEqual(sup.map((x) => [x.vendor_name, x.rate]), [['Saurav', 640], ['Anil', 650]], 'cheapest first, one latest rate per vendor');
+      assert.equal((await s.admin.get('/api/items')).data.items.find((i) => i.id === 'p1').best.rate, 640);
+      assert.deepEqual(s.app.repo.findSuppliers({ query: 'nickel strip' }).map((x) => x.vendor_name), ['Saurav', 'Anil', 'Meena'], 'unlinked rates are found by their words too');
+      assert.equal(s.app.repo.mapOffer(o3.offer.id, 'p2', L.id).ok, true);
+      assert.equal(s.app.repo.findSuppliers({ itemId: 'p2' })[0].vendor_name, 'Meena');
+      const vd = (await s.admin.get('/api/vendors/9000000001')).data.vendor;
+      assert.equal(vd.offers.length, 2); assert.equal(vd.latest.length, 1); assert.equal(vd.latest[0].rate, 640);
+      assert.deepEqual((await s.admin.get('/api/vendors?q=nickel')).data.vendors.map((x) => x.name).sort(), ['Anil', 'Meena', 'Saurav']);
+      assert.deepEqual((await s.admin.get('/api/vendors?q=9000000002')).data.vendors.map((x) => x.name), ['Anil']);
+      assert.equal((await s.admin.get('/api/vendors/9111111111')).status, 404);
+      assert.equal((await s.admin.post('/api/vendors', { name: 'x' })).status, 404, 'view only');
+    } finally { await s.stop(); }
+  });
+
+  test('a customer page shows Zoho Books purchases found by mobile, with what to do next; Zoho being down never breaks the page', async () => {
+    const s = await boot({ zoho: fakeZoho() });
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      s.app.repo.addCustomer({ name: 'Mr Rao', mobile: '9811122233' }, L.id);
+      s.app.repo.addCustomer({ name: 'New Person', mobile: '9811100009' }, L.id);
+      const b = (await s.admin.get('/api/customers/9811122233/books')).data;
+      assert.equal(b.found, true); assert.equal(b.contacts.length, 1, 'matched on the last 10 digits of the mobile or phone');
+      assert.equal(b.summary.invoices, 2); assert.equal(b.summary.billed, 30000); assert.equal(b.summary.outstanding, 10000); assert.equal(b.summary.lastPurchase, rel(30));
+      assert.deepEqual(b.bought.map((x) => [x.name, x.quantity]), [['Nickel strip 0.15', 40]]);
+      const what = b.actions.map((a) => a.kind + ':' + a.number + ':' + a.label);
+      assert.ok(what.includes('order:SO-2:Placed, not delivered'), what.join('|'));
+      assert.ok(what.includes('order:SO-3:Delivered, not invoiced'));
+      assert.ok(what.includes('invoice:INV-2:Overdue 22 days'));
+      assert.ok(what.includes('quote:EST-1:Quote accepted'));
+      assert.equal(b.orders.find((o) => o.number === 'SO-2').lines.length, 1);
+      assert.equal((await s.admin.get('/api/customers/9811100009/books')).data.found, false, 'a customer not in Zoho yet');
+      assert.equal((await s.admin.get('/api/customers/9000000000/books')).status, 404);
+      assert.equal((await client(s.base).get('/api/customers/9811122233/books')).status, 401);
+
+      const down = await boot({ zoho: { configured: true, customers: async () => { throw new Error('Zoho is down'); } } });
+      try { down.app.repo.addCustomer({ name: 'A', mobile: '9811122233' }, down.app.repo.createMember({ name: 'L', username: 'lok', password: 'lokesh-pass-1234' }).member.id);
+        const r = await down.admin.get('/api/customers/9811122233/books'); assert.equal(r.status, 200); assert.match(r.data.note, /could not be read/);
+        assert.equal((await down.admin.get('/api/customers/9811122233')).status, 200, 'the rest of the page still works');
+      } finally { await down.stop(); }
+      const none = await boot({ zoho: { configured: false } });
+      try { none.app.repo.addCustomer({ name: 'A', mobile: '9811122233' }, none.app.repo.createMember({ name: 'L', username: 'lok', password: 'lokesh-pass-1234' }).member.id);
+        assert.equal((await none.admin.get('/api/customers/9811122233/books')).data.connected, false);
+      } finally { await none.stop(); }
+    } finally { await s.stop(); }
+  });
+
+  test('the next step for each order, invoice and quote', () => {
+    const today = '2026-11-15';
+    const o = (x) => orderAction({ date: '2026-11-14', status: 'open', shipped: 'not_shipped', invoiced: 'not_invoiced', ...x }, today);
+    assert.equal(o({}).label, 'Order placed'); assert.match(o({}).action, /move it to invoicing/);
+    assert.equal(o({ date: '2026-11-01' }).label, 'Placed, not delivered'); assert.equal(o({ date: '2026-11-01' }).tone, 'bad');
+    assert.equal(o({ shipped: 'shipped' }).label, 'Delivered, not invoiced');
+    assert.equal(o({ shipped: 'shipped', invoiced: 'invoiced' }).tone, 'ok');
+    assert.equal(o({ invoiced: 'invoiced' }).label, 'Invoiced, not delivered');
+    assert.equal(o({ shipped: 'partially_shipped' }).label, 'Partly delivered');
+    assert.equal(o({ status: 'draft' }).label, 'Draft order'); assert.equal(o({ status: 'void' }).label, 'Order cancelled');
+    const i = (x) => invoiceAction({ status: 'sent', total: 5000, balance: 5000, dueDate: '2026-11-30', ...x }, today);
+    assert.equal(i({}).label, 'Payment due'); assert.equal(i({ dueDate: '2026-11-10' }).label, 'Overdue 5 days'); assert.equal(i({ dueDate: '2026-11-10' }).tone, 'bad');
+    assert.equal(i({ balance: 0, status: 'paid' }).label, 'Paid'); assert.equal(i({ status: 'draft' }).label, 'Invoice draft');
+    const q = (x) => quoteAction({ date: '2026-11-10', status: 'sent', ...x }, today);
+    assert.match(q({}).action, /5 days ago/); assert.equal(q({ status: 'accepted' }).label, 'Quote accepted'); assert.equal(q({ expiry: '2026-11-12' }).label, 'Quote expired'); assert.equal(q({ status: 'draft' }).label, 'Quote not sent');
   });
 });
 
@@ -116,54 +259,75 @@ describe('mcp', () => {
   const call = async (base, key, name, args) => (await (await rpc(base, key, 'tools/call', { name, arguments: args })).json()).result;
   const data = (r) => JSON.parse(r.content[0].text);
 
-  test('a member connects with their own key; everything they save carries their name', async () => {
-    const s = await boot();
+  test('a member connects with their own key; every tool works on mobile numbers and is stamped with their name', async () => {
+    const s = await boot({ zoho: fakeZoho() });
     try {
       const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
       s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' });
       const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
       assert.equal((await s.admin.post('/api/my-connection/key')).status, 400, 'admin has no member record');
-      assert.equal((await lok.get('/api/my-connection')).data.key, null);
       const key = (await lok.post('/api/my-connection/key')).data.key;
       assert.match(key, /^pk_/);
       assert.equal(JSON.stringify(s.app.repo.members()).includes(key), false, 'only a hash is stored');
-
       assert.equal((await rpc(s.base, '', 'initialize', {})).status, 401, 'no key');
       assert.equal((await rpc(s.base, 'pk_wrongwrongwrongwrongwrong', 'initialize', {})).status, 401, 'wrong key');
       assert.equal((await fetch(s.base + '/mcp', { headers: { Authorization: 'Bearer ' + key } })).status, 405);
-      const initRes = await rpc(s.base, key, 'initialize', { protocolVersion: '2025-06-18' }); const init = await initRes.json(); if (!init.result) console.log('DEBUG', initRes.status, JSON.stringify(init));
-      assert.equal(init.result.protocolVersion, '2025-06-18'); assert.ok(init.result.capabilities.tools);
+      const init = await (await rpc(s.base, key, 'initialize', { protocolVersion: '2025-06-18' })).json();
+      assert.equal(init.result.protocolVersion, '2025-06-18'); assert.match(init.result.instructions, /mobile number/);
       assert.equal((await fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) })).status, 202);
-      const list = (await (await rpc(s.base, key, 'tools/list')).json()).result.tools.map((t) => t.name);
-      assert.deepEqual(list, ['who_am_i', 'list_team', 'search_customers', 'get_customer', 'add_customer', 'log_interaction', 'my_follow_ups', 'add_file']);
-      assert.equal(list.some((n) => /delete|remove/.test(n)), false, 'nothing can be deleted');
+      const names = (await (await rpc(s.base, key, 'tools/list')).json()).result.tools.map((t) => t.name);
+      for (const n of ['add_customer', 'update_customer', 'customer_purchases', 'search_items', 'get_item', 'add_vendor', 'log_vendor_rate', 'map_vendor_rate', 'find_suppliers', 'get_vendor', 'search_vendors']) assert.ok(names.includes(n), n);
+      assert.equal(names.some((n) => /delete|remove/.test(n)), false, 'nothing can be deleted');
       assert.equal(data(await call(s.base, key, 'who_am_i', {})).name, 'Lokesh');
 
-      const added = data(await call(s.base, key, 'add_customer', { name: 'Mr Rao', company: 'Rao Traders', phone: '98111 22233', city: 'Pune' }));
-      assert.equal((await call(s.base, key, 'add_customer', { name: 'Rao again', phone: '+91 9811122233' })).isError, true, 'same phone is refused');
-      const dueYesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-      assert.equal((await call(s.base, key, 'log_interaction', { customer_id: added.id, type: 'dance', summary: 'x' })).isError, true);
-      assert.equal((await call(s.base, key, 'log_interaction', { customer_id: 'nope', type: 'call', summary: 'x' })).isError, true);
-      assert.equal((await call(s.base, key, 'log_interaction', { customer_id: added.id, type: 'call', summary: 'Wants nickel strip', next_date: dueYesterday })).isError, undefined);
-      assert.equal(data(await call(s.base, key, 'my_follow_ups', {})).length, 1, 'follow-up is due');
-      await call(s.base, key, 'log_interaction', { customer_id: added.id, type: 'quote', summary: 'Sent quote', amount: 15000 });
+      // a prospect arrives by email: Claude saves what it learned, and is told what is still unknown
+      const added = data(await call(s.base, key, 'add_customer', { mobile: '+91 98111 22233', name: 'Mr Rao', company: 'Rao Traders', city: 'Pune', source: 'email', source_detail: 'Mailed from the website form', buyer_type: 'trader', looking_for: 'nickel strip 0.15, 20 kg a month' }));
+      assert.equal(added.mobile, '9811122233'); assert.ok(added.still_unknown.includes('state')); assert.ok(added.ask_the_user.length > 0);
+      const dup = await call(s.base, key, 'add_customer', { mobile: '9811122233', name: 'Rao again' });
+      assert.equal(dup.isError, true); assert.match(dup.content[0].text, /already exists/);
+      assert.equal((await call(s.base, key, 'add_customer', { name: 'No number' })).isError, true);
+      assert.equal(data(await call(s.base, key, 'update_customer', { mobile: '9811122233', state: 'Maharashtra', urgency: 'immediate' })).changed.length, 2);
+      assert.equal((await call(s.base, key, 'update_customer', { mobile: '9811122233', buyer_type: 'bogus' })).isError, true);
+      assert.equal((await call(s.base, key, 'log_interaction', { mobile: '9811122233', type: 'dance', summary: 'x' })).isError, true);
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      assert.equal((await call(s.base, key, 'log_interaction', { mobile: '9811122233', type: 'call', summary: 'Wants nickel strip', next_date: yesterday })).isError, undefined);
+      assert.equal(data(await call(s.base, key, 'my_follow_ups', {})).length, 1);
+      await call(s.base, key, 'log_interaction', { mobile: '9811122233', type: 'quote', summary: 'Sent quote', amount: 15000 });
       assert.equal(data(await call(s.base, key, 'my_follow_ups', {})).length, 0, 'a later entry without a date closes it');
       const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-      assert.equal(data(await call(s.base, key, 'add_file', { customer_id: added.id, name: 'shot.png', mime_type: 'image/png', data_base64: png })).saved, true);
-      assert.equal((await call(s.base, key, 'add_file', { customer_id: added.id, name: 'bad', data_base64: '!!!' })).isError, true);
+      assert.equal(data(await call(s.base, key, 'add_file', { mobile: '9811122233', name: 'shot.png', mime_type: 'image/png', data_base64: png })).saved, true);
+      assert.equal((await call(s.base, key, 'add_file', { mobile: '9811122233', name: 'bad', data_base64: '!!!' })).isError, true);
+      assert.equal(data(await call(s.base, key, 'search_customers', { query: 'rao' }))[0].owner, 'Lokesh');
+      assert.equal(data(await call(s.base, key, 'search_customers', { buyer_type: 'trader' })).length, 1);
+      const full = data(await call(s.base, key, 'get_customer', { mobile: '09811122233' }));
+      assert.deepEqual(full.interactions.map((i) => [i.type, i.by]), [['quote', 'Lokesh'], ['call', 'Lokesh']]); assert.equal(full.state, 'Maharashtra');
 
-      const found = data(await call(s.base, key, 'search_customers', { query: '9811122233' }));
-      assert.equal(found.length, 1); assert.equal(found[0].owner, 'Lokesh');
-      const full = data(await call(s.base, key, 'get_customer', { customer_id: added.id }));
-      assert.deepEqual(full.interactions.map((i) => [i.type, i.by]), [['quote', 'Lokesh'], ['call', 'Lokesh']]);
-      assert.equal(full.files.length, 1);
-      assert.equal(data(await call(s.base, key, 'list_team', {})).length, 2);
-      assert.equal((await call(s.base, key, 'add_customer', { name: 'X', owner_username: 'ghost' })).isError, true);
-      assert.equal((await rpc(s.base, key, 'nothing/here')).status, 200);
-      assert.equal((await (await rpc(s.base, key, 'nothing/here')).json()).error.code, -32601);
+      // what Zoho Books says, including the next step
+      const p = data(await call(s.base, key, 'customer_purchases', { mobile: '9811122233' }));
+      assert.equal(p.summary.invoices, 2); assert.ok(p.what_to_do.some((x) => x.label === 'Placed, not delivered'));
+      assert.equal((await call(s.base, key, 'customer_purchases', { mobile: '9000000000' })).isError, true);
 
-      // the portal pages show it, under Lokesh's name
-      assert.equal((await s.admin.get('/api/customers/' + added.id)).data.customer.interactions[0].by_name, 'Lokesh');
+      // items and vendors
+      await s.app.itemSync.sync();
+      const found = data(await call(s.base, key, 'search_items', { query: 'nickel strip 0.15' }));
+      assert.equal(found.length, 1); const itemId = found[0].id;
+      assert.equal(data(await call(s.base, key, 'add_vendor', { mobile: '90000 00001', name: 'Saurav', city: 'Mumbai' })).saved, true);
+      assert.equal((await call(s.base, key, 'add_vendor', { mobile: '9000000001', name: 'Dup' })).isError, true, 'one vendor per mobile');
+      const rate = data(await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9000000001', material: 'nickel strip 0.15', rate: 700, unit: 'kg', quantity: '200 kg', valid_till: '2999-12-31' }));
+      assert.equal(rate.linked_to.id, itemId);
+      const vague = data(await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9000000001', material: 'nickel strip', rate: 810, unit: 'kg' }));
+      assert.equal(vague.linked_to, null); assert.ok(vague.not_linked_candidates.length >= 2);
+      assert.equal(data(await call(s.base, key, 'map_vendor_rate', { offer_id: vague.offer_id, item_id: itemId })).saved, true);
+      assert.equal(data(await call(s.base, key, 'find_suppliers', { item_id: itemId }))[0].rate, 810, 'the latest rate wins');
+      assert.equal(data(await call(s.base, key, 'find_suppliers', { query: 'nickel' })).length, 1);
+      assert.equal(data(await call(s.base, key, 'get_item', { item_id: itemId })).suppliers.length, 1);
+      assert.equal(data(await call(s.base, key, 'get_vendor', { mobile: '9000000001' })).history.length, 2);
+      assert.equal(data(await call(s.base, key, 'search_vendors', { query: 'nickel' })).length, 1);
+      assert.equal((await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9123456789', material: 'x', rate: 5 })).isError, true);
+
+      // the portal shows it, under Lokesh's name
+      assert.equal((await s.admin.get('/api/customers/9811122233')).data.customer.interactions[0].by_name, 'Lokesh');
+      assert.equal((await s.admin.get('/api/vendors/9000000001')).data.vendor.offers[0].by_name, 'Lokesh');
 
       // a new key replaces the old; revoking or switching off cuts access at once
       const key2 = (await lok.post('/api/my-connection/key')).data.key;
@@ -177,6 +341,35 @@ describe('mcp', () => {
       assert.equal((await rpc(s.base, key3, 'ping')).status, 401, 'switched off');
       assert.equal((await lok.post('/api/my-connection/key')).status, 401);
     } finally { await s.stop(); }
+  });
+});
+
+describe('older database', () => {
+  test('customers keyed by a random id are converted to mobile keys, with a copy of the file kept', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'portal-old-'));
+    const { DatabaseSync } = require('node:sqlite');
+    const old = new DatabaseSync(path.join(dir, 'portal.db'));
+    old.exec(`
+      CREATE TABLE members (id TEXT PRIMARY KEY, name TEXT NOT NULL, username TEXT NOT NULL UNIQUE, pass_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'employee', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
+      INSERT INTO members VALUES ('m1', 'Lokesh', 'lokesh', 'x', 'employee', 1, '2026-01-01');
+      CREATE TABLE customers (id TEXT PRIMARY KEY, name TEXT NOT NULL, company TEXT NOT NULL DEFAULT '', phone TEXT NOT NULL DEFAULT '', phone_digits TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT '', owner_id TEXT, created_by TEXT, created_at TEXT NOT NULL);
+      CREATE TABLE interactions (id TEXT PRIMARY KEY, customer_id TEXT NOT NULL, type TEXT NOT NULL, summary TEXT NOT NULL, amount REAL, next_date TEXT, by_member TEXT NOT NULL, at TEXT NOT NULL);
+      CREATE INDEX interactions_customer ON interactions(customer_id, at);
+      CREATE TABLE files (id TEXT PRIMARY KEY, customer_id TEXT NOT NULL, interaction_id TEXT, name TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, by_member TEXT NOT NULL, at TEXT NOT NULL);
+      INSERT INTO customers VALUES ('c1', 'Mr Rao', 'Rao Traders', '+91 98111 22233', '9811122233', '', 'Pune', 'm1', 'm1', '2026-02-01');
+      INSERT INTO customers VALUES ('c2', 'No number', '', '', '', '', '', 'm1', 'm1', '2026-02-02');
+      INSERT INTO interactions VALUES ('i1', 'c1', 'call', 'First call', NULL, NULL, 'm1', '2026-02-03');
+    `);
+    old.close();
+    const { open } = require('../lib/db');
+    const repo = open(dir);
+    try {
+      const c = repo.customer('9811122233');
+      assert.equal(c.name, 'Mr Rao'); assert.equal(c.city, 'Pune'); assert.equal(c.interactions.length, 1); assert.equal(c.interactions[0].summary, 'First call');
+      assert.equal(repo.customers().length, 1, 'a customer without a valid mobile cannot be kept');
+      assert.ok(fs.readdirSync(dir).some((f) => f.startsWith('portal.db.before-mobile-keys')), 'a copy of the old file is kept');
+    } finally { repo.close(); }
+    const again = open(dir); assert.equal(again.customers().length, 1, 'opening again changes nothing'); again.close();
   });
 });
 

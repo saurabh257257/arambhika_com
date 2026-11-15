@@ -7,13 +7,20 @@ const compression = require('compression');
 const { open, TYPES } = require('./lib/db');
 const mcp = require('./lib/mcp');
 const oauth = require('./lib/oauth');
+const books = require('./lib/books');
+const { createSync } = require('./lib/items-sync');
+const { createZoho } = require('./lib/zoho');
 
 const safeEqual = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 
-function createApp({ dataDir, adminPassword, sessionSecret }) {
+function createApp({ dataDir, adminPassword, sessionSecret, zoho, fetchFn, startSync = false }) {
   if (!adminPassword) throw new Error('ADMIN_PASSWORD is not set. Refusing to start without a login password.');
   const secret = sessionSecret || crypto.randomBytes(32).toString('hex');
   const repo = open(dataDir);
+  const zohoClient = zoho || createZoho();
+  const itemSync = createSync(repo, { fetchFn: fetchFn || fetch });
+  const ctx = { repo, zoho: zohoClient };
+  if (startSync) itemSync.start();
 
   const app = express();
   app.set('trust proxy', 1);
@@ -83,7 +90,7 @@ function createApp({ dataDir, adminPassword, sessionSecret }) {
   oauth.install(app, repo, tries);
 
   // ---- MCP: signed in with a member's own key, or the token the Claude apps get after signing in (not the browser cookie) ----
-  app.all('/mcp', (req, res) => {
+  app.all('/mcp', async (req, res) => {
     if (req.method !== 'POST') return res.status(405).set('Allow', 'POST').json({ error: 'Use POST' });
     const t = Date.now(), recent = (tries.get('mcp' + req.ip) || []).filter((x) => x > t - 10 * 60 * 1000);
     if (recent.length >= 30) return res.status(429).json({ error: 'Too many wrong keys. Please wait a few minutes.' });
@@ -92,8 +99,8 @@ function createApp({ dataDir, adminPassword, sessionSecret }) {
     if (!m) { recent.push(t); tries.set('mcp' + req.ip, recent); return res.status(401).set('WWW-Authenticate', 'Bearer resource_metadata="' + req.protocol + '://' + req.get('host') + '/.well-known/oauth-protected-resource"').json({ error: 'Missing or wrong key. Make a new one under My connection in the portal.' }); }
     tries.delete('mcp' + req.ip);
     const body = req.body;
-    if (Array.isArray(body)) { const out = body.map((x) => mcp.handle(repo, m, x)).filter(Boolean); return out.length ? res.json(out) : res.status(202).end(); }
-    const out = mcp.handle(repo, m, body);
+    if (Array.isArray(body)) { const out = (await Promise.all(body.map((x) => mcp.handle(ctx, m, x)))).filter(Boolean); return out.length ? res.json(out) : res.status(202).end(); }
+    const out = await mcp.handle(ctx, m, body);
     return out ? res.json(out) : res.status(202).end();
   });
 
@@ -114,11 +121,32 @@ function createApp({ dataDir, adminPassword, sessionSecret }) {
   app.patch('/api/members/:id', requireAdmin, (req, res) => answer(res, repo.setActive(req.params.id, !!(req.body || {}).active, req.user.id)));
 
   // ---- customers (view only) ----
-  app.get('/api/customers', (req, res) => res.json({ customers: repo.customers({ q: req.query.q, owner: String(req.query.owner || '') }) }));
-  app.get('/api/customers/:id', (req, res) => {
-    const c = repo.customer(req.params.id);
+  app.get('/api/customers', (req, res) => res.json({ customers: repo.customers({ q: req.query.q, owner: String(req.query.owner || ''), buyer: String(req.query.buyer || ''), business: String(req.query.business || '') }), options: { buyer_types: repo.BUYER_TYPES, businesses: repo.BUSINESSES } }));
+  app.get('/api/customers/:mobile', (req, res) => {
+    const c = repo.customer(req.params.mobile);
     return c ? res.json({ customer: c }) : res.status(404).json({ error: 'Customer not found' });
   });
+  // what Zoho Books says about this customer (matched by mobile number): purchases, orders, quotes and what to do next
+  app.get('/api/customers/:mobile/books', async (req, res) => {
+    if (!repo.customer(req.params.mobile)) return res.status(404).json({ error: 'Customer not found' });
+    res.json(await books.forCustomer(zohoClient, req.params.mobile, new Date().toISOString().slice(0, 10), { refresh: req.query.refresh === '1' }));
+  });
+
+  // ---- vendors ----
+  app.get('/api/vendors', (req, res) => res.json({ vendors: repo.vendors({ q: req.query.q }) }));
+  app.get('/api/vendors/:mobile', (req, res) => {
+    const v = repo.vendor(req.params.mobile);
+    return v ? res.json({ vendor: v }) : res.status(404).json({ error: 'Vendor not found' });
+  });
+
+  // ---- items (from Zoho Commerce) ----
+  app.get('/api/items', (req, res) => res.json({ items: repo.items({ q: req.query.q, category: String(req.query.category || ''), inStock: req.query.stock === '1' }), categories: repo.itemCategories(), status: itemSync.status() }));
+  app.get('/api/items/:id', (req, res) => {
+    const i = repo.item(req.params.id);
+    return i ? res.json({ item: i }) : res.status(404).json({ error: 'Item not found' });
+  });
+  app.post('/api/items/sync', async (req, res) => { const r = await itemSync.syncNow(); res.json({ result: r, status: itemSync.status() }); });
+
   // pictures show in the page; anything else is only ever sent as a download
   const INLINE = /^image\/(png|jpeg|webp|gif)$/;
   app.get('/api/files/:id', (req, res) => {
@@ -131,7 +159,8 @@ function createApp({ dataDir, adminPassword, sessionSecret }) {
   });
 
   app.use((req, res) => (req.originalUrl.startsWith('/api/') ? res.status(404).json({ error: 'Not found' }) : res.status(404).type('text').send('Not found')));
-  app.repo = repo;
+  app.repo = repo; app.itemSync = itemSync;
+  app.on('close', () => itemSync.stop());
   return app;
 }
 
