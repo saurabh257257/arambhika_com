@@ -58,8 +58,8 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
           PORTAL_PORT: ${{ vars.PORTAL_PORT }}
-          # a free name that points at the droplet's address, so HTTPS works without any DNS change
-          PORTAL_DOMAIN: ${{ vars.PORTAL_DOMAIN || '134-209-153-189.sslip.io' }}
+          # the Portal's own address. (The earlier free name 134-209-153-189.sslip.io keeps working: its nginx site and certificate stay in place.)
+          PORTAL_DOMAIN: ${{ vars.PORTAL_DOMAIN || 'crm.arambhika.com' }}
           # credentials, kept only as environment secrets (PORTAL_ADMIN_PASSWORD and PORTAL_SESSION_SECRET when set, otherwise the Admin Panel ones)
           ADMIN_PASSWORD: ${{ secrets.PORTAL_ADMIN_PASSWORD || secrets.ADMIN_PANEL_PASSWORD }}
           SESSION_SECRET: ${{ secrets.PORTAL_SESSION_SECRET || secrets.ADMIN_PANEL_SESSION_SECRET }}
