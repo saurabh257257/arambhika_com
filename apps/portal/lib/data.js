@@ -50,7 +50,10 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     }
     return { fields: out };
   }
-  const missing = (c) => Object.keys(ASK).filter((k) => !c[k] || (k === 'buyer_type' && c[k] === 'unknown')).map((k) => ({ field: k, ask: ASK[k] }));
+  // where Claude can look before it bothers the user
+  const LOOK = { company: 'Zoho Books contact, the email signature, the sender\'s website', email: 'the email they wrote from, Zoho Books', gstin: 'Zoho Books contact, their invoice or website footer', city: 'Zoho Books, the email signature', state: 'Zoho Books, the email signature', pincode: 'Zoho Books, the email signature',
+    source: 'the conversation or email they first came in through', buyer_type: 'their website or IndiaMART listing; otherwise ask', business: 'their website or IndiaMART listing; otherwise ask', looking_for: 'their email or chat', application: 'their email or chat', cell_format: 'their email or chat', monthly_volume: 'their email or chat', urgency: 'their email or chat' };
+  const missing = (c) => Object.keys(ASK).filter((k) => !c[k] || (k === 'buyer_type' && c[k] === 'unknown')).map((k) => ({ field: k, ask: ASK[k], ...(ENUMS[k] ? { options: ENUMS[k].filter((o) => o !== 'unknown') } : {}), look_in: LOOK[k] }));
 
   const repo = {
     TYPES, SOURCES, BUYER_TYPES, BUSINESSES, URGENCY, mobile,

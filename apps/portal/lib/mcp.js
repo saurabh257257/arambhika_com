@@ -48,8 +48,29 @@ const TOOLS = [
       return text({ ...customerOut(x), ...fill(x), interactions: x.interactions.slice(0, 50).map((i) => ({ id: i.id, type: i.type, summary: i.summary, amount: i.amount, next_date: i.next_date, by: i.by_name, at: i.at })), files: x.files.map((f) => ({ id: f.id, name: f.name, size: f.size, by: f.by_name, at: f.at })) }); } },
   { name: 'add_customer', description: 'Adds a new customer. The mobile number is required and must not already belong to a customer (search first; if it exists, use update_customer). Fill in every detail you can find in what the user gave you (an email, a chat, a call note): company, city, where they came from, trader or not, what they are looking for. Then ask the user for the details that are still unknown.',
     inputSchema: { type: 'object', properties: { mobile: MOBILE, ...PROFILE_PROPS, owner_username: str('Owner, if not you') }, required: ['mobile', 'name'] },
-    run: (c, me, a) => { const o = ownerOf(c.repo, a); if (o.error) return fail(o.error);
-      const r = c.repo.addCustomer({ ...a, ownerId: o.id }, me.id); return r.error ? fail(r.error) : text({ saved: true, ...customerOut(r.customer), ...fill(r) }); } },
+    run: async (c, me, a) => { const o = ownerOf(c.repo, a); if (o.error) return fail(o.error);
+      const r = c.repo.addCustomer({ ...a, ownerId: o.id }, me.id); if (r.error) return fail(r.error);
+      let filled = [];
+      try { const z = await books.suggestFor(c.zoho, r.customer.mobile); if (z.found) { const fresh = {}; for (const [k, v] of Object.entries(z.fields)) if (v && !r.customer[k]) fresh[k] = v; if (Object.keys(fresh).length) filled = c.repo.updateCustomer(r.customer.mobile, fresh, me.id).changed; } } catch (e) { /* Zoho is optional here */ }
+      const now = c.repo.customer(r.customer.mobile);
+      return text({ saved: true, ...customerOut(now), filled_from_zoho_books: filled, ...fill(now), next: now.missing.length ? 'Now call complete_profile: look in your other connected tools for the unknown details, then ask the user the rest.' : undefined }); } },
+  { name: 'complete_profile', description: 'Call this right after saving or opening a customer. It lists what is still unknown about them, with the answer options, in the order to ask. Work through it like this: (1) call enrich_from_zoho; (2) for what is still unknown, look in every other tool you have connected (email, calendar, documents, web search) for facts about this customer; (3) save what you find with update_customer; (4) ask the user for the rest, two or three questions at a time, offering the options; (5) save their answers with update_customer.',
+    inputSchema: { type: 'object', properties: { mobile: MOBILE }, required: ['mobile'] },
+    run: (c, me, a) => { const x = c.repo.customer(a.mobile); if (!x) return fail('No customer with that mobile number');
+      const order = ['company', 'city', 'state', 'source', 'buyer_type', 'business', 'looking_for', 'application', 'cell_format', 'monthly_volume', 'urgency', 'email', 'gstin'];
+      const todo = x.missing.slice().sort((p, q) => order.indexOf(p.field) - order.indexOf(q.field));
+      return text({ customer: x.name, mobile: x.mobile, known: customerOut(x), unknown: todo, how: todo.length ? 'First enrich_from_zoho, then search your other connected tools for these facts, save what you find, and ask the user the rest: two or three questions at a time with the options.' : 'The profile is complete.' }); } },
+  { name: 'enrich_from_zoho', description: 'Fills the blank details of a customer (company, email, GST number, city, state, pincode) from their Zoho Books contact, found by mobile number. It never overwrites a detail that is already filled. Returns what it filled.',
+    inputSchema: { type: 'object', properties: { mobile: MOBILE }, required: ['mobile'] },
+    run: async (c, me, a) => { if (!c.repo.customer(a.mobile)) return fail('No customer with that mobile number');
+      const z = await books.suggestFor(c.zoho, a.mobile);
+      if (!z.connected) return text({ filled: [], note: 'Zoho Books is not connected to the portal.' });
+      if (!z.found) return text({ filled: [], note: z.error ? 'Zoho Books could not be read: ' + z.error : 'No customer in Zoho Books has this mobile number yet.' });
+      const cur = c.repo.customer(a.mobile), fresh = {};
+      for (const [k, v] of Object.entries(z.fields)) if (v && !cur[k]) fresh[k] = v;
+      if (!Object.keys(fresh).length) return text({ filled: [], note: 'Zoho Books has nothing new for this customer.' });
+      const r = c.repo.updateCustomer(a.mobile, fresh, me.id);
+      return r.error ? fail(r.error) : text({ filled: r.changed, values: fresh, ...fill(r) }); } },
   { name: 'update_customer', description: 'Adds or corrects details on an existing customer, found by mobile number. Only the details you send are changed, and a blank never erases anything. Use it whenever you learn something new about them.',
     inputSchema: { type: 'object', properties: { mobile: MOBILE, ...PROFILE_PROPS }, required: ['mobile'] },
     run: (c, me, a) => { const r = c.repo.updateCustomer(a.mobile, a, me.id); return r.error ? fail(r.error) : text({ saved: true, changed: r.changed, ...fill(r) }); } },
@@ -106,9 +127,18 @@ const TOOLS = [
     run: (c, me, a) => { if (!a.item_id && !a.query) return fail('Give an item_id or some words'); return text(c.repo.findSuppliers({ itemId: a.item_id, query: a.query }).slice(0, 25)); } },
 ];
 
+const PROMPTS = [
+  { name: 'new_lead', description: 'Save a new prospect from an email, chat or call note you paste, then complete their profile', arguments: [{ name: 'text', description: 'The email, chat or note', required: true }],
+    text: (a) => 'Here is something about a new prospect:\n\n' + (a.text || '') + '\n\nPull out their mobile number (ask me if it is missing), name, company, city and state, where they came from, whether they are a trader, their kind of business, what they are looking for, what for, cell type, quantity and urgency. Search the portal first so you do not duplicate them, save them with add_customer or update_customer, log this as an interaction, then call complete_profile and fill the rest from my other connected tools before asking me anything.' },
+  { name: 'complete_customer_profile', description: 'Fill in what is missing about a customer', arguments: [{ name: 'mobile', description: 'The customer\'s mobile number', required: true }],
+    text: (a) => 'Complete the profile of the customer with mobile ' + (a.mobile || '') + ': call complete_profile, try enrich_from_zoho, look for the unknown details in my other connected tools, save what you find, then ask me the rest two or three questions at a time.' },
+  { name: 'log_vendor_rates', description: 'Record today\'s rates from a vendor', arguments: [{ name: 'text', description: 'What the vendor sent: material and rates', required: true }],
+    text: (a) => 'A vendor sent these rates:\n\n' + (a.text || '') + '\n\nFind the vendor by mobile (add them if new; ask me for the mobile if it is missing), then record each material with log_vendor_rate, linking it to our item. Tell me which ones could not be linked.' },
+];
 const INSTRUCTIONS = (me) => 'You are connected as ' + me.name + '. Everything you save is recorded under this name. ' +
   'A customer or vendor is identified by mobile number, which must be unique: search first, and if one exists use update_ instead of add_. ' +
   'When the user gives you an email, a chat or call notes about a prospect, pull out everything you can (mobile, name, company, city and state, where they came from, trader or non-trader, what business, what they are looking for, what for, cell type, volume, urgency) and save it with add_customer or update_customer, then ask for the details still unknown. A mobile number is required: ask for it if it is missing. ' +
+  'After you save or open a customer, call complete_profile and follow it: try enrich_from_zoho, then look in the other tools you have connected (email, calendar, documents, web search) for the unknown details and save what you find, and only then ask the user for the rest, two or three questions at a time with the options. Do not stop after saving. ' +
   'Customers buy nickel strip, battery cells, BMS, busbars and holders, so ask about those. Use customer_purchases to see what Zoho Books says about a customer and what to do next. Never invent a detail you were not given.';
 
 // one JSON-RPC message in, one reply out (null when no reply is wanted)
@@ -120,9 +150,15 @@ async function handle(ctx, me, msg) {
   switch (msg.method) {
     case 'initialize': {
       const asked = msg.params && msg.params.protocolVersion;
-      return reply({ protocolVersion: VERSIONS.includes(asked) ? asked : VERSIONS[0], capabilities: { tools: {} }, serverInfo: { name: 'arambhika-portal', version: '2.0.0' }, instructions: INSTRUCTIONS(me) });
+      return reply({ protocolVersion: VERSIONS.includes(asked) ? asked : VERSIONS[0], capabilities: { tools: {}, prompts: {} }, serverInfo: { name: 'arambhika-portal', version: '2.0.0' }, instructions: INSTRUCTIONS(me) });
     }
     case 'ping': return reply({});
+    case 'prompts/list': return reply({ prompts: PROMPTS.map(({ name, description, arguments: args }) => ({ name, description, arguments: args })) });
+    case 'prompts/get': {
+      const p = PROMPTS.find((x) => x.name === (msg.params && msg.params.name));
+      if (!p) return error(-32602, 'Unknown prompt');
+      return reply({ description: p.description, messages: [{ role: 'user', content: { type: 'text', text: p.text((msg.params && msg.params.arguments) || {}) } }] });
+    }
     case 'tools/list': return reply({ tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
     case 'tools/call': {
       const tool = TOOLS.find((t) => t.name === (msg.params && msg.params.name));

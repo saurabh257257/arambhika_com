@@ -99,6 +99,12 @@ function createZoho(env = process.env, fetchImpl = fetch) {
       const j = await books('salesorders/' + encodeURIComponent(id));
       return ((j.salesorder || {}).line_items || []).map((l) => ({ itemId: String(l.item_id || ''), name: l.name || '', quantity: num(l.quantity), rate: num(l.rate), total: num(l.item_total) }));
     },
+    // one contact's details: the list leaves out the address and GST number
+    async contactDetail(id) {
+      const j = await books('contacts/' + encodeURIComponent(id));
+      const c = j.contact || {}, b = c.billing_address || {};
+      return { company: c.company_name || '', name: c.contact_name || '', email: c.email || '', gstin: c.gst_no || '', city: b.city || '', state: b.state || '', pincode: String(b.zip || '').replace(/\s/g, '') };
+    },
     // every invoice (paid or not, newest first): used for "who owes us" and to know who has bought before
     invoices: (o) => cached('invoices', async () => (await pages('invoices', 'invoices', { sort_column: 'created_time', sort_order: 'D' })).map(normInvoice), o),
     salesOrders: (o) => cached('salesorders', async () => (await pages('salesorders', 'salesorders', { sort_column: 'created_time', sort_order: 'D' })).map(normOrder), o),

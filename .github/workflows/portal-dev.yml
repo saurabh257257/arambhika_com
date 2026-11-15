@@ -66,7 +66,7 @@ jobs:
           # read-only access to Zoho Books (a customer's purchases and orders) and the Zoho Commerce store (items): the same values the website and Admin Panel already use
           ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
           ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
-          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.PORTAL_ZOHO_REFRESH_TOKEN || secrets.ZOHO_REFRESH_TOKEN }}
           ZOHO_BOOKS_ORG_ID: ${{ secrets.ZOHO_BOOKS_ORG_ID }}
           ZOHO_DC: ${{ vars.ZOHO_DC }}
           ZOHO_STOREFRONT_DOMAIN: ${{ vars.ZOHO_STOREFRONT_DOMAIN }}
