@@ -49,6 +49,10 @@ function open(dataDir) {
       id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES customers(id), interaction_id TEXT REFERENCES interactions(id),
       name TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, by_member TEXT NOT NULL REFERENCES members(id), at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS oauth_clients (id TEXT PRIMARY KEY, name TEXT NOT NULL, redirect_uris TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS oauth_tokens (
+      hash TEXT PRIMARY KEY, member_id TEXT NOT NULL REFERENCES members(id), client_id TEXT NOT NULL, kind TEXT NOT NULL, expires_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS audit (
       id TEXT PRIMARY KEY, by_member TEXT NOT NULL, action TEXT NOT NULL, at TEXT NOT NULL
     );
@@ -81,12 +85,12 @@ function open(dataDir) {
     setPassword(mid, password, by = 'admin') {
       if (String(password || '').length < 10) return { error: 'The password needs at least 10 characters' };
       if (!get('SELECT id FROM members WHERE id = ?', mid)) return { error: 'Member not found', status: 404 };
-      run('UPDATE members SET pass_hash = ? WHERE id = ?', hashPassword(password), mid); audit(by, 'Reset password of ' + get('SELECT username FROM members WHERE id = ?', mid).username);
+      run('UPDATE members SET pass_hash = ? WHERE id = ?', hashPassword(password), mid); run('DELETE FROM oauth_tokens WHERE member_id = ?', mid); audit(by, 'Reset password of ' + get('SELECT username FROM members WHERE id = ?', mid).username);
       return { ok: true };
     },
     setActive(mid, active, by = 'admin') {
       if (!get('SELECT id FROM members WHERE id = ?', mid)) return { error: 'Member not found', status: 404 };
-      run('UPDATE members SET active = ? WHERE id = ?', active ? 1 : 0, mid); audit(by, (active ? 'Switched on ' : 'Switched off ') + get('SELECT username FROM members WHERE id = ?', mid).username);
+      run('UPDATE members SET active = ? WHERE id = ?', active ? 1 : 0, mid); if (!active) run('DELETE FROM oauth_tokens WHERE member_id = ?', mid); audit(by, (active ? 'Switched on ' : 'Switched off ') + get('SELECT username FROM members WHERE id = ?', mid).username);
       return { ok: true };
     },
     createKey(mid) {
@@ -98,7 +102,7 @@ function open(dataDir) {
     },
     revokeKey(mid, by = 'admin') {
       if (!get('SELECT id FROM members WHERE id = ?', mid)) return { error: 'Member not found', status: 404 };
-      run('UPDATE members SET key_hash = NULL, key_created_at = NULL WHERE id = ?', mid); audit(by, 'Revoked the connection key of ' + get('SELECT username FROM members WHERE id = ?', mid).username);
+      run('UPDATE members SET key_hash = NULL, key_created_at = NULL WHERE id = ?', mid); run('DELETE FROM oauth_tokens WHERE member_id = ?', mid); audit(by, 'Revoked the connection key of ' + get('SELECT username FROM members WHERE id = ?', mid).username);
       return { ok: true };
     },
     keyInfo: (mid) => { const r = get('SELECT key_created_at AS at FROM members WHERE id = ? AND key_hash IS NOT NULL', mid); return r ? { at: r.at } : null; },
@@ -107,6 +111,32 @@ function open(dataDir) {
       const m = get('SELECT id, name, username, role FROM members WHERE key_hash = ? AND active = 1', crypto.createHash('sha256').update(String(key)).digest('hex'));
       return m ? { ...m } : null;
     },
+    // ---- sign-in for the Claude apps (OAuth): clients, and short-lived access tokens with rotating refresh tokens ----
+    saveClient(name, redirectUris) { const c = { id: 'c_' + crypto.randomBytes(16).toString('hex'), name: clean(name, 80) || 'Claude', redirect_uris: redirectUris, created_at: now() }; run('INSERT INTO oauth_clients (id, name, redirect_uris, created_at) VALUES (?, ?, ?, ?)', c.id, c.name, JSON.stringify(redirectUris), c.created_at); return c; },
+    client(cid) { const r = get('SELECT * FROM oauth_clients WHERE id = ?', String(cid || '')); return r ? { id: r.id, name: r.name, redirect_uris: JSON.parse(r.redirect_uris) } : null; },
+    issueTokens(mid, clientId) {
+      const sha = (t) => crypto.createHash('sha256').update(t).digest('hex'), access = 'pa_' + crypto.randomBytes(32).toString('base64url'), refresh = 'pr_' + crypto.randomBytes(32).toString('base64url');
+      run('DELETE FROM oauth_tokens WHERE expires_at < ?', now());
+      run('INSERT INTO oauth_tokens (hash, member_id, client_id, kind, expires_at) VALUES (?, ?, ?, ?, ?)', sha(access), mid, clientId, 'access', new Date(Date.now() + 3600 * 1000).toISOString());
+      run('INSERT INTO oauth_tokens (hash, member_id, client_id, kind, expires_at) VALUES (?, ?, ?, ?, ?)', sha(refresh), mid, clientId, 'refresh', new Date(Date.now() + 60 * 86400 * 1000).toISOString());
+      return { access, refresh, expiresIn: 3600 };
+    },
+    memberByAccessToken(token) {
+      if (!/^pa_[A-Za-z0-9_-]{20,80}$/.test(String(token || ''))) return null;
+      const m = get("SELECT m.id, m.name, m.username, m.role FROM oauth_tokens t JOIN members m ON m.id = t.member_id WHERE t.hash = ? AND t.kind = 'access' AND t.expires_at > ? AND m.active = 1", crypto.createHash('sha256').update(String(token)).digest('hex'), now());
+      return m ? { ...m } : null;
+    },
+    // a refresh token works once: using it hands back a new pair
+    useRefresh(token, clientId) {
+      if (!/^pr_[A-Za-z0-9_-]{20,80}$/.test(String(token || ''))) return null;
+      const h = crypto.createHash('sha256').update(String(token)).digest('hex');
+      const t = get("SELECT member_id FROM oauth_tokens WHERE hash = ? AND kind = 'refresh' AND client_id = ? AND expires_at > ?", h, clientId, now());
+      if (!t) return null;
+      run('DELETE FROM oauth_tokens WHERE hash = ?', h);
+      const m = get('SELECT id FROM members WHERE id = ? AND active = 1', t.member_id);
+      return m ? this.issueTokens(m.id, clientId) : null;
+    },
+    revokeTokens: (mid) => run('DELETE FROM oauth_tokens WHERE member_id = ?', mid),
     memberByUsername: (u) => plain(get('SELECT id, name, username FROM members WHERE username = ? AND active = 1', clean(u, 40).toLowerCase())),
     // customers this member owns whose latest interaction asked for a follow-up on or before the given day
     followUps(mid, upTo) {

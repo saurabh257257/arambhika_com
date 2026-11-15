@@ -6,6 +6,7 @@ const express = require('express');
 const compression = require('compression');
 const { open, TYPES } = require('./lib/db');
 const mcp = require('./lib/mcp');
+const oauth = require('./lib/oauth');
 
 const safeEqual = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 
@@ -79,13 +80,16 @@ function createApp({ dataDir, adminPassword, sessionSecret }) {
   app.get('/index.html', requireUser, (req, res) => res.redirect('/'));
   app.get('/portal.js', requireUser, send('portal.js'));
 
-  // ---- MCP: signed in with a member's own key (not the browser cookie) ----
+  oauth.install(app, repo, tries);
+
+  // ---- MCP: signed in with a member's own key, or the token the Claude apps get after signing in (not the browser cookie) ----
   app.all('/mcp', (req, res) => {
     if (req.method !== 'POST') return res.status(405).set('Allow', 'POST').json({ error: 'Use POST' });
     const t = Date.now(), recent = (tries.get('mcp' + req.ip) || []).filter((x) => x > t - 10 * 60 * 1000);
     if (recent.length >= 30) return res.status(429).json({ error: 'Too many wrong keys. Please wait a few minutes.' });
-    const m = repo.memberByKey(String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
-    if (!m) { recent.push(t); tries.set('mcp' + req.ip, recent); return res.status(401).set('WWW-Authenticate', 'Bearer').json({ error: 'Missing or wrong key. Make a new one under My connection in the portal.' }); }
+    const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const m = repo.memberByKey(bearer) || repo.memberByAccessToken(bearer);
+    if (!m) { recent.push(t); tries.set('mcp' + req.ip, recent); return res.status(401).set('WWW-Authenticate', 'Bearer resource_metadata="' + req.protocol + '://' + req.get('host') + '/.well-known/oauth-protected-resource"').json({ error: 'Missing or wrong key. Make a new one under My connection in the portal.' }); }
     tries.delete('mcp' + req.ip);
     const body = req.body;
     if (Array.isArray(body)) { const out = body.map((x) => mcp.handle(repo, m, x)).filter(Boolean); return out.length ? res.json(out) : res.status(202).end(); }

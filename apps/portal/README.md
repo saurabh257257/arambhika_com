@@ -35,3 +35,7 @@ claude mcp add --transport http arambhika http://<portal address>/mcp --header "
 Tools: `who_am_i`, `list_team`, `search_customers`, `get_customer`, `add_customer` (refuses a phone number that already exists), `log_interaction` (call, whatsapp, visit, quote, order, payment, dispatch, note, followup), `my_follow_ups`, `add_file` (up to 5 MB). There is no delete tool. Every write is stamped with the member whose key was used. The admin can revoke a key under Members; switching a member off also stops their key at once.
 
 Over plain http the key travels unencrypted, so use this only while testing; the Claude apps (claude.ai, desktop chat) need an https address and a sign-in page, which come with a domain.
+
+### Claude apps (claude.ai, desktop): sign in with username and password
+
+The portal is also an OAuth server (`lib/oauth.js`): dynamic client registration, authorization code with PKCE (S256), refresh tokens that rotate. In Claude: Settings, Connectors, Add custom connector, address `https://<portal address>/mcp`, then **Sign in now** with **Register automatically**. Claude opens `/oauth/authorize`, a page on this server where the member types their portal username and password; Claude only ever receives a token (access 1 hour, refresh 60 days). A password reset, switching a member off, or revoking their key ends their Claude sign-ins at once. Return addresses are limited to Claude's own sites and localhost. Needs an https address.

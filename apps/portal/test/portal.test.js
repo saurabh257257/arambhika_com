@@ -179,3 +179,76 @@ describe('mcp', () => {
     } finally { await s.stop(); }
   });
 });
+
+describe('oauth sign-in for the Claude apps', () => {
+  const crypto = require('node:crypto');
+  const b64 = (b) => b.toString('base64url');
+  const form = (o) => new URLSearchParams(o).toString();
+
+  test('register, sign in on our page with username and password, exchange the code, use the token; every wrong turn is refused', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      const redirect = 'https://claude.ai/api/mcp/auth_callback';
+
+      // Claude finds out how to sign in from the 401 and the well-known pages
+      const r401 = await fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      assert.equal(r401.status, 401);
+      assert.match(r401.headers.get('www-authenticate'), /resource_metadata="http:\/\/127\.0\.0\.1:\d+\/\.well-known\/oauth-protected-resource"/);
+      const pr = await (await fetch(s.base + '/.well-known/oauth-protected-resource')).json();
+      assert.equal(pr.resource, s.base + '/mcp'); assert.deepEqual(pr.authorization_servers, [s.base]);
+      const as = await (await fetch(s.base + '/.well-known/oauth-authorization-server')).json();
+      assert.deepEqual(as.code_challenge_methods_supported, ['S256']);
+      assert.equal(as.token_endpoint, s.base + '/oauth/token');
+
+      // registration only for Claude's own addresses
+      const reg = (uris) => fetch(s.base + '/oauth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_name: 'Claude', redirect_uris: uris }) });
+      assert.equal((await reg(['https://evil.example/cb'])).status, 400);
+      assert.equal((await reg(['http://evil.example/cb'])).status, 400);
+      const client = await (await reg([redirect])).json();
+      assert.match(client.client_id, /^c_/);
+
+      const verifier = b64(crypto.randomBytes(32)), challenge = b64(crypto.createHash('sha256').update(verifier).digest());
+      const q = { response_type: 'code', client_id: client.client_id, redirect_uri: redirect, state: 'abc', code_challenge: challenge, code_challenge_method: 'S256' };
+      const pageRes = await fetch(s.base + '/oauth/authorize?' + form(q));
+      assert.equal(pageRes.status, 200); assert.equal(pageRes.headers.get('x-frame-options'), 'DENY');
+      assert.match(await pageRes.text(), /Sign in and allow/);
+      assert.equal((await fetch(s.base + '/oauth/authorize?' + form({ ...q, redirect_uri: 'https://claude.ai/other' }))).status, 400, 'return address must match');
+      assert.equal((await fetch(s.base + '/oauth/authorize?' + form({ ...q, code_challenge_method: 'plain' }))).status, 400);
+      assert.equal((await fetch(s.base + '/oauth/authorize?' + form({ ...q, client_id: 'c_unknown' }))).status, 400);
+
+      const signIn = (password) => fetch(s.base + '/oauth/authorize', { method: 'POST', redirect: 'manual', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form({ client_id: q.client_id, redirect_uri: redirect, state: 'abc', code_challenge: challenge, username: 'lokesh', password }) });
+      assert.equal((await signIn('wrong-password')).status, 401);
+      const ok = await signIn('lokesh-pass-1234');
+      assert.equal(ok.status, 302);
+      const back = new URL(ok.headers.get('location'));
+      assert.equal(back.origin + back.pathname, redirect); assert.equal(back.searchParams.get('state'), 'abc');
+      const code = back.searchParams.get('code');
+
+      const token = (o) => fetch(s.base + '/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form(o) });
+      const base = { grant_type: 'authorization_code', code, client_id: q.client_id, redirect_uri: redirect };
+      assert.equal((await token({ ...base, code_verifier: 'not-the-verifier' })).status, 400, 'PKCE must match');
+      assert.equal((await token({ ...base, code_verifier: verifier })).status, 400, 'a code is burned by a failed try too');
+
+      const ok2 = await signIn('lokesh-pass-1234'); const code2 = new URL(ok2.headers.get('location')).searchParams.get('code');
+      const t = await (await token({ ...base, code: code2, code_verifier: verifier })).json();
+      assert.equal(t.token_type, 'Bearer'); assert.match(t.access_token, /^pa_/); assert.match(t.refresh_token, /^pr_/);
+      assert.equal((await token({ ...base, code: code2, code_verifier: verifier })).status, 400, 'a code works once');
+
+      const ping = (tok) => fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'who_am_i', arguments: {} } }) });
+      const who = await (await ping(t.access_token)).json();
+      assert.equal(JSON.parse(who.result.content[0].text).name, 'Lokesh');
+
+      // refresh gives a new pair, and the old refresh token is dead
+      const r2 = await (await token({ grant_type: 'refresh_token', refresh_token: t.refresh_token, client_id: q.client_id })).json();
+      assert.match(r2.access_token, /^pa_/);
+      assert.equal((await token({ grant_type: 'refresh_token', refresh_token: t.refresh_token, client_id: q.client_id })).status, 400, 'refresh tokens work once');
+      assert.equal((await token({ grant_type: 'refresh_token', refresh_token: r2.refresh_token, client_id: 'c_other' })).status, 400, 'bound to the app');
+
+      // a password reset, or switching the member off, ends the Claude sign-in at once
+      assert.equal((await ping(r2.access_token)).status, 200);
+      await s.admin.post('/api/members/' + L.id + '/password', { password: 'another-long-pass-1' });
+      assert.equal((await ping(r2.access_token)).status, 401, 'password reset ends sessions');
+    } finally { await s.stop(); }
+  });
+});
