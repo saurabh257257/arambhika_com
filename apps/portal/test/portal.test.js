@@ -261,6 +261,29 @@ describe('portal', () => {
     } finally { await s.stop(); }
   });
 
+  test('only the admin can delete a vendor, after typing their mobile; their rates go with them and the items stay', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
+      await s.app.itemSync.sync();
+      s.app.repo.addVendor({ name: 'Saurav', mobile: '9000000001' }, L.id); s.app.repo.addVendor({ name: 'Anil', mobile: '9000000002' }, L.id);
+      s.app.repo.addOffer({ vendorMobile: '9000000001', itemId: 'p1', rate: 700 }, L.id); s.app.repo.addOffer({ vendorMobile: '9000000002', itemId: 'p1', rate: 650 }, L.id);
+      const del = (c, mobile, body) => c.raw('DELETE', '/api/vendors/' + mobile, body);
+      assert.equal((await del(lok, '9000000001', { confirm: '9000000001' })).status, 403);
+      assert.equal((await del(client(s.base), '9000000001', { confirm: '9000000001' })).status, 401);
+      assert.equal((await del(s.admin, '9000000001', {})).status, 400);
+      assert.equal((await del(s.admin, '9000000001', { confirm: '9000000002' })).status, 400);
+      assert.equal((await del(s.admin, '9111111111', { confirm: '9111111111' })).status, 404);
+      const ok = await del(s.admin, '90000 00001', { confirm: '9000000001' });
+      assert.equal(ok.status, 200); assert.equal(ok.data.rates, 1);
+      assert.equal(s.app.repo.vendor('9000000001'), null);
+      assert.deepEqual(s.app.repo.findSuppliers({ itemId: 'p1' }).map((x) => x.vendor_name), ['Anil'], 'only the deleted vendor\'s rates went');
+      assert.equal(s.app.repo.item('p1').name.startsWith('Nickel strip'), true, 'items stay');
+      assert.match((await s.admin.get('/api/members')).data.activity[0].action, /DELETED vendor Saurav/);
+    } finally { await s.stop(); }
+  });
+
   test('the next step for each order, invoice and quote', () => {
     const today = '2026-11-15';
     const o = (x) => orderAction({ date: '2026-11-14', status: 'open', shipped: 'not_shipped', invoiced: 'not_invoiced', ...x }, today);

@@ -141,6 +141,12 @@
         '<div class="card"><h3>Rate history (' + v.offers.length + ')</h3>' + (v.offers.length ? '<div class="timeline">' + v.offers.map(function (o) {
           return '<div class="tl"><div class="dot">💱</div><div><div class="what">' + mat(o) + ' <span class="pill">' + money(o.rate) + (o.unit ? ' / ' + esc(o.unit) : '') + '</span></div><p>' + esc([o.quantity && 'Available: ' + o.quantity, o.note].filter(Boolean).join(' · ')) + '</p><div class="muted small">' + date(o.offer_date) + ' &middot; ' + esc(o.by_name || '') + '</div></div></div>';
         }).join('') + '</div>' : '<div class="empty">Nothing yet.</div>') + '</div>';
+      if (me.role === 'admin') view.insertAdjacentHTML('beforeend', '<div class="card" style="border-color:#fecaca"><div class="between"><div><h3>Delete this vendor</h3><div class="muted small">Admin only. Removes the vendor and all ' + v.offers.length + ' rate' + (v.offers.length === 1 ? '' : 's') + ' they gave, for good. It cannot be undone.</div></div><button class="btn bad sm" id="delVendor" type="button">Delete vendor</button></div></div>');
+      if ($('delVendor')) $('delVendor').addEventListener('click', function () {
+        var typed = window.prompt('This permanently deletes ' + v.name + ' and all their rates.\nTo confirm, type their mobile number (' + v.mobile + '):');
+        if (typed == null) return;
+        api('DELETE', '/api/vendors/' + v.mobile, { confirm: typed.replace(/\D/g, '').slice(-10) }).then(function () { toast('Vendor deleted'); location.hash = 'vendors'; }).catch(fail);
+      });
     });
   }
 

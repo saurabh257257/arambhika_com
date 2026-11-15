@@ -176,6 +176,15 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       if (changed.length) { run('UPDATE vendors SET ' + changed.map((k) => k + ' = ?').join(', ') + ', updated_at = ? WHERE mobile = ?', ...changed.map((k) => f[k]), now(), m); audit(by, 'Updated vendor ' + v.name + ' (' + changed.join(', ') + ')'); }
       return { vendor: repo.vendor(m), changed };
     },
+    // permanent: the vendor and every rate they gave. Only the admin route calls this, after a typed confirmation.
+    deleteVendor(m0, by) {
+      const m = mobile(m0), v = m && get('SELECT name FROM vendors WHERE mobile = ?', m);
+      if (!v) return { error: 'Vendor not found', status: 404 };
+      const n = get('SELECT COUNT(*) AS n FROM vendor_offers WHERE vendor_mobile = ?', m).n;
+      tx(() => { run('DELETE FROM vendor_offers WHERE vendor_mobile = ?', m); run('DELETE FROM vendors WHERE mobile = ?', m); });
+      audit(by, 'DELETED vendor ' + v.name + ' (' + m + ') with ' + n + ' rate' + (n === 1 ? '' : 's'));
+      return { ok: true, name: v.name, rates: n };
+    },
     vendors({ q } = {}) {
       const term = clean(q, 60).toLowerCase(), dg = String(q || '').replace(/\D/g, '');
       const rows = all(`SELECT v.*, (SELECT COUNT(*) FROM vendor_offers o WHERE o.vendor_mobile = v.mobile) AS offers, (SELECT MAX(offer_date) FROM vendor_offers o WHERE o.vendor_mobile = v.mobile) AS last_offer,

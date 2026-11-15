@@ -141,6 +141,13 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho, fetchFn, start
 
   // ---- vendors ----
   app.get('/api/vendors', (req, res) => res.json({ vendors: repo.vendors({ q: req.query.q }) }));
+  // admin only, with the vendor's mobile number typed back as confirmation
+  app.delete('/api/vendors/:mobile', requireAdmin, (req, res) => {
+    const v = repo.vendor(req.params.mobile);
+    if (!v) return res.status(404).json({ error: 'Vendor not found' });
+    if (String((req.body || {}).confirm || '') !== v.mobile) return res.status(400).json({ error: 'Type the vendor\'s mobile number to confirm' });
+    const r = repo.deleteVendor(v.mobile, req.user.id); answer(res, r, r);
+  });
   app.get('/api/vendors/:mobile', (req, res) => {
     const v = repo.vendor(req.params.mobile);
     return v ? res.json({ vendor: v }) : res.status(404).json({ error: 'Vendor not found' });
