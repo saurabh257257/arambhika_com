@@ -1,9 +1,9 @@
-// What Zoho Books knows about a customer, found by their mobile number: quotes, orders, invoices, the items they bought, and for
-// each document the next step to take ("order placed: move it to invoicing", "not delivered yet", "overdue: call for payment").
-// Read-only. The numbers on the right of the match are compared, so +91, spaces and a leading 0 do not matter.
+// What Zoho Books says about a customer, as saved into the portal by a team member's Claude (which has Zoho connected with that
+// person's own Zoho login). The portal never talks to Zoho Books itself. From the saved invoices, orders and quotes it shows what the
+// customer bought and works out the next step for each one ("order placed: move it to invoicing", "not delivered yet",
+// "overdue: call for payment"). The next steps are worked out when the page is opened, so they stay true as days pass.
 'use strict';
 
-const last10 = (v) => String(v || '').replace(/\D/g, '').slice(-10);
 const days = (from, to) => Math.floor((Date.parse(to) - Date.parse(from)) / 86400000);
 const fmtDate = (d) => String(d || '').slice(0, 10).split('-').reverse().join('-');
 const rupees = (n) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
@@ -46,49 +46,24 @@ function invoiceAction(i, today) {
   return A('info', i.status === 'partially_paid' ? 'Part paid' : 'Payment due', rupees(bal) + ' is due' + (i.dueDate ? ' on ' + fmtDate(i.dueDate) : '') + '.');
 }
 
-// the customer's Zoho contacts (by mobile), then everything under them
-async function forCustomer(zoho, mobile, today = new Date().toISOString().slice(0, 10), opts = {}) {
-  if (!zoho || !zoho.configured) return { connected: false, note: 'Zoho Books is not connected to the portal yet.' };
-  const key = last10(mobile);
-  try {
-    const customers = await zoho.customers(opts);
-    const contacts = customers.list.filter((c) => (c.phones || [c.phone]).some((p) => last10(p) === key));
-    if (!contacts.length) return { connected: true, found: false, note: 'No customer in Zoho Books has this mobile number yet.', source: customers.source };
-    const ids = new Set(contacts.map((c) => c.id));
-    const warnings = [];
-    const safe = async (what, scope, fn) => { try { return await fn(); } catch (e) { warnings.push(e.kind === 'not_authorized' ? what + ' cannot be shown: the saved Zoho login is not allowed to read them (it needs the scope ' + scope + ').' : what + ' could not be read just now (' + e.message + ').'); return []; } };
-    const [invoices, orders, quotes] = await Promise.all([safe('Invoices', 'ZohoBooks.invoices.READ', () => zoho.invoices(opts)), safe('Sales orders', 'ZohoBooks.salesorders.READ', () => zoho.salesOrders(opts)), safe('Quotes', 'ZohoBooks.estimates.READ', () => zoho.estimates(opts))]);
-    const mine = (l) => l.filter((x) => ids.has(x.customerId));
-    const inv = mine(invoices).map((i) => ({ ...i, next: invoiceAction(i, today) }));
-    const ord = mine(orders).map((o) => ({ ...o, next: orderAction(o, today) }));
-    const qts = mine(quotes).map((q) => ({ ...q, next: quoteAction(q, today) }));
-    // what they bought: the lines of their latest invoices and orders
-    const bought = new Map();
-    const take = async (list, fn) => { for (const d of list.slice(0, 8)) { try { for (const l of await fn(d.id)) { const k = l.itemId || l.name; const b = bought.get(k) || { itemId: l.itemId, name: l.name, quantity: 0, value: 0, last: '' }; b.quantity += l.quantity; b.value += l.total; if (!b.last || d.date > b.last) b.last = d.date; bought.set(k, b); } } catch (e) { /* skip a document Zoho will not give */ } } };
-    await take(inv.filter((i) => i.status !== 'void' && i.status !== 'draft'), zoho.invoiceLines);
-    const attach = async (list, fn) => { for (const d of list.slice(0, 5)) { try { d.lines = await fn(d.id); } catch (e) { d.lines = []; } } };
-    await Promise.all([attach(ord, zoho.orderLines), attach(inv, zoho.invoiceLines)]);
-    const live = inv.filter((i) => i.status !== 'void' && i.status !== 'draft');
-    const tagged = [...ord.map((d) => ['order', d]), ...inv.map((d) => ['invoice', d]), ...qts.map((d) => ['quote', d])];
-    const actions = tagged.filter(([, d]) => d.next.tone === 'bad' || d.next.tone === 'warn').map(([kind, d]) => ({ kind, number: d.number, ...d.next }));
-    return {
-      connected: true, found: true, contacts: contacts.map((c) => ({ id: c.id, name: c.name, company: c.company })),
-      summary: { invoices: live.length, billed: live.reduce((s, i) => s + i.total, 0), outstanding: live.reduce((s, i) => s + (i.balance || 0), 0), firstPurchase: live.length ? live.map((i) => i.date).sort()[0] : '', lastPurchase: live.length ? live.map((i) => i.date).sort().slice(-1)[0] : '', openActions: actions.length },
-      warnings, actions, invoices: inv, orders: ord, quotes: qts, bought: [...bought.values()].sort((a, b) => b.value - a.value),
-    };
-  } catch (e) { return { connected: true, found: false, error: e.message, note: 'Zoho Books could not be read just now: ' + e.message }; }
+// everything saved for one customer, with the next step on each document and a summary
+function forCustomer(repo, mobile, today = new Date().toISOString().slice(0, 10)) {
+  const d = repo.booksDocs(mobile);
+  if (!d.count) return { synced: false, note: 'Nothing from Zoho Books has been saved for this customer yet. Ask Claude: "Sync this customer from Zoho Books".' };
+  const inv = d.invoices.map((i) => ({ ...i, next: invoiceAction(i, today) }));
+  const ord = d.orders.map((o) => ({ ...o, next: orderAction(o, today) }));
+  const qts = d.quotes.map((q) => ({ ...q, next: quoteAction(q, today) }));
+  const live = inv.filter((i) => i.status !== 'void' && i.status !== 'draft');
+  const bought = new Map();
+  for (const i of live) for (const l of i.lines || []) { const k = l.name; const b = bought.get(k) || { name: l.name, quantity: 0, value: 0, last: '' }; b.quantity += l.quantity; b.value += l.total; if (!b.last || i.date > b.last) b.last = i.date; bought.set(k, b); }
+  const tagged = [...ord.map((x) => ['order', x]), ...inv.map((x) => ['invoice', x]), ...qts.map((x) => ['quote', x])];
+  const actions = tagged.filter(([, x]) => x.next.tone === 'bad' || x.next.tone === 'warn').map(([kind, x]) => ({ kind, number: x.number, ...x.next }));
+  const dates = live.map((i) => i.date).filter(Boolean).sort();
+  return {
+    synced: true, syncedAt: d.syncedAt, syncedBy: d.syncedBy,
+    summary: { invoices: live.length, billed: live.reduce((s, i) => s + i.total, 0), outstanding: live.reduce((s, i) => s + (i.balance || 0), 0), firstPurchase: dates[0] || '', lastPurchase: dates[dates.length - 1] || '', openActions: actions.length },
+    actions, invoices: inv, orders: ord, quotes: qts, bought: [...bought.values()].sort((a, b) => b.value - a.value),
+  };
 }
 
-// fills the blank details of a customer from their Zoho Books contact (company, email, GST, city, state, pincode); never overwrites
-async function suggestFor(zoho, mobile, opts = {}) {
-  if (!zoho || !zoho.configured || !zoho.contactDetail) return { connected: false };
-  try {
-    const key = last10(mobile), customers = await zoho.customers(opts);
-    const hit = customers.list.find((c) => (c.phones || [c.phone]).some((p) => last10(p) === key));
-    if (!hit) return { connected: true, found: false };
-    const d = await zoho.contactDetail(hit.id);
-    return { connected: true, found: true, fields: { company: d.company || hit.company, email: d.email || hit.email, gstin: d.gstin, city: d.city, state: d.state, pincode: d.pincode } };
-  } catch (e) { return { connected: true, found: false, error: e.message }; }
-}
-
-module.exports = { suggestFor, forCustomer, quoteAction, orderAction, invoiceAction, last10 };
+module.exports = { forCustomer, quoteAction, orderAction, invoiceAction };

@@ -35,32 +35,25 @@ function storefrontFetch() {
   };
 }
 
-// a pretend Zoho Books: dates are relative to today so "overdue by 22 days" stays true
+// what a Claude with Zoho Books connected would read and save for Mr Rao: dates are relative to today so "overdue by 22 days" stays true
 const rel = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
-function fakeZoho() {
-  const line = [{ itemId: 'p1', name: 'Nickel strip 0.15', quantity: 20, rate: 750, total: 15000 }];
-  return {
-    configured: true,
-    customers: async () => ({ source: 'contacts', list: [{ id: 'z1', name: 'Mr Rao', company: 'Rao Traders', phones: ['+91 98111 22233'], phone: '+91 98111 22233' }, { id: 'z2', name: 'Other', company: '', phones: ['9000011111'], phone: '9000011111' }] }),
-    invoices: async () => [
-      { id: 'i1', number: 'INV-1', customerId: 'z1', date: rel(60), dueDate: rel(30), total: 20000, balance: 0, status: 'paid', paymentExpected: '' },
-      { id: 'i2', number: 'INV-2', customerId: 'z1', date: rel(30), dueDate: rel(22), total: 10000, balance: 10000, status: 'sent', paymentExpected: '' },
-      { id: 'i9', number: 'INV-9', customerId: 'z2', date: rel(3), dueDate: rel(1), total: 99999, balance: 99999, status: 'sent', paymentExpected: '' },
-    ],
-    salesOrders: async () => [
-      { id: 's1', number: 'SO-1', customerId: 'z1', date: rel(60), total: 20000, status: 'closed', shipped: 'shipped', invoiced: 'invoiced' },
-      { id: 's2', number: 'SO-2', customerId: 'z1', date: rel(10), total: 5000, status: 'open', shipped: 'not_shipped', invoiced: 'not_invoiced' },
-      { id: 's3', number: 'SO-3', customerId: 'z1', date: rel(5), total: 7000, status: 'open', shipped: 'shipped', invoiced: 'not_invoiced' },
-    ],
-    estimates: async () => [{ id: 'e1', number: 'EST-1', customerId: 'z1', date: rel(3), expiry: '', total: 8000, status: 'accepted' }],
-    invoiceLines: async () => line, orderLines: async () => line,
-    contactDetail: async () => ({ company: 'Rao Traders Pvt Ltd', name: 'Mr Rao', email: 'rao@example.com', gstin: '27ABCDE1234F1Z5', city: 'Pune', state: 'Maharashtra', pincode: '411001' }),
-  };
-}
+const LINE = [{ name: 'Nickel strip 0.15', quantity: 20, rate: 750, total: 15000 }];
+const ZOHO_DOCS = () => ({
+  invoices: [
+    { number: 'INV-1', date: rel(60), due_date: rel(30), total: 20000, balance: 0, status: 'paid', lines: LINE },
+    { number: 'INV-2', date: rel(30), due_date: rel(22), total: 10000, balance: 10000, status: 'sent', lines: LINE },
+  ],
+  orders: [
+    { number: 'SO-1', date: rel(60), total: 20000, status: 'closed', shipped_status: 'shipped', invoiced_status: 'invoiced' },
+    { number: 'SO-2', date: rel(10), total: 5000, status: 'open', shipped_status: 'not_shipped', invoiced_status: 'not_invoiced', lines: LINE },
+    { number: 'SO-3', date: rel(5), total: 7000, status: 'open', shipped_status: 'shipped', invoiced_status: 'not_invoiced' },
+  ],
+  quotes: [{ number: 'EST-1', date: rel(3), total: 8000, status: 'accepted' }],
+});
 
 async function boot(opts = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'portal-'));
-  const app = createApp({ dataDir: dir, adminPassword: 'admin-secret-1', sessionSecret: 'test-secret', zoho: opts.zoho || { configured: false }, fetchFn: storefrontFetch() });
+  const app = createApp({ dataDir: dir, adminPassword: 'admin-secret-1', sessionSecret: 'test-secret', fetchFn: storefrontFetch() });
   const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
   const base = 'http://127.0.0.1:' + server.address().port;
   const admin = client(base), ann = client(base);
@@ -205,14 +198,16 @@ describe('portal', () => {
     } finally { await s.stop(); }
   });
 
-  test('a customer page shows Zoho Books purchases found by mobile, with what to do next; Zoho being down never breaks the page', async () => {
-    const s = await boot({ zoho: fakeZoho() });
+  test('what Claude saves from Zoho Books shows on the customer page with what to do next; nothing is read from Zoho by the portal', async () => {
+    const s = await boot();
     try {
       const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
       s.app.repo.addCustomer({ name: 'Mr Rao', mobile: '9811122233' }, L.id);
-      s.app.repo.addCustomer({ name: 'New Person', mobile: '9811100009' }, L.id);
+      const before = (await s.admin.get('/api/customers/9811122233/books')).data;
+      assert.equal(before.synced, false); assert.match(before.note, /Sync this customer from Zoho Books/);
+      assert.deepEqual(s.app.repo.saveBooksDocs('98111 22233', ZOHO_DOCS(), L.id), { saved: 6, invoices: 2, orders: 3, quotes: 1 });
       const b = (await s.admin.get('/api/customers/9811122233/books')).data;
-      assert.equal(b.found, true); assert.equal(b.contacts.length, 1, 'matched on the last 10 digits of the mobile or phone');
+      assert.equal(b.synced, true); assert.equal(b.syncedBy, 'Lokesh');
       assert.equal(b.summary.invoices, 2); assert.equal(b.summary.billed, 30000); assert.equal(b.summary.outstanding, 10000); assert.equal(b.summary.lastPurchase, rel(30));
       assert.deepEqual(b.bought.map((x) => [x.name, x.quantity]), [['Nickel strip 0.15', 40]]);
       const what = b.actions.map((a) => a.kind + ':' + a.number + ':' + a.label);
@@ -221,27 +216,16 @@ describe('portal', () => {
       assert.ok(what.includes('invoice:INV-2:Overdue 22 days'));
       assert.ok(what.includes('quote:EST-1:Quote accepted'));
       assert.equal(b.orders.find((o) => o.number === 'SO-2').lines.length, 1);
-      assert.equal((await s.admin.get('/api/customers/9811100009/books')).data.found, false, 'a customer not in Zoho yet');
+      // saving the same number again updates it (the invoice got paid); nothing is added twice
+      s.app.repo.saveBooksDocs('9811122233', { invoices: [{ number: 'INV-2', date: rel(30), due_date: rel(22), total: 10000, balance: 0, status: 'paid' }] }, L.id);
+      const again = (await s.admin.get('/api/customers/9811122233/books')).data;
+      assert.equal(again.invoices.length, 2); assert.equal(again.summary.outstanding, 0);
+      assert.ok(!again.actions.some((a) => a.number === 'INV-2'), 'no longer overdue');
+      assert.match(s.app.repo.saveBooksDocs('9811122233', { invoices: [{ total: 5 }] }, L.id).error, /needs its number/);
+      assert.match(s.app.repo.saveBooksDocs('9811122233', {}, L.id).error, /at least one/);
+      assert.equal(s.app.repo.saveBooksDocs('9000000000', ZOHO_DOCS(), L.id).status, 404);
       assert.equal((await s.admin.get('/api/customers/9000000000/books')).status, 404);
       assert.equal((await client(s.base).get('/api/customers/9811122233/books')).status, 401);
-
-      const blocked = fakeZoho(); blocked.salesOrders = async () => { const e = new Error('no'); e.kind = 'not_authorized'; throw e; };
-      const part = await boot({ zoho: blocked });
-      try { part.app.repo.addCustomer({ name: 'Mr Rao', mobile: '9811122233' }, part.app.repo.createMember({ name: 'L', username: 'lok', password: 'lokesh-pass-1234' }).member.id);
-        const r = (await part.admin.get('/api/customers/9811122233/books')).data;
-        assert.equal(r.found, true); assert.equal(r.summary.invoices, 2, 'invoices still shown'); assert.equal(r.orders.length, 0);
-        assert.match(r.warnings[0], /Sales orders cannot be shown.*ZohoBooks\.salesorders\.READ/);
-        assert.ok(r.actions.some((a) => a.label === 'Overdue 22 days'), 'the rest of the next steps still work');
-      } finally { await part.stop(); }
-      const down = await boot({ zoho: { configured: true, customers: async () => { throw new Error('Zoho is down'); } } });
-      try { down.app.repo.addCustomer({ name: 'A', mobile: '9811122233' }, down.app.repo.createMember({ name: 'L', username: 'lok', password: 'lokesh-pass-1234' }).member.id);
-        const r = await down.admin.get('/api/customers/9811122233/books'); assert.equal(r.status, 200); assert.match(r.data.note, /could not be read/);
-        assert.equal((await down.admin.get('/api/customers/9811122233')).status, 200, 'the rest of the page still works');
-      } finally { await down.stop(); }
-      const none = await boot({ zoho: { configured: false } });
-      try { none.app.repo.addCustomer({ name: 'A', mobile: '9811122233' }, none.app.repo.createMember({ name: 'L', username: 'lok', password: 'lokesh-pass-1234' }).member.id);
-        assert.equal((await none.admin.get('/api/customers/9811122233/books')).data.connected, false);
-      } finally { await none.stop(); }
     } finally { await s.stop(); }
   });
 
@@ -317,7 +301,7 @@ describe('mcp', () => {
   const data = (r) => JSON.parse(r.content[0].text);
 
   test('a member connects with their own key; every tool works on mobile numbers and is stamped with their name', async () => {
-    const s = await boot({ zoho: fakeZoho() });
+    const s = await boot();
     try {
       const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
       s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' });
@@ -339,9 +323,7 @@ describe('mcp', () => {
 
       // a prospect arrives by email: Claude saves what it learned, and is told what is still unknown
       const added = data(await call(s.base, key, 'add_customer', { mobile: '+91 98111 22233', name: 'Mr Rao', company: 'Rao Traders', city: 'Pune', source: 'email', source_detail: 'Mailed from the website form', buyer_type: 'trader', looking_for: 'nickel strip 0.15, 20 kg a month' }));
-      assert.equal(added.mobile, '9811122233'); assert.deepEqual(added.filled_from_zoho_books.sort(), ['email', 'gstin', 'pincode', 'state'], 'blanks filled from the Books contact; company and city were already given');
-      assert.ok(added.still_unknown.includes('application')); assert.ok(added.ask_the_user.length > 0); assert.match(added.next, /complete_profile/);
-      assert.equal(s.app.repo.customer('9811122233').company, 'Rao Traders', 'a detail already given is never overwritten');
+      assert.equal(added.mobile, '9811122233'); assert.ok(added.still_unknown.includes('state')); assert.ok(added.still_unknown.includes('application')); assert.ok(added.ask_the_user.length > 0); assert.match(added.next, /complete_profile/);
       const dup = await call(s.base, key, 'add_customer', { mobile: '9811122233', name: 'Rao again' });
       assert.equal(dup.isError, true); assert.match(dup.content[0].text, /already exists/);
       assert.equal((await call(s.base, key, 'add_customer', { name: 'No number' })).isError, true);
@@ -365,9 +347,14 @@ describe('mcp', () => {
       const full = data(await call(s.base, key, 'get_customer', { mobile: '09811122233' }));
       assert.deepEqual(full.interactions.map((i) => [i.type, i.by]), [['quote', 'Lokesh'], ['call', 'Lokesh']]); assert.equal(full.state, 'Gujarat');
 
-      // what Zoho Books says, including the next step
+      // Claude reads Zoho Books with its own connector and saves it; the portal then shows the next steps
+      assert.equal(data(await call(s.base, key, 'customer_purchases', { mobile: '9811122233' })).found, false, 'nothing saved yet');
+      const docs = ZOHO_DOCS();
+      assert.equal(data(await call(s.base, key, 'save_zoho_books_documents', { mobile: '09811122233', ...docs })).saved, 6);
+      assert.equal((await call(s.base, key, 'save_zoho_books_documents', { mobile: '9811122233', invoices: [{ total: 1 }] })).isError, true);
+      assert.equal((await call(s.base, key, 'save_zoho_books_documents', { mobile: '9000000000', ...docs })).isError, true);
       const p = data(await call(s.base, key, 'customer_purchases', { mobile: '9811122233' }));
-      assert.equal(p.summary.invoices, 2); assert.ok(p.what_to_do.some((x) => x.label === 'Placed, not delivered'));
+      assert.equal(p.saved_by, 'Lokesh'); assert.equal(p.summary.invoices, 2); assert.ok(p.what_to_do.some((x) => x.label === 'Placed, not delivered'));
       assert.equal((await call(s.base, key, 'customer_purchases', { mobile: '9000000000' })).isError, true);
 
       // items and vendors
@@ -412,8 +399,8 @@ describe('mcp: finishing a customer profile', () => {
   const call = async (base, key, name, args) => (await rpc(base, key, 'tools/call', { name, arguments: args })).result;
   const data = (r) => JSON.parse(r.content[0].text);
 
-  test('complete_profile lists what is unknown with options and where to look; enrich_from_zoho fills only blanks; prompts guide Claude', async () => {
-    const s = await boot({ zoho: fakeZoho() });
+  test('complete_profile lists what is unknown with options and where to look; prompts guide Claude', async () => {
+    const s = await boot();
     try {
       const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
       s.app.repo.addCustomer({ name: 'Mr Rao', mobile: '9811122233' }, L.id);
@@ -429,25 +416,20 @@ describe('mcp: finishing a customer profile', () => {
       assert.match(byField.company.look_in, /Zoho Books/);
       assert.deepEqual(p.unknown.slice(0, 3).map((u) => u.field), ['company', 'city', 'state'], 'asked in a sensible order');
 
-      const e = data(await call(s.base, key, 'enrich_from_zoho', { mobile: '9811122233' }));
-      assert.ok(e.filled.includes('company') && e.filled.includes('gstin') && e.filled.includes('state'));
-      assert.equal(s.app.repo.customer('9811122233').company, 'Rao Traders Pvt Ltd');
-      s.app.repo.updateCustomer('9811122233', { company: 'My Own Name' }, L.id);
-      assert.equal(data(await call(s.base, key, 'enrich_from_zoho', { mobile: '9811122233' })).filled.length, 0, 'second time: nothing to fill');
-      assert.equal(s.app.repo.customer('9811122233').company, 'My Own Name', 'never overwritten');
+      assert.match(p.how, /Zoho Books connector/);
+      // what Claude finds in Zoho Books is saved with update_customer, and a detail already known is not overwritten by blanks
+      const up = data(await call(s.base, key, 'update_customer', { mobile: '9811122233', company: 'Rao Traders Pvt Ltd', gstin: '27ABCDE1234F1Z5', city: 'Pune', state: 'Maharashtra', pincode: '411001', email: '' }));
+      assert.deepEqual(up.changed.sort(), ['city', 'company', 'gstin', 'pincode', 'state']);
+      assert.deepEqual(data(await call(s.base, key, 'complete_profile', { mobile: '9811122233' })).unknown.slice(0, 1).map((u) => u.field), ['source']);
       assert.equal((await call(s.base, key, 'complete_profile', { mobile: '9000000000' })).isError, true);
 
       const list = (await rpc(s.base, key, 'prompts/list')).result.prompts.map((x) => x.name);
-      assert.deepEqual(list, ['new_lead', 'complete_customer_profile', 'log_vendor_rates']);
+      assert.deepEqual(list, ['new_lead', 'complete_customer_profile', 'sync_from_zoho', 'log_vendor_rates']);
       const got = (await rpc(s.base, key, 'prompts/get', { name: 'new_lead', arguments: { text: 'Hi, I am Rao from Pune, need nickel strip' } })).result;
       assert.match(got.messages[0].content.text, /Hi, I am Rao from Pune/); assert.match(got.messages[0].content.text, /complete_profile/);
       assert.equal((await rpc(s.base, key, 'prompts/get', { name: 'nope' })).error.code, -32602);
-
-      const noZoho = await boot();
-      try { const M = noZoho.app.repo.createMember({ name: 'L', username: 'lok', password: 'lokesh-pass-1234' }).member; noZoho.app.repo.addCustomer({ name: 'A', mobile: '9811122233' }, M.id);
-        const k2 = noZoho.app.repo.createKey(M.id).key;
-        assert.match(data(await call(noZoho.base, k2, 'enrich_from_zoho', { mobile: '9811122233' })).note, /not connected/);
-      } finally { await noZoho.stop(); }
+      const sync = (await rpc(s.base, key, 'prompts/get', { name: 'sync_from_zoho', arguments: { mobile: '9811122233' } })).result.messages[0].content.text;
+      assert.match(sync, /9811122233/); assert.match(sync, /save_zoho_books_documents/); assert.match(sync, /my Zoho Books connector/);
     } finally { await s.stop(); }
   });
 });

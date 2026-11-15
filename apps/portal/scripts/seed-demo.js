@@ -30,5 +30,11 @@ repo.addOffer({ vendorMobile: '9000000001', itemId: 'p1', rate: 700, unit: 'kg',
 repo.addOffer({ vendorMobile: '9000000001', itemId: 'p1', rate: 685, unit: 'kg', quantity: '150 kg', validTill: day(5) }, L.id);
 repo.addOffer({ vendorMobile: '9000000002', itemId: 'p1', rate: 690, unit: 'kg', quantity: '500 kg' }, V.id);
 repo.addOffer({ vendorMobile: '9000000001', itemText: 'Copper busbar 55x20x2', rate: 340, unit: 'pcs' }, L.id);
+const rel = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10), line = [{ name: 'Nickel strip 0.15 mm x 8 mm', quantity: 20, rate: 750, total: 15000 }];
+repo.saveBooksDocs('9811100001', {
+  invoices: [{ number: 'INV-000112', date: rel(60), due_date: rel(45), total: 20000, balance: 0, status: 'paid', lines: line }, { number: 'INV-000131', date: rel(30), due_date: rel(22), total: 15000, balance: 15000, status: 'sent', lines: line }],
+  orders: [{ number: 'SO-00041', date: rel(10), total: 12000, status: 'open', shipped_status: 'not_shipped', invoiced_status: 'not_invoiced', lines: line }, { number: 'SO-00044', date: rel(2), total: 7000, status: 'open', shipped_status: 'shipped', invoiced_status: 'not_invoiced' }],
+  quotes: [{ number: 'EST-00019', date: rel(3), total: 8000, status: 'accepted' }],
+}, L.id);
 console.log('Demo data ready (members lokesh / vikas, password name-pass-1234)');
 repo.close();

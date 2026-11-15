@@ -30,6 +30,12 @@ const NEW_TABLES = `
     name TEXT NOT NULL, company TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT '', state TEXT NOT NULL DEFAULT '',
     gstin TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', created_by TEXT REFERENCES members(id), created_at TEXT NOT NULL, updated_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS books_docs (
+    customer_mobile TEXT NOT NULL REFERENCES customers(mobile), kind TEXT NOT NULL, number TEXT NOT NULL,
+    date TEXT, due_date TEXT, expiry TEXT, total REAL NOT NULL DEFAULT 0, balance REAL NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT '',
+    shipped TEXT NOT NULL DEFAULT '', invoiced TEXT NOT NULL DEFAULT '', payment_expected TEXT, lines TEXT NOT NULL DEFAULT '[]',
+    synced_at TEXT NOT NULL, synced_by TEXT NOT NULL REFERENCES members(id), PRIMARY KEY (customer_mobile, kind, number)
+  );
   CREATE TABLE IF NOT EXISTS items (
     id TEXT PRIMARY KEY, sku TEXT NOT NULL DEFAULT '', name TEXT NOT NULL, category TEXT NOT NULL DEFAULT '', price REAL, stock REAL, unit TEXT NOT NULL DEFAULT '',
     moq REAL, description TEXT NOT NULL DEFAULT '', image_url TEXT NOT NULL DEFAULT '', collections TEXT NOT NULL DEFAULT '[]', handle TEXT NOT NULL DEFAULT '', synced_at TEXT NOT NULL

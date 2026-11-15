@@ -51,7 +51,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     return { fields: out };
   }
   // where Claude can look before it bothers the user
-  const LOOK = { company: 'Zoho Books contact, the email signature, the sender\'s website', email: 'the email they wrote from, Zoho Books', gstin: 'Zoho Books contact, their invoice or website footer', city: 'Zoho Books, the email signature', state: 'Zoho Books, the email signature', pincode: 'Zoho Books, the email signature',
+  const LOOK = { company: 'the Zoho Books connector (the contact), the email signature, the sender\'s website', email: 'the email they wrote from, Zoho Books', gstin: 'Zoho Books contact, their invoice or website footer', city: 'Zoho Books, the email signature', state: 'Zoho Books, the email signature', pincode: 'Zoho Books, the email signature',
     source: 'the conversation or email they first came in through', buyer_type: 'their website or IndiaMART listing; otherwise ask', business: 'their website or IndiaMART listing; otherwise ask', looking_for: 'their email or chat', application: 'their email or chat', cell_format: 'their email or chat', monthly_volume: 'their email or chat', urgency: 'their email or chat' };
   const missing = (c) => Object.keys(ASK).filter((k) => !c[k] || (k === 'buyer_type' && c[k] === 'unknown')).map((k) => ({ field: k, ask: ASK[k], ...(ENUMS[k] ? { options: ENUMS[k].filter((o) => o !== 'unknown') } : {}), look_in: LOOK[k] }));
 
@@ -139,12 +139,43 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
         missing: missing(c),
       };
     },
+    // what Claude read from Zoho Books for this customer: invoices, sales orders and quotes, saved by number (the same number again updates it)
+    saveBooksDocs(m0, input, by) {
+      const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
+      if (!c) return { error: 'No customer with that mobile number', status: 404 };
+      const date = (v) => { const d = String(v || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null; };
+      const amt = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+      const st = (v) => clean(v, 30).toLowerCase().replace(/[\s-]+/g, '_');
+      const lines = (list) => (Array.isArray(list) ? list : []).slice(0, 30).map((l) => ({ name: clean(l && l.name, 200), quantity: amt(l && l.quantity), rate: amt(l && l.rate), total: amt(l && (l.total != null ? l.total : l.amount)) })).filter((l) => l.name);
+      const rows = [];
+      for (const [kind, list] of [['invoice', input.invoices], ['order', input.orders], ['quote', input.quotes]]) {
+        if (list != null && !Array.isArray(list)) return { error: kind + 's must be a list' };
+        for (const d of (list || []).slice(0, 200)) {
+          const number = clean(d && d.number, 40); if (!number) return { error: 'Every ' + kind + ' needs its number, for example INV-000123' };
+          rows.push({ kind, number, date: date(d.date), due_date: date(d.due_date), expiry: date(d.expiry), total: amt(d.total), balance: amt(d.balance), status: st(d.status), shipped: st(d.shipped_status), invoiced: st(d.invoiced_status), payment_expected: date(d.payment_expected), lines: JSON.stringify(lines(d.lines)) });
+        }
+      }
+      if (!rows.length) return { error: 'Send at least one invoice, order or quote' };
+      const t = now();
+      tx(() => { for (const r of rows) run(`INSERT INTO books_docs (customer_mobile, kind, number, date, due_date, expiry, total, balance, status, shipped, invoiced, payment_expected, lines, synced_at, synced_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(customer_mobile, kind, number) DO UPDATE SET date = excluded.date, due_date = excluded.due_date, expiry = excluded.expiry, total = excluded.total, balance = excluded.balance, status = excluded.status, shipped = excluded.shipped,
+          invoiced = excluded.invoiced, payment_expected = excluded.payment_expected, lines = excluded.lines, synced_at = excluded.synced_at, synced_by = excluded.synced_by`,
+        m, r.kind, r.number, r.date, r.due_date, r.expiry, r.total, r.balance, r.status, r.shipped, r.invoiced, r.payment_expected, r.lines, t, by); });
+      audit(by, 'Saved ' + rows.length + ' Zoho Books document' + (rows.length === 1 ? '' : 's') + ' for ' + c.name);
+      return { saved: rows.length, invoices: rows.filter((r) => r.kind === 'invoice').length, orders: rows.filter((r) => r.kind === 'order').length, quotes: rows.filter((r) => r.kind === 'quote').length };
+    },
+    booksDocs(m0) {
+      const m = mobile(m0), rows = m ? all('SELECT d.*, mm.name AS by_name FROM books_docs d LEFT JOIN members mm ON mm.id = d.synced_by WHERE d.customer_mobile = ? ORDER BY d.date DESC, d.number DESC', m) : [];
+      const out = rows.map((r) => ({ kind: r.kind, number: r.number, date: r.date || '', dueDate: r.due_date || '', expiry: r.expiry || '', total: r.total, balance: r.balance, status: r.status, shipped: r.shipped, invoiced: r.invoiced, paymentExpected: r.payment_expected || '', lines: JSON.parse(r.lines || '[]') }));
+      const at = rows.map((r) => r.synced_at).sort().slice(-1)[0] || '';
+      return { count: rows.length, invoices: out.filter((x) => x.kind === 'invoice'), orders: out.filter((x) => x.kind === 'order'), quotes: out.filter((x) => x.kind === 'quote'), syncedAt: at, syncedBy: (rows.find((r) => r.synced_at === at) || {}).by_name || '' };
+    },
     // permanent: the customer, their history and their files. Only the admin route calls this, after a typed confirmation.
     deleteCustomer(m0, by) {
       const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
       if (!c) return { error: 'Customer not found', status: 404 };
       const files = all('SELECT id FROM files WHERE customer_mobile = ?', m), n = get('SELECT COUNT(*) AS n FROM interactions WHERE customer_mobile = ?', m).n;
-      tx(() => { run('DELETE FROM files WHERE customer_mobile = ?', m); run('DELETE FROM interactions WHERE customer_mobile = ?', m); run('DELETE FROM customers WHERE mobile = ?', m); });
+      tx(() => { run('DELETE FROM books_docs WHERE customer_mobile = ?', m); run('DELETE FROM files WHERE customer_mobile = ?', m); run('DELETE FROM interactions WHERE customer_mobile = ?', m); run('DELETE FROM customers WHERE mobile = ?', m); });
       for (const f of files) { try { fs.unlinkSync(path.join(dataDir, 'files', f.id)); } catch (e) { /* already gone */ } }
       audit(by, 'DELETED customer ' + c.name + ' (' + m + ') with ' + n + ' interaction' + (n === 1 ? '' : 's') + ' and ' + files.length + ' file' + (files.length === 1 ? '' : 's'));
       return { ok: true, name: c.name, interactions: n, files: files.length };

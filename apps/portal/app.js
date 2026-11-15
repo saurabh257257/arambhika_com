@@ -9,17 +9,15 @@ const mcp = require('./lib/mcp');
 const oauth = require('./lib/oauth');
 const books = require('./lib/books');
 const { createSync } = require('./lib/items-sync');
-const { createZoho } = require('./lib/zoho');
 
 const safeEqual = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 
-function createApp({ dataDir, adminPassword, sessionSecret, zoho, fetchFn, startSync = false }) {
+function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync = false }) {
   if (!adminPassword) throw new Error('ADMIN_PASSWORD is not set. Refusing to start without a login password.');
   const secret = sessionSecret || crypto.randomBytes(32).toString('hex');
   const repo = open(dataDir);
-  const zohoClient = zoho || createZoho();
   const itemSync = createSync(repo, { fetchFn: fetchFn || fetch });
-  const ctx = { repo, zoho: zohoClient };
+  const ctx = { repo };
   if (startSync) itemSync.start();
 
   const app = express();
@@ -133,10 +131,10 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho, fetchFn, start
     if (String((req.body || {}).confirm || '') !== c.mobile) return res.status(400).json({ error: 'Type the customer\'s mobile number to confirm' });
     const r = repo.deleteCustomer(c.mobile, req.user.id); answer(res, r, r);
   });
-  // what Zoho Books says about this customer (matched by mobile number): purchases, orders, quotes and what to do next
-  app.get('/api/customers/:mobile/books', async (req, res) => {
+  // what Claude saved from Zoho Books for this customer (purchases, orders, quotes) and what to do next
+  app.get('/api/customers/:mobile/books', (req, res) => {
     if (!repo.customer(req.params.mobile)) return res.status(404).json({ error: 'Customer not found' });
-    res.json(await books.forCustomer(zohoClient, req.params.mobile, new Date().toISOString().slice(0, 10), { refresh: req.query.refresh === '1' }));
+    res.json(books.forCustomer(repo, req.params.mobile, new Date().toISOString().slice(0, 10)));
   });
 
   // ---- vendors ----

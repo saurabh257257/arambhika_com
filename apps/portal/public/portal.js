@@ -53,8 +53,7 @@
 
   var typeFilter = '', histQ = '';
   function booksHtml(b) {
-    if (!b.connected) return '<div class="muted">' + esc(b.note) + '</div>';
-    if (!b.found) return '<div class="muted">' + esc(b.note || 'Nothing found in Zoho Books.') + '</div>';
+    if (!b.synced) return '<div class="muted">' + esc(b.note) + '</div>';
     var s = b.summary, tone = { bad: 'off', warn: 'due', ok: 'ok', info: '' };
     var doc = function (kind, list, cols, row) {
       return list.length ? '<h4>' + kind + ' (' + list.length + ')</h4><table><thead><tr>' + cols.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' + list.map(function (d) {
@@ -62,7 +61,7 @@
           '<div class="docbody"><div>' + pill(d.next.label, tone[d.next.tone]) + ' <span class="muted">' + esc(d.next.action) + '</span></div>' + (d.lines && d.lines.length ? '<table><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>' + d.lines.map(function (l) { return '<tr><td>' + esc(l.name) + '</td><td>' + l.quantity + '</td><td>' + money(l.rate) + '</td><td>' + money(l.total) + '</td></tr>'; }).join('') + '</tbody></table>' : '') + '</div></details></td></tr>';
       }).join('') + '</tbody></table>' : '';
     };
-    return (b.warnings && b.warnings.length ? '<div class="banner">' + b.warnings.map(esc).join('<br>') + '</div>' : '') + facts([['Invoices', String(s.invoices)], ['Billed in all', money(s.billed)], ['Still to collect', s.outstanding ? money(s.outstanding) : '₹0'], ['First purchase', date(s.firstPurchase)], ['Last purchase', date(s.lastPurchase)]]) +
+    return '<div class="muted small">Saved from Zoho Books by ' + esc(b.syncedBy || 'a team member') + ', ' + ago(b.syncedAt).toLowerCase() + '. To bring it up to date, ask Claude: "Sync this customer from Zoho Books".</div>' + facts([['Invoices', String(s.invoices)], ['Billed in all', money(s.billed)], ['Still to collect', s.outstanding ? money(s.outstanding) : '₹0'], ['First purchase', date(s.firstPurchase)], ['Last purchase', date(s.lastPurchase)]]) +
       (b.actions.length ? '<div class="todo"><b>What to do next (' + b.actions.length + ')</b>' + b.actions.map(function (a) { return '<div class="todoi">' + pill(a.label, tone[a.tone]) + ' <b>' + esc(a.kind) + ' ' + esc(a.number) + '</b> <span class="muted">' + esc(a.action) + '</span></div>'; }).join('') + '</div>' : '<div class="muted">Nothing is waiting on you for this customer in Zoho.</div>') +
       (b.bought.length ? '<h4>Items they have bought</h4><table><thead><tr><th>Item</th><th>Quantity</th><th>Value</th><th class="hide-sm">Last bought</th></tr></thead><tbody>' + b.bought.slice(0, 15).map(function (x) { return '<tr><td>' + esc(x.name) + '</td><td>' + x.quantity + '</td><td>' + money(x.value) + '</td><td class="hide-sm">' + date(x.last) + '</td></tr>'; }).join('') + '</tbody></table>' : '') +
       doc('Orders', b.orders, ['Order', 'Date', 'Total', 'Status'], function (o) { return '<td><b>' + esc(o.number) + '</b></td><td>' + date(o.date) + '</td><td>' + money(o.total) + '</td><td>' + pill(o.next.label, tone[o.next.tone]) + '</td>'; }) +
@@ -81,7 +80,7 @@
         facts([['Mobile (key)', c.mobile], ['Email', c.email], ['City', [c.city, c.state].filter(Boolean).join(', ')], ['Pincode', c.pincode], ['GST', c.gstin], ['Owner', c.owner_name], ['Where from', c.source_detail], ['Added', when(c.created_at) + (c.created_by_name ? ' by ' + c.created_by_name : '')], ['Next follow-up', upcoming ? date(upcoming) : '']]) +
         '<h4>What they want</h4>' + facts([['Looking for', c.looking_for], ['For (application)', c.application], ['Cell type / size', c.cell_format], ['Quantity and frequency', c.monthly_volume], ['How soon', nice(c.urgency)]]) +
         (c.missing.length ? '<div class="banner"><b>Not known yet:</b> ' + c.missing.slice(0, 8).map(function (m) { return esc(m.ask); }).join(' &middot; ') + '<div class="muted small" style="margin-top:4px">Tell Claude what you learn and it will fill these in.</div></div>' : '') + '</div>' +
-        '<div class="card"><div class="between"><h3>Purchases and orders (Zoho Books)</h3><button class="btn ghost sm" id="bkRefresh" type="button">Refresh</button></div><div id="books" class="muted">Looking in Zoho Books...</div></div>' +
+        '<div class="card"><div class="between"><h3>Purchases and orders (from Zoho Books)</h3></div><div id="books" class="muted">Loading...</div></div>' +
         '<div class="card"><div class="between"><h3>What has happened (' + items.length + ')</h3><label style="min-width:200px">Search this history<input id="hq" value="' + esc(histQ) + '" placeholder="Words in a note"></label></div>' +
         (types.length > 1 ? '<div class="chips" id="tchips"><button class="chip' + (typeFilter ? '' : ' on') + '" data-t="" type="button">All</button>' + types.map(function (t) { return '<button class="chip' + (typeFilter === t ? ' on' : '') + '" data-t="' + t + '" type="button">' + LABEL[t] + '</button>'; }).join('') + '</div>' : '') + '<div id="tl"></div></div>' +
         (c.files.length ? '<div class="card"><h3>Files and pictures (' + c.files.length + ')</h3><div class="files">' + c.files.map(function (f) {
@@ -104,12 +103,10 @@
       timeline();
       debounce($('hq'), function () { histQ = $('hq').value; timeline(); });
       view.querySelectorAll('[data-t]').forEach(function (b) { b.addEventListener('click', function () { typeFilter = b.dataset.t; customerScreen(mobile).catch(fail); }); });
-      function loadBooks(refresh) {
-        $('books').textContent = 'Looking in Zoho Books...';
-        api('GET', '/api/customers/' + mobile + '/books' + (refresh ? '?refresh=1' : '')).then(function (b) { if (my === seq && $('books')) $('books').innerHTML = booksHtml(b); }).catch(function (e) { if ($('books')) $('books').textContent = e.message; });
+      function loadBooks() {
+        api('GET', '/api/customers/' + mobile + '/books').then(function (b) { if (my === seq && $('books')) $('books').innerHTML = booksHtml(b); }).catch(function (e) { if ($('books')) $('books').textContent = e.message; });
       }
-      $('bkRefresh').addEventListener('click', function () { loadBooks(true); });
-      loadBooks(false);
+      loadBooks();
     });
   }
 

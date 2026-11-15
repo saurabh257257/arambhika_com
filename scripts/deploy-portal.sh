@@ -48,7 +48,7 @@ remote() { ssh "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" "$@"; }
   echo "PORT=$APP_PORT"
   echo "DATA_DIR=$BASE/shared/data"
 } >> "$WORK/app.env"
-for k in ADMIN_PASSWORD SESSION_SECRET ZOHO_CLIENT_ID ZOHO_CLIENT_SECRET ZOHO_REFRESH_TOKEN ZOHO_BOOKS_ORG_ID ZOHO_DC ZOHO_STOREFRONT_DOMAIN; do
+for k in ADMIN_PASSWORD SESSION_SECRET ZOHO_DC ZOHO_STOREFRONT_DOMAIN; do
   v="${!k:-}"
   if [ -n "$v" ]; then printf '%s=%s\n' "$k" "$v" >> "$WORK/app.env"; fi
 done
