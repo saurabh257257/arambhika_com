@@ -7,16 +7,16 @@ const crypto = require('crypto');
 
 const TYPES = ['note', 'call', 'whatsapp', 'visit', 'quote', 'order', 'payment', 'dispatch', 'followup'];
 const SOURCES = ['email', 'whatsapp', 'call', 'indiamart', 'website', 'instagram', 'linkedin', 'referral', 'exhibition', 'walk_in', 'other'];
-const BUYER_TYPES = ['trader', 'non_trader', 'unknown'];
+const BUYER_TYPES = ['trader', 'oem', 'unknown']; // OEM: makes its own products with what it buys
 const BUSINESSES = ['battery_pack_maker', 'ev_maker', 'solar_storage', 'ups_inverter', 'repair_service', 'diy_hobby', 'institution_rnd', 'reseller_dealer', 'other'];
 const URGENCY = ['immediate', 'within_a_month', 'later', 'exploring'];
 const ENUMS = { source: SOURCES, buyer_type: BUYER_TYPES, business: BUSINESSES, urgency: URGENCY };
-const TEXT = { name: 100, company: 100, email: 100, city: 60, state: 60, source_detail: 200, looking_for: 500, application: 300, cell_format: 100, monthly_volume: 100 };
-const PROFILE = ['name', 'company', 'email', 'city', 'state', 'pincode', 'gstin', 'source', 'source_detail', 'buyer_type', 'business', 'looking_for', 'application', 'cell_format', 'monthly_volume', 'urgency'];
+const TEXT = { address: 300, about: 500, name: 100, company: 100, email: 100, city: 60, state: 60, source_detail: 200, looking_for: 500, application: 300, cell_format: 100, monthly_volume: 100 };
+const PROFILE = ['name', 'company', 'email', 'address', 'city', 'state', 'pincode', 'gstin', 'about', 'source', 'source_detail', 'buyer_type', 'business', 'looking_for', 'application', 'cell_format', 'monthly_volume', 'urgency'];
 // what a salesperson should try to learn about a battery customer, with the question to ask
 const ASK = {
-  company: 'Which company or shop are they from?', city: 'Which city are they in?', state: 'Which state?',
-  source: 'Where did they come from (email, WhatsApp, call, IndiaMART, website, referral)?', buyer_type: 'Are they a trader (buys to resell) or a non-trader (uses it themselves)?',
+  company: 'Which company or shop are they from?', about: 'What does the company do?', address: 'What is their full address?', city: 'Which city are they in?', state: 'Which state?',
+  source: 'Where did they come from (email, WhatsApp, call, IndiaMART, website, referral)?', buyer_type: 'Are they a trader (buys to resell) or an OEM (makes products with it)?',
   business: 'What do they do (battery pack maker, EV maker, solar storage, UPS/inverter, repair, DIY, institution, reseller)?',
   looking_for: 'What are they looking for (nickel strip, cells, BMS, busbar, holders...)?', application: 'What will they use it for (e-bike, solar, power tool...)?',
   cell_format: 'Which cell type or size (18650, 21700, 32650, LiFePO4...)?', monthly_volume: 'How much do they need, and how often?', urgency: 'How soon do they need it?', email: 'What is their email?', gstin: 'What is their GST number?',
@@ -42,7 +42,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     for (const k of PROFILE) {
       if (input[k] == null) continue;
       let v = clean(input[k], TEXT[k] || 40); if (!v) continue;
-      if (ENUMS[k]) { v = v.toLowerCase().replace(/[\s-]+/g, '_'); if (!ENUMS[k].includes(v)) return { error: k + ' must be one of: ' + ENUMS[k].join(', ') }; }
+      if (ENUMS[k]) { v = v.toLowerCase().replace(/[\s-]+/g, '_'); if (k === 'buyer_type' && v === 'non_trader') v = 'oem'; if (!ENUMS[k].includes(v)) return { error: k + ' must be one of: ' + ENUMS[k].join(', ') }; }
       if (k === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return { error: 'That email does not look right' };
       if (k === 'pincode') { v = v.replace(/\s/g, ''); if (!/^\d{6}$/.test(v)) return { error: 'The pincode has 6 digits' }; }
       if (k === 'gstin') { v = v.toUpperCase().replace(/\s/g, ''); if (!/^[0-9A-Z]{15}$/.test(v)) return { error: 'A GST number has 15 letters and digits' }; }
@@ -66,9 +66,9 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       if (dup) return { error: 'A customer with mobile ' + m + ' already exists: ' + dup.name + '. Use update_customer to add more details.', exists: true };
       const p = profile(input); if (p.error) return p;
       if (!p.fields.name) return { error: 'The customer needs a name' };
-      const t = now(), f = { ...{ company: '', email: '', city: '', state: '', pincode: '', gstin: '', source: '', source_detail: '', buyer_type: 'unknown', business: '', looking_for: '', application: '', cell_format: '', monthly_volume: '', urgency: '' }, ...p.fields };
-      run('INSERT INTO customers (mobile, name, company, email, city, state, pincode, gstin, source, source_detail, buyer_type, business, looking_for, application, cell_format, monthly_volume, urgency, owner_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        m, f.name, f.company, f.email, f.city, f.state, f.pincode, f.gstin, f.source, f.source_detail, f.buyer_type, f.business, f.looking_for, f.application, f.cell_format, f.monthly_volume, f.urgency, input.ownerId || by, by, t, t);
+      const t = now(), f = { ...{ company: '', email: '', address: '', about: '', city: '', state: '', pincode: '', gstin: '', source: '', source_detail: '', buyer_type: 'unknown', business: '', looking_for: '', application: '', cell_format: '', monthly_volume: '', urgency: '' }, ...p.fields };
+      run('INSERT INTO customers (mobile, name, company, email, address, about, city, state, pincode, gstin, source, source_detail, buyer_type, business, looking_for, application, cell_format, monthly_volume, urgency, owner_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        m, f.name, f.company, f.email, f.address, f.about, f.city, f.state, f.pincode, f.gstin, f.source, f.source_detail, f.buyer_type, f.business, f.looking_for, f.application, f.cell_format, f.monthly_volume, f.urgency, input.ownerId === undefined ? by : input.ownerId, by, t, t);
       audit(by, 'Added customer ' + f.name + ' (' + m + ')');
       const c = repo.customer(m);
       return { customer: c, missing: missing(c) };
@@ -108,7 +108,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       return { file: f };
     },
     // search looks at names, companies, places, what they want, and the text of everything that happened with them
-    customers({ q, owner, buyer, business } = {}) {
+    customers({ q, owner, buyer, business, state } = {}) {
       const where = [], args = [];
       const term = clean(q, 60).toLowerCase(), dg = String(q || '').replace(/\D/g, '');
       if (term) {
@@ -119,13 +119,15 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
         if (dg.length >= 3) { ors.push('c.mobile LIKE ?'); args.push('%' + dg + '%'); }
         where.push('(' + ors.join(' OR ') + ')');
       }
-      if (owner) { where.push('c.owner_id = ?'); args.push(owner); }
+      if (owner === 'none') where.push('c.owner_id IS NULL'); else if (owner) { where.push('c.owner_id = ?'); args.push(owner); }
+      if (state) { where.push('lower(c.state) = ?'); args.push(String(state).toLowerCase()); }
       if (buyer) { where.push('c.buyer_type = ?'); args.push(buyer); }
       if (business) { where.push('c.business = ?'); args.push(business); }
       return all(`SELECT c.*, m.name AS owner_name,
           (SELECT COUNT(*) FROM interactions i WHERE i.customer_mobile = c.mobile) AS interactions,
           (SELECT MAX(at) FROM interactions i WHERE i.customer_mobile = c.mobile) AS last_at,
-          (SELECT MIN(next_date) FROM interactions i WHERE i.customer_mobile = c.mobile AND next_date >= ?) AS next_follow_up
+          (SELECT MIN(next_date) FROM interactions i WHERE i.customer_mobile = c.mobile AND next_date >= ?) AS next_follow_up,
+          (SELECT next_date FROM interactions i WHERE i.customer_mobile = c.mobile ORDER BY at DESC, rowid DESC LIMIT 1) AS latest_next
         FROM customers c LEFT JOIN members m ON m.id = c.owner_id ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY COALESCE(last_at, c.created_at) DESC`, new Date().toISOString().slice(0, 10), ...args).map(plain);
     },
     customer(m0) {
@@ -136,9 +138,11 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
         ...c,
         interactions: all('SELECT i.*, mm.name AS by_name FROM interactions i LEFT JOIN members mm ON mm.id = i.by_member WHERE i.customer_mobile = ? ORDER BY i.at DESC, i.rowid DESC', m).map(plain),
         files: all('SELECT f.*, mm.name AS by_name FROM files f LEFT JOIN members mm ON mm.id = f.by_member WHERE f.customer_mobile = ? ORDER BY f.at DESC', m).map(plain),
+        contacts: all('SELECT * FROM customer_contacts WHERE customer_mobile = ? ORDER BY name COLLATE NOCASE', m).map(plain),
         missing: missing(c),
       };
     },
+    states: () => all("SELECT state, COUNT(*) AS n FROM customers WHERE state != '' GROUP BY lower(state) ORDER BY state COLLATE NOCASE").map(plain),
     // what Claude read from Zoho Books for this customer: invoices, sales orders and quotes, saved by number (the same number again updates it)
     saveBooksDocs(m0, input, by) {
       const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
@@ -170,12 +174,46 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       const at = rows.map((r) => r.synced_at).sort().slice(-1)[0] || '';
       return { count: rows.length, invoices: out.filter((x) => x.kind === 'invoice'), orders: out.filter((x) => x.kind === 'order'), quotes: out.filter((x) => x.kind === 'quote'), syncedAt: at, syncedBy: (rows.find((r) => r.synced_at === at) || {}).by_name || '' };
     },
+    // other people at the customer's company (a buyer, an engineer, accounts...), each with their own mobile number
+    saveContact(m0, input, by) {
+      const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
+      if (!c) return { error: 'No customer with that mobile number', status: 404 };
+      const cm = mobile(input.mobile); if (!cm) return { error: 'The contact needs a valid 10-digit mobile number (in "contact_mobile")' };
+      const name = clean(input.name, 100); const old = get('SELECT * FROM customer_contacts WHERE customer_mobile = ? AND mobile = ?', m, cm);
+      if (!name && !old) return { error: 'The contact needs a name' };
+      const f = { name: name || old.name, role: input.role != null && clean(input.role, 60) ? clean(input.role, 60) : (old ? old.role : ''), email: input.email != null && clean(input.email, 100) ? clean(input.email, 100) : (old ? old.email : ''), notes: input.notes != null && clean(input.notes, 300) ? clean(input.notes, 300) : (old ? old.notes : '') };
+      if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return { error: 'That email does not look right' };
+      if (old) run('UPDATE customer_contacts SET name = ?, role = ?, email = ?, notes = ? WHERE customer_mobile = ? AND mobile = ?', f.name, f.role, f.email, f.notes, m, cm);
+      else run('INSERT INTO customer_contacts (customer_mobile, mobile, name, role, email, notes, added_by, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', m, cm, f.name, f.role, f.email, f.notes, by, now());
+      audit(by, (old ? 'Updated' : 'Added') + ' contact ' + f.name + ' at ' + c.name);
+      return { contact: { mobile: cm, ...f }, created: !old };
+    },
+    removeContact(m0, cm0, by) {
+      const m = mobile(m0), cm = mobile(cm0), old = m && cm && get('SELECT name FROM customer_contacts WHERE customer_mobile = ? AND mobile = ?', m, cm);
+      if (!old) return { error: 'Contact not found', status: 404 };
+      run('DELETE FROM customer_contacts WHERE customer_mobile = ? AND mobile = ?', m, cm); audit(by, 'DELETED contact ' + old.name);
+      return { ok: true };
+    },
+    // who is looking after this customer; null means unassigned
+    assignCustomer(m0, username, by) {
+      const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
+      if (!c) return { error: 'No customer with that mobile number', status: 404 };
+      let owner = null;
+      if (username != null && String(username).trim() && String(username).trim().toLowerCase() !== 'unassigned') {
+        const o = get('SELECT id, name FROM members WHERE username = ? AND active = 1', clean(username, 40).toLowerCase());
+        if (!o) return { error: 'No active team member with that username' };
+        owner = o;
+      }
+      run('UPDATE customers SET owner_id = ?, updated_at = ? WHERE mobile = ?', owner ? owner.id : null, now(), m);
+      audit(by, owner ? 'Assigned ' + c.name + ' to ' + owner.name : 'Unassigned ' + c.name);
+      return { ok: true, owner: owner ? owner.name : null };
+    },
     // permanent: the customer, their history and their files. Only the admin route calls this, after a typed confirmation.
     deleteCustomer(m0, by) {
       const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
       if (!c) return { error: 'Customer not found', status: 404 };
       const files = all('SELECT id FROM files WHERE customer_mobile = ?', m), n = get('SELECT COUNT(*) AS n FROM interactions WHERE customer_mobile = ?', m).n;
-      tx(() => { run('DELETE FROM books_docs WHERE customer_mobile = ?', m); run('DELETE FROM files WHERE customer_mobile = ?', m); run('DELETE FROM interactions WHERE customer_mobile = ?', m); run('DELETE FROM customers WHERE mobile = ?', m); });
+      tx(() => { run('DELETE FROM customer_contacts WHERE customer_mobile = ?', m); run('DELETE FROM books_docs WHERE customer_mobile = ?', m); run('DELETE FROM files WHERE customer_mobile = ?', m); run('DELETE FROM interactions WHERE customer_mobile = ?', m); run('DELETE FROM customers WHERE mobile = ?', m); });
       for (const f of files) { try { fs.unlinkSync(path.join(dataDir, 'files', f.id)); } catch (e) { /* already gone */ } }
       audit(by, 'DELETED customer ' + c.name + ' (' + m + ') with ' + n + ' interaction' + (n === 1 ? '' : 's') + ' and ' + files.length + ' file' + (files.length === 1 ? '' : 's'));
       return { ok: true, name: c.name, interactions: n, files: files.length };
@@ -296,6 +334,13 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       return { ...plain(r), collections: JSON.parse(r.collections || '[]'), suppliers: repo.findSuppliers({ itemId: r.id }) };
     },
     // best-scoring items for some words ("nickel strip 0.15"): every word has to appear, shorter names first
+    categoryOfName(name) {
+      const key = String(name || '').trim().toLowerCase(); if (!key) return 'Other';
+      const exact = get('SELECT category FROM items WHERE lower(name) = ? OR lower(sku) = ?', key, key);
+      if (exact && exact.category) return exact.category;
+      const hits = repo.searchItems(name, 3);
+      return hits.length === 1 && hits[0].category ? hits[0].category : 'Other';
+    },
     searchItems(q, limit = 10) {
       const words = tokens(q); if (!words.length) return [];
       return all('SELECT id, sku, name, category, price, stock, unit FROM items').filter((r) => { const h = (r.name + ' ' + r.sku + ' ' + r.category).toLowerCase(); return words.every((w) => h.includes(w)); })

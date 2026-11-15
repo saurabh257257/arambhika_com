@@ -109,7 +109,7 @@ describe('portal', () => {
       assert.match(add({ name: 'X', mobile: '5811122233' }).error, /valid 10-digit Indian mobile/, 'Indian mobiles start with 6 to 9');
       const c = add({ name: 'Mr Rao', mobile: '+91 98111-22233', city: 'Pune', buyer_type: 'Non Trader', source: 'Email', looking_for: 'nickel strip 0.15 mm' });
       assert.equal(c.customer.mobile, '9811122233');
-      assert.equal(c.customer.buyer_type, 'non_trader');
+      assert.equal(c.customer.buyer_type, 'oem', 'the older word "non-trader" now means OEM');
       assert.ok(c.missing.some((m) => m.field === 'company'), 'tells what is still unknown');
       for (const same of ['9811122233', '098111 22233', '+919811122233']) assert.equal(add({ name: 'Again', mobile: same }).exists, true, same + ' is the same customer');
       assert.match(add({ name: 'Y', mobile: '9811122234', buyer_type: 'wholesaler' }).error, /buyer_type must be one of/);
@@ -296,6 +296,78 @@ describe('portal', () => {
     } finally { await s.stop(); }
   });
 
+  test('customers have an owner or nobody; the list filters by state, type, owner, unassigned and needs-attention; contacts hang off a customer', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      const V = s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' }).member;
+      const add = (o, by = L.id) => s.app.repo.addCustomer(o, by);
+      add({ name: 'Rao', mobile: '9811122233', state: 'Maharashtra', buyer_type: 'oem', address: 'Plot 4, MIDC', about: 'Makes e-bike packs' });
+      add({ name: 'Shah', mobile: '9811122244', state: 'Gujarat', buyer_type: 'trader', ownerId: V.id });
+      add({ name: 'Nobody', mobile: '9811122255', state: 'Maharashtra', ownerId: null });
+      assert.equal(s.app.repo.customer('9811122233').owner_name, 'Lokesh', 'the person who adds a customer owns them');
+      assert.equal(s.app.repo.customer('9811122255').owner_id, null);
+      const names = async (qs) => (await s.admin.get('/api/customers?' + qs)).data.customers.map((c) => c.name).sort();
+      assert.deepEqual(await names('state=maharashtra'), ['Nobody', 'Rao']);
+      assert.deepEqual(await names('owner=none'), ['Nobody']);
+      assert.deepEqual(await names('owner=' + V.id), ['Shah']);
+      assert.deepEqual(await names('buyer=oem'), ['Rao']);
+      assert.deepEqual((await s.admin.get('/api/customers')).data.options.states.map((x) => x.state), ['Gujarat', 'Maharashtra']);
+      assert.equal(s.app.repo.assignCustomer('9811122255', 'vikas', L.id).owner, 'Vikas');
+      assert.deepEqual(await names('owner=none'), []);
+      assert.equal(s.app.repo.assignCustomer('9811122255', 'unassigned', L.id).owner, null);
+      assert.match(s.app.repo.assignCustomer('9811122255', 'ghost', L.id).error, /No active team member/);
+
+      // contacts: own mobile each, updated by the same number, blanks never erase
+      const k = s.app.repo.saveContact('9811122233', { mobile: '+91 90000 11111', name: 'Anil Rao', role: 'Buyer', email: 'anil@rao.example' }, L.id);
+      assert.equal(k.created, true);
+      assert.equal(s.app.repo.saveContact('9811122233', { mobile: '9000011111', name: '', role: 'Purchase head', email: '' }, L.id).created, false);
+      s.app.repo.saveContact('9811122233', { mobile: '9000022222', name: 'Meena', role: 'Accounts' }, L.id);
+      const d = (await s.admin.get('/api/customers/9811122233')).data.customer;
+      assert.deepEqual(d.contacts.map((x) => [x.name, x.role, x.email]), [['Anil Rao', 'Purchase head', 'anil@rao.example'], ['Meena', 'Accounts', '']]);
+      assert.equal(d.address, 'Plot 4, MIDC'); assert.equal(d.about, 'Makes e-bike packs');
+      assert.match(s.app.repo.saveContact('9811122233', { mobile: '123', name: 'X' }, L.id).error, /valid 10-digit mobile/);
+      assert.match(s.app.repo.saveContact('9811122233', { mobile: '9000033333' }, L.id).error, /needs a name/);
+      assert.equal(s.app.repo.saveContact('9000000000', { mobile: '9000033333', name: 'X' }, L.id).status, 404);
+      const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
+      assert.equal((await lok.raw('DELETE', '/api/customers/9811122233/contacts/9000022222', {})).status, 403, 'only the admin removes a contact');
+      assert.equal((await s.admin.raw('DELETE', '/api/customers/9811122233/contacts/9000022222', {})).status, 200);
+      assert.equal((await s.admin.get('/api/customers/9811122233')).data.customer.contacts.length, 1);
+
+      // "needs attention" chips: a late follow-up, quotes, an overdue payment, an order not delivered
+      s.app.repo.addInteraction({ mobile: '9811122233', type: 'call', summary: 'Call me back', nextDate: rel(4) }, L.id);
+      s.app.repo.saveBooksDocs('9811122233', ZOHO_DOCS(), L.id);
+      const row = (await s.admin.get('/api/customers')).data.customers.find((c) => c.name === 'Rao');
+      const labels = row.attention.map((a) => a.label);
+      assert.equal(row.attention.length, 3, 'at most three chips'); assert.match(labels[0], /Follow-up 4d late/);
+      assert.ok(row.attention.every((a) => ['bad', 'warn', 'info'].includes(a.tone)));
+      assert.deepEqual(await names('attention=1'), ['Rao'], 'only customers that need something');
+      assert.deepEqual((await s.admin.get('/api/customers')).data.customers.find((c) => c.name === 'Shah').attention, []);
+    } finally { await s.stop(); }
+  });
+
+  test('purchases are grouped by our item categories, with pending quotes and what was sold so far', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      await s.app.itemSync.sync();
+      s.app.repo.addCustomer({ name: 'Mr Rao', mobile: '9811122233' }, L.id);
+      s.app.repo.saveBooksDocs('9811122233', {
+        invoices: [
+          { number: 'INV-1', date: rel(60), due_date: rel(30), total: 20000, balance: 0, status: 'paid', lines: [{ name: 'Nickel strip 0.15 mm x 8 mm', quantity: 20, rate: 750, total: 15000 }, { name: 'BMS 4S 30A', quantity: 5, rate: 650, total: 3250 }] },
+          { number: 'INV-2', date: rel(30), due_date: rel(22), total: 10000, balance: 10000, status: 'sent', lines: [{ name: 'nickel strip 0.15 mm x 8 mm', quantity: 10, rate: 750, total: 7500 }, { name: 'Some custom job', quantity: 1, rate: 2500, total: 2500 }] },
+        ],
+        quotes: [{ number: 'EST-1', date: rel(3), total: 8000, status: 'sent' }, { number: 'EST-2', date: rel(9), total: 5000, status: 'accepted' }, { number: 'EST-3', date: rel(40), total: 1000, status: 'declined' }],
+      }, L.id);
+      const b = (await s.admin.get('/api/customers/9811122233/books')).data;
+      assert.deepEqual(b.boughtByCategory.map((g) => [g.category, g.value]), [['Nickel strip', 22500], ['BMS', 3250], ['Other', 2500]], 'biggest category first, items we cannot place last');
+      const ns = b.boughtByCategory[0].items[0]; assert.equal(ns.quantity, 30); assert.equal(ns.times, 2, 'bought on two invoices (names match without regard to case)');
+      assert.deepEqual(b.pendingQuotes.map((q) => q.number).sort(), ['EST-1', 'EST-2'], 'sent and accepted are pending; declined is not');
+      assert.equal(b.summary.pendingQuotes, 2); assert.equal(b.summary.pendingQuotesValue, 13000);
+      assert.equal(b.summary.billed, 30000); assert.equal(b.summary.collected, 20000); assert.equal(b.summary.outstanding, 10000);
+    } finally { await s.stop(); }
+  });
+
   test('the next step for each order, invoice and quote', () => {
     const today = '2026-11-15';
     const o = (x) => orderAction({ date: '2026-11-14', status: 'open', shipped: 'not_shipped', invoiced: 'not_invoiced', ...x }, today);
@@ -449,17 +521,33 @@ describe('mcp: finishing a customer profile', () => {
       const p = data(await call(s.base, key, 'complete_profile', { mobile: '9811122233' }));
       const byField = Object.fromEntries(p.unknown.map((u) => [u.field, u]));
       assert.ok(byField.company && byField.source && byField.buyer_type);
-      assert.ok(byField.buyer_type.options.includes('trader') && byField.buyer_type.options.includes('non_trader') && !byField.buyer_type.options.includes('unknown'));
+      assert.ok(byField.buyer_type.options.includes('trader') && byField.buyer_type.options.includes('oem') && !byField.buyer_type.options.includes('unknown'));
       assert.ok(byField.business.options.includes('battery_pack_maker'));
       assert.match(byField.company.look_in, /Zoho Books/);
-      assert.deepEqual(p.unknown.slice(0, 3).map((u) => u.field), ['company', 'city', 'state'], 'asked in a sensible order');
+      assert.deepEqual(p.unknown.slice(0, 3).map((u) => u.field), ['company', 'about', 'address'], 'asked in a sensible order');
 
       assert.match(p.how, /Zoho Books connector/);
       // what Claude finds in Zoho Books is saved with update_customer, and a detail already known is not overwritten by blanks
-      const up = data(await call(s.base, key, 'update_customer', { mobile: '9811122233', company: 'Rao Traders Pvt Ltd', gstin: '27ABCDE1234F1Z5', city: 'Pune', state: 'Maharashtra', pincode: '411001', email: '' }));
-      assert.deepEqual(up.changed.sort(), ['city', 'company', 'gstin', 'pincode', 'state']);
+      const up = data(await call(s.base, key, 'update_customer', { mobile: '9811122233', company: 'Rao Traders Pvt Ltd', about: 'Makes e-bike battery packs', address: 'Plot 4, MIDC, Bhosari', gstin: '27ABCDE1234F1Z5', city: 'Pune', state: 'Maharashtra', pincode: '411001', email: '' }));
+      assert.deepEqual(up.changed.sort(), ['about', 'address', 'city', 'company', 'gstin', 'pincode', 'state']);
       assert.deepEqual(data(await call(s.base, key, 'complete_profile', { mobile: '9811122233' })).unknown.slice(0, 1).map((u) => u.field), ['source']);
       assert.equal((await call(s.base, key, 'complete_profile', { mobile: '9000000000' })).isError, true);
+
+      // OEM or trader, who looks after them, and the other people there: all through Claude
+      s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' });
+      assert.equal(data(await call(s.base, key, 'update_customer', { mobile: '9811122233', buyer_type: 'oem', address: 'Plot 4, MIDC', about: 'Makes e-bike packs' })).saved, true);
+      assert.equal(s.app.repo.customer('9811122233').owner_name, 'Lokesh', 'added by Lokesh without naming an owner: Lokesh looks after them');
+      assert.equal(data(await call(s.base, key, 'assign_customer', { mobile: '9811122233', owner_username: 'vikas' })).assigned_to, 'Vikas');
+      assert.equal(data(await call(s.base, key, 'search_customers', { owner_username: 'vikas' })).length, 1);
+      assert.equal(data(await call(s.base, key, 'assign_customer', { mobile: '9811122233', owner_username: 'unassigned' })).assigned_to, 'nobody (unassigned)');
+      assert.equal(data(await call(s.base, key, 'search_customers', { owner_username: 'unassigned' })).length, 1);
+      assert.equal((await call(s.base, key, 'assign_customer', { mobile: '9811122233', owner_username: 'ghost' })).isError, true);
+      assert.equal(data(await call(s.base, key, 'save_customer_contact', { mobile: '9811122233', contact_mobile: '90000 11111', name: 'Anil Rao', role: 'Buyer' })).created, true);
+      assert.equal((await call(s.base, key, 'save_customer_contact', { mobile: '9811122233', contact_mobile: '12', name: 'Bad' })).isError, true);
+      const withContacts = data(await call(s.base, key, 'get_customer', { mobile: '9811122233' }));
+      assert.deepEqual(withContacts.contacts.map((k) => [k.name, k.role, k.mobile]), [['Anil Rao', 'Buyer', '9000011111']]);
+      assert.equal(withContacts.about, 'Makes e-bike packs'); assert.equal(withContacts.buyer_type, 'oem');
+      assert.equal(data(await call(s.base, key, 'search_customers', { state: 'Maharashtra' })).length, 1, 'state filter');
 
       const list = (await rpc(s.base, key, 'prompts/list')).result.prompts.map((x) => x.name);
       assert.deepEqual(list, ['new_lead', 'complete_customer_profile', 'sync_from_zoho', 'log_vendor_rates']);

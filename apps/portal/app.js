@@ -119,11 +119,18 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
   app.patch('/api/members/:id', requireAdmin, (req, res) => answer(res, repo.setActive(req.params.id, !!(req.body || {}).active, req.user.id)));
 
   // ---- customers (view only) ----
-  app.get('/api/customers', (req, res) => res.json({ customers: repo.customers({ q: req.query.q, owner: String(req.query.owner || ''), buyer: String(req.query.buyer || ''), business: String(req.query.business || '') }), options: { buyer_types: repo.BUYER_TYPES, businesses: repo.BUSINESSES } }));
+  app.get('/api/customers', (req, res) => {
+    const today = new Date().toISOString().slice(0, 10);
+    let rows = repo.customers({ q: req.query.q, owner: String(req.query.owner || ''), buyer: String(req.query.buyer || ''), business: String(req.query.business || ''), state: String(req.query.state || '') })
+      .map((c) => ({ ...c, attention: books.attention(repo, c, today) }));
+    if (req.query.attention === '1') rows = rows.filter((c) => c.attention.some((a) => a.tone !== 'info'));
+    res.json({ customers: rows, options: { buyer_types: repo.BUYER_TYPES, businesses: repo.BUSINESSES, states: repo.states() } });
+  });
   app.get('/api/customers/:mobile', (req, res) => {
     const c = repo.customer(req.params.mobile);
     return c ? res.json({ customer: c }) : res.status(404).json({ error: 'Customer not found' });
   });
+  app.delete('/api/customers/:mobile/contacts/:contact', requireAdmin, (req, res) => { const r = repo.removeContact(req.params.mobile, req.params.contact, req.user.id); answer(res, r, r); });
   // admin only, and the admin has to send the customer's mobile number back as a confirmation
   app.delete('/api/customers/:mobile', requireAdmin, (req, res) => {
     const c = repo.customer(req.params.mobile);

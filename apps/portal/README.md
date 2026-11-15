@@ -56,3 +56,9 @@ The portal is also an OAuth server (`lib/oauth.js`): dynamic client registration
 ### The vendor rule
 
 A vendor exists only with at least one of our items linked to them (`vendor_items`), and a rate is saved only for one of our items. `add_vendor` needs `item_ids` (from `search_items`); `log_vendor_rate` needs an `item_id`, or a name that matches exactly one item, otherwise nothing is saved and the answer lists the candidates; `link_vendor_items` adds more items. A vendor saved before this rule with no item is shown with a red "No item linked" tag so it can be fixed (link items) or deleted by the admin.
+
+### Customers: the list and the page
+
+The list shows name, mobile, who looks after them, trader or OEM, state, and coloured "needs attention" chips (a late follow-up, a payment overdue, an order not delivered, an accepted quote, quotes waiting, no contact for 30 days). Quick filters: All, Needs attention, Unassigned, Mine; selects for assigned-to, state, type and business; search covers every field and the history. A customer with no owner is "unassigned" (`assign_customer`).
+
+The page: a header with mobile, place, owner, onboarding date and four numbers (sold so far, collected, still to collect, quotes waiting); "What to do next" (next follow-up, last contact, and the open steps from Zoho Books); About (address, what they do, GST, where from, what they want); the other people at the company (`save_customer_contact`); what they bought grouped by our item categories with bars, quotes waiting, orders, invoices; every interaction with photos and attachments; photos and documents. Customer type is **trader** (buys to resell) or **OEM** (makes its own products); the older word "non-trader" is read as OEM. Everything is changed only through Claude.

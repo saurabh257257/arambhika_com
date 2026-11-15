@@ -9,12 +9,16 @@ const NEW_TABLES = `
   CREATE TABLE IF NOT EXISTS customers (
     mobile TEXT PRIMARY KEY CHECK (length(mobile) = 10),
     name TEXT NOT NULL, company TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '',
-    city TEXT NOT NULL DEFAULT '', state TEXT NOT NULL DEFAULT '', pincode TEXT NOT NULL DEFAULT '', gstin TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL DEFAULT '', state TEXT NOT NULL DEFAULT '', pincode TEXT NOT NULL DEFAULT '', gstin TEXT NOT NULL DEFAULT '', address TEXT NOT NULL DEFAULT '', about TEXT NOT NULL DEFAULT '',
     source TEXT NOT NULL DEFAULT '', source_detail TEXT NOT NULL DEFAULT '',
     buyer_type TEXT NOT NULL DEFAULT 'unknown', business TEXT NOT NULL DEFAULT '',
     looking_for TEXT NOT NULL DEFAULT '', application TEXT NOT NULL DEFAULT '', cell_format TEXT NOT NULL DEFAULT '',
     monthly_volume TEXT NOT NULL DEFAULT '', urgency TEXT NOT NULL DEFAULT '',
     owner_id TEXT REFERENCES members(id), created_by TEXT REFERENCES members(id), created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS customer_contacts (
+    customer_mobile TEXT NOT NULL REFERENCES customers(mobile), mobile TEXT NOT NULL CHECK (length(mobile) = 10), name TEXT NOT NULL, role TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '', added_by TEXT NOT NULL, added_at TEXT NOT NULL, PRIMARY KEY (customer_mobile, mobile)
   );
   CREATE TABLE IF NOT EXISTS interactions (
     id TEXT PRIMARY KEY, customer_mobile TEXT NOT NULL REFERENCES customers(mobile), type TEXT NOT NULL, summary TEXT NOT NULL,
@@ -53,6 +57,7 @@ const NEW_TABLES = `
 `;
 
 function ensure(db, dataDir) {
+  try { upgrade(db); } catch (e) { /* a brand new database has no customers table yet: nothing to upgrade */ }
   const cols = (t) => db.prepare('PRAGMA table_info(' + t + ')').all().map((c) => c.name);
   const old = cols('customers').includes('id');
   if (old) {
@@ -81,6 +86,14 @@ function ensure(db, dataDir) {
       PRAGMA legacy_alter_table = OFF; PRAGMA foreign_keys = ON;
     `);
   }
+  upgrade(db);
 }
 
-module.exports = { ensure };
+// columns added after the first release, and the move from "non-trader" to "OEM"
+function upgrade(db) {
+  const cols = db.prepare('PRAGMA table_info(customers)').all().map((c) => c.name);
+  for (const c of ['address', 'about']) if (!cols.includes(c)) db.exec('ALTER TABLE customers ADD COLUMN ' + c + " TEXT NOT NULL DEFAULT ''");
+  db.exec("UPDATE customers SET buyer_type = 'oem' WHERE buyer_type = 'non_trader'");
+}
+
+module.exports = { ensure, upgrade };
