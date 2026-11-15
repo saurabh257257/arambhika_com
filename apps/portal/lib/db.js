@@ -53,6 +53,8 @@ function open(dataDir) {
       id TEXT PRIMARY KEY, by_member TEXT NOT NULL, action TEXT NOT NULL, at TEXT NOT NULL
     );
   `);
+  // keys for the MCP connection: only a hash is stored, so a key can be shown once and never read back
+  if (!db.prepare('PRAGMA table_info(members)').all().some((c) => c.name === 'key_hash')) db.exec('ALTER TABLE members ADD COLUMN key_hash TEXT; ALTER TABLE members ADD COLUMN key_created_at TEXT; CREATE INDEX members_key ON members(key_hash);');
   const get = (sql, ...a) => db.prepare(sql).get(...a);
   const all = (sql, ...a) => db.prepare(sql).all(...a);
   const run = (sql, ...a) => db.prepare(sql).run(...a);
@@ -87,6 +89,29 @@ function open(dataDir) {
       run('UPDATE members SET active = ? WHERE id = ?', active ? 1 : 0, mid); audit(by, (active ? 'Switched on ' : 'Switched off ') + get('SELECT username FROM members WHERE id = ?', mid).username);
       return { ok: true };
     },
+    createKey(mid) {
+      if (!get('SELECT id FROM members WHERE id = ?', mid)) return { error: 'Member not found', status: 404 };
+      const key = 'pk_' + crypto.randomBytes(32).toString('base64url');
+      run('UPDATE members SET key_hash = ?, key_created_at = ? WHERE id = ?', crypto.createHash('sha256').update(key).digest('hex'), now(), mid);
+      audit(mid, 'Made a new connection key');
+      return { key };
+    },
+    revokeKey(mid, by = 'admin') {
+      if (!get('SELECT id FROM members WHERE id = ?', mid)) return { error: 'Member not found', status: 404 };
+      run('UPDATE members SET key_hash = NULL, key_created_at = NULL WHERE id = ?', mid); audit(by, 'Revoked the connection key of ' + get('SELECT username FROM members WHERE id = ?', mid).username);
+      return { ok: true };
+    },
+    keyInfo: (mid) => { const r = get('SELECT key_created_at AS at FROM members WHERE id = ? AND key_hash IS NOT NULL', mid); return r ? { at: r.at } : null; },
+    memberByKey(key) {
+      if (!/^pk_[A-Za-z0-9_-]{20,80}$/.test(String(key || ''))) return null;
+      const m = get('SELECT id, name, username, role FROM members WHERE key_hash = ? AND active = 1', crypto.createHash('sha256').update(String(key)).digest('hex'));
+      return m ? { ...m } : null;
+    },
+    memberByUsername: (u) => plain(get('SELECT id, name, username FROM members WHERE username = ? AND active = 1', clean(u, 40).toLowerCase())),
+    // customers this member owns whose latest interaction asked for a follow-up on or before the given day
+    followUps(mid, upTo) {
+      return all("SELECT c.id, c.name, c.company, c.phone, i.type, i.summary, i.next_date, i.at FROM customers c JOIN interactions i ON i.id = (SELECT id FROM interactions WHERE customer_id = c.id ORDER BY at DESC, rowid DESC LIMIT 1) WHERE c.owner_id = ? AND i.next_date IS NOT NULL AND i.next_date <= ? ORDER BY i.next_date", mid, upTo).map(plain);
+    },
     login(username, password) {
       const m = get('SELECT * FROM members WHERE username = ? AND active = 1', clean(username, 40).toLowerCase());
       return m && checkPassword(password, m.pass_hash) ? { id: m.id, name: m.name, role: m.role } : null;
@@ -95,6 +120,8 @@ function open(dataDir) {
     // ---- writes the MCP server will call (every one is stamped with who did it) ----
     addCustomer({ name, company, phone, email, city, ownerId }, by) {
       name = clean(name, 100); if (!name) return { error: 'The customer needs a name' };
+      const dg = digits(phone).slice(-10);
+      if (dg.length >= 10) { const dup = get('SELECT id, name FROM customers WHERE phone_digits = ?', dg); if (dup) return { error: 'A customer with this phone number already exists: ' + dup.name + ' (id ' + dup.id + ')' }; }
       const c = { id: id(), name, company: clean(company, 100), phone: clean(phone, 20), email: clean(email, 100), city: clean(city, 60), owner_id: ownerId || by, created_by: by, created_at: now() };
       run('INSERT INTO customers (id, name, company, phone, phone_digits, email, city, owner_id, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', c.id, c.name, c.company, c.phone, digits(c.phone).slice(-10), c.email, c.city, c.owner_id, c.created_by, c.created_at);
       audit(by, 'Added customer ' + name);

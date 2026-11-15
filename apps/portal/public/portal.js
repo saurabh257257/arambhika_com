@@ -74,7 +74,7 @@
       view.innerHTML = '<div class="card"><h2>Team members</h2><div class="muted">Create a person here and give them the username and password. They use these to sign in to the portal and to the MCP, and everything they change is saved under their name.</div>' +
         '<form id="mk" class="row"><label>Name<input name="name" maxlength="60" required></label><label>Username<input name="username" maxlength="40" autocapitalize="none" required></label><label>Password (10+ characters)<input name="password" id="pw" minlength="10" required></label><button class="btn ghost fit" id="gen" type="button">Generate</button><button class="btn fit" type="submit">Create member</button></form><div class="err" id="mkErr"></div><div id="shown"></div></div>' +
         '<div class="card"><h3>Members (' + r.members.length + ')</h3>' + (r.members.length ? '<table><thead><tr><th>Name</th><th>Username</th><th></th></tr></thead><tbody>' + r.members.map(function (m) {
-          return '<tr><td><b>' + esc(m.name) + '</b> ' + (m.active ? '' : '<span class="pill off">Switched off</span>') + '</td><td>' + esc(m.username) + '</td><td style="text-align:right"><button class="btn ghost sm" data-pw="' + m.id + '" data-name="' + esc(m.name) + '" type="button">Reset password</button> <button class="btn ghost sm" data-act="' + m.id + '" data-on="' + (m.active ? 0 : 1) + '" type="button">' + (m.active ? 'Switch off' : 'Switch on') + '</button></td></tr>';
+          return '<tr><td><b>' + esc(m.name) + '</b> ' + (m.active ? '' : '<span class="pill off">Switched off</span>') + (m.hasKey ? ' <span class="pill ok">MCP key</span>' : '') + '</td><td>' + esc(m.username) + '</td><td style="text-align:right"><button class="btn ghost sm" data-pw="' + m.id + '" data-name="' + esc(m.name) + '" type="button">Reset password</button> ' + (m.hasKey ? '<button class="btn ghost sm" data-rk="' + m.id + '" data-name="' + esc(m.name) + '" type="button">Revoke key</button> ' : '') + '<button class="btn ghost sm" data-act="' + m.id + '" data-on="' + (m.active ? 0 : 1) + '" type="button">' + (m.active ? 'Switch off' : 'Switch on') + '</button></td></tr>';
         }).join('') + '</tbody></table>' : '<div class="empty">No members yet.</div>') + '</div>' +
         '<div class="card"><h3>Recent changes</h3>' + (r.activity.length ? r.activity.map(function (a) { return '<div class="muted"><b>' + esc(a.who) + '</b> ' + esc(a.action) + ' &middot; ' + when(a.at) + '</div>'; }).join('') : '<div class="muted">Nothing yet.</div>') + '</div>';
       $('gen').addEventListener('click', function () { $('pw').value = randomPassword(); });
@@ -89,18 +89,40 @@
     });
   }
   function onMembersClick(e) {
-    var p = e.target.closest('[data-pw]'), a = e.target.closest('[data-act]');
+    var p = e.target.closest('[data-pw]'), a = e.target.closest('[data-act]'), rk = e.target.closest('[data-rk]');
+    if (rk) { if (window.confirm('Revoke the MCP key of ' + rk.dataset.name + '? Claude stops working for them until they make a new key.')) api('POST', '/api/members/' + rk.dataset.rk + '/revoke-key', {}).then(function () { toast('Key revoked'); return membersScreen(); }).catch(fail); return; }
     if (p) { var pw = randomPassword(); if (!window.confirm('Set a new password for ' + p.dataset.name + '? Their old password stops working.')) return;
       api('POST', '/api/members/' + p.dataset.pw + '/password', { password: pw }).then(function () { return membersScreen(); }).then(function () { $('shown').innerHTML = '<div class="card" style="background:#f0fdfa;border-color:#99f6e4"><b>New password for ' + esc(p.dataset.name) + ' (shown once):</b> <b>' + esc(pw) + '</b></div>'; window.scrollTo(0, 0); }).catch(fail); return; }
     if (a) api('PATCH', '/api/members/' + a.dataset.act, { active: a.dataset.on === '1' }).then(function () { toast(a.dataset.on === '1' ? 'Switched on' : 'Switched off'); return membersScreen(); }).catch(fail);
+  }
+
+  // ---------- my connection (MCP key) ----------
+  function connectionScreen() {
+    var my = seq;
+    return api('GET', '/api/my-connection').then(function (r) {
+      if (my !== seq) return;
+      var url = location.origin + '/mcp';
+      if (!r.canConnect) { view.innerHTML = '<div class="card"><h2>My connection</h2><div class="muted">The admin sign-in cannot connect to the MCP. Create a member for yourself under Members, then sign in as that member.</div></div>'; return; }
+      view.innerHTML = '<div class="card"><h2>My connection</h2><div class="muted">Connect Claude to the portal, so you can add customers and log calls, quotes, orders and payments by talking to Claude. Everything you save is recorded under your name.</div>' +
+        '<div>' + (r.key ? 'You have a key (made ' + when(r.key.at) + '). It cannot be shown again.' : 'You do not have a key yet.') + '</div><div><button class="btn" id="mk" type="button">' + (r.key ? 'Make a new key (the old one stops working)' : 'Make my key') + '</button></div><div id="keyBox"></div></div>' +
+        '<div class="card"><h3>How to connect (Claude Code)</h3><ol><li>Make your key above and copy the command that appears.</li><li>Paste it into a terminal on your computer, or in Claude Code.</li><li>Open Claude Code and ask, for example: <i>"Who am I on the portal?"</i> or <i>"Add customer Mr Rao, phone 98xxxxxx, and log a call: interested in nickel strip, follow up on 25 Nov."</i></li></ol><div class="muted small">Address: ' + esc(url) + '. This address is plain http for now, so do not use it on public Wi-Fi.</div></div>';
+      $('mk').addEventListener('click', function () {
+        if (r.key && !window.confirm('Make a new key? Your old key stops working.')) return;
+        api('POST', '/api/my-connection/key', {}).then(function (k) {
+          var cmd = 'claude mcp add --transport http arambhika ' + url + ' --header "Authorization: Bearer ' + k.key + '"';
+          $('keyBox').innerHTML = '<div class="card" style="background:#f0fdfa;border-color:#99f6e4"><b>Your key is shown once. Copy this command now:</b><textarea id="cmd" readonly rows="3" style="width:100%;font-family:monospace;font-size:12px">' + esc(cmd) + '</textarea><div><button class="btn sm" id="cp" type="button">Copy</button></div></div>';
+          $('cp').addEventListener('click', function () { $('cmd').select(); (navigator.clipboard ? navigator.clipboard.writeText(cmd) : Promise.resolve(document.execCommand('copy'))).then(function () { toast('Copied'); }); });
+        }).catch(fail);
+      });
+    });
   }
 
   // ---------- shell ----------
   function route() {
     var h = location.hash.replace(/^#/, '') || 'customers', parts = h.split('/');
     seq++; view.removeEventListener('click', onMembersClick);
-    $('tabs').innerHTML = [['customers', 'Customers']].concat(me.role === 'admin' ? [['members', 'Members']] : []).map(function (t) { return '<button class="tab' + ((parts[0] === t[0] || (parts[0] === 'customer' && t[0] === 'customers')) ? ' on' : '') + '" data-go="' + t[0] + '" type="button">' + t[1] + '</button>'; }).join('');
-    var screen = parts[0] === 'customer' && parts[1] ? customerScreen(parts[1]) : parts[0] === 'members' && me.role === 'admin' ? membersScreen() : customersScreen();
+    $('tabs').innerHTML = [['customers', 'Customers']].concat(me.role === 'admin' ? [['members', 'Members']] : []).concat([['connection', 'My connection']]).map(function (t) { return '<button class="tab' + ((parts[0] === t[0] || (parts[0] === 'customer' && t[0] === 'customers')) ? ' on' : '') + '" data-go="' + t[0] + '" type="button">' + t[1] + '</button>'; }).join('');
+    var screen = parts[0] === 'customer' && parts[1] ? customerScreen(parts[1]) : parts[0] === 'connection' ? connectionScreen() : parts[0] === 'members' && me.role === 'admin' ? membersScreen() : customersScreen();
     screen.catch(function (e) { view.innerHTML = '<div class="card"><div class="err">' + esc(e.message) + '</div></div>'; });
   }
   $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-go]'); if (b) location.hash = b.dataset.go; });

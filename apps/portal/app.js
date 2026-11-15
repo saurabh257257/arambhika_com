@@ -5,6 +5,7 @@ const path = require('path');
 const express = require('express');
 const compression = require('compression');
 const { open, TYPES } = require('./lib/db');
+const mcp = require('./lib/mcp');
 
 const safeEqual = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 
@@ -17,7 +18,9 @@ function createApp({ dataDir, adminPassword, sessionSecret }) {
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(compression());
-  app.use(express.json({ limit: '100kb' }));
+  // the MCP endpoint may carry a small file (base64), so it gets a bigger limit than everything else
+  const smallJson = express.json({ limit: '100kb' }), mcpJson = express.json({ limit: '8mb' });
+  app.use((req, res, next) => (req.path === '/mcp' ? mcpJson : smallJson)(req, res, next));
   app.use((req, res, next) => {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow'); res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN'); res.setHeader('Referrer-Policy', 'same-origin');
@@ -75,13 +78,32 @@ function createApp({ dataDir, adminPassword, sessionSecret }) {
   app.get('/', requireUser, send('index.html'));
   app.get('/index.html', requireUser, (req, res) => res.redirect('/'));
   app.get('/portal.js', requireUser, send('portal.js'));
+
+  // ---- MCP: signed in with a member's own key (not the browser cookie) ----
+  app.all('/mcp', (req, res) => {
+    if (req.method !== 'POST') return res.status(405).set('Allow', 'POST').json({ error: 'Use POST' });
+    const t = Date.now(), recent = (tries.get('mcp' + req.ip) || []).filter((x) => x > t - 10 * 60 * 1000);
+    if (recent.length >= 30) return res.status(429).json({ error: 'Too many wrong keys. Please wait a few minutes.' });
+    const m = repo.memberByKey(String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
+    if (!m) { recent.push(t); tries.set('mcp' + req.ip, recent); return res.status(401).set('WWW-Authenticate', 'Bearer').json({ error: 'Missing or wrong key. Make a new one under My connection in the portal.' }); }
+    tries.delete('mcp' + req.ip);
+    const body = req.body;
+    if (Array.isArray(body)) { const out = body.map((x) => mcp.handle(repo, m, x)).filter(Boolean); return out.length ? res.json(out) : res.status(202).end(); }
+    const out = mcp.handle(repo, m, body);
+    return out ? res.json(out) : res.status(202).end();
+  });
+
   app.use('/api', requireUser);
 
   app.get('/api/me', (req, res) => res.json({ user: req.user, types: TYPES }));
 
   // ---- members (admin page) ----
   app.get('/api/people', (req, res) => res.json({ people: repo.members().filter((m) => m.active).map((m) => ({ id: m.id, name: m.name })) }));
-  app.get('/api/members', requireAdmin, (req, res) => res.json({ members: repo.members(), activity: repo.activity(50) }));
+  app.get('/api/members', requireAdmin, (req, res) => res.json({ members: repo.members().map((m) => ({ ...m, hasKey: !!repo.keyInfo(m.id) })), activity: repo.activity(50) }));
+  app.post('/api/members/:id/revoke-key', requireAdmin, (req, res) => answer(res, repo.revokeKey(req.params.id, req.user.id)));
+  // each member makes their own key (shown once); the admin has no member record, so makes themselves a member to connect
+  app.get('/api/my-connection', (req, res) => res.json({ canConnect: req.user.id !== 'admin', key: req.user.id === 'admin' ? null : repo.keyInfo(req.user.id) }));
+  app.post('/api/my-connection/key', (req, res) => (req.user.id === 'admin' ? res.status(400).json({ error: 'The admin sign-in cannot connect. Create a member for yourself under Members.' }) : res.json(repo.createKey(req.user.id))));
   const answer = (res, r, body) => (r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json(body || { ok: true }));
   app.post('/api/members', requireAdmin, (req, res) => { const r = repo.createMember(req.body || {}, req.user.id); answer(res, r, { member: r.member }); });
   app.post('/api/members/:id/password', requireAdmin, (req, res) => answer(res, repo.setPassword(req.params.id, (req.body || {}).password, req.user.id)));

@@ -23,3 +23,15 @@ node scripts/seed-demo.js ./demo-data                                 # made-up 
 ## Deploy
 
 Dev droplet only, by `.github/workflows/portal-dev.yml` and `scripts/deploy-portal.sh`. It needs the GitHub `dev` environment secrets `PORTAL_ADMIN_PASSWORD` and `PORTAL_SESSION_SECRET` (without them the deploy is skipped), and a DNS record for the address (default `portal.arambhika.com`, change with the `PORTAL_DOMAIN` variable).
+
+## MCP (how the team updates data)
+
+`POST /mcp` is an MCP server (JSON-RPC over HTTP). Each member makes their own key under **My connection** (shown once; only a hash is stored) and adds it to Claude Code:
+
+```
+claude mcp add --transport http arambhika http://<portal address>/mcp --header "Authorization: Bearer <key>"
+```
+
+Tools: `who_am_i`, `list_team`, `search_customers`, `get_customer`, `add_customer` (refuses a phone number that already exists), `log_interaction` (call, whatsapp, visit, quote, order, payment, dispatch, note, followup), `my_follow_ups`, `add_file` (up to 5 MB). There is no delete tool. Every write is stamped with the member whose key was used. The admin can revoke a key under Members; switching a member off also stops their key at once.
+
+Over plain http the key travels unencrypted, so use this only while testing; the Claude apps (claude.ai, desktop chat) need an https address and a sign-in page, which come with a domain.

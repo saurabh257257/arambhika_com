@@ -110,3 +110,72 @@ describe('portal', () => {
     } finally { await s.stop(); }
   });
 });
+
+describe('mcp', () => {
+  const rpc = (base, key, method, params, id = 1) => fetch(base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: 'Bearer ' + key } : {}) }, body: JSON.stringify({ jsonrpc: '2.0', id, method, params }) });
+  const call = async (base, key, name, args) => (await (await rpc(base, key, 'tools/call', { name, arguments: args })).json()).result;
+  const data = (r) => JSON.parse(r.content[0].text);
+
+  test('a member connects with their own key; everything they save carries their name', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' });
+      const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
+      assert.equal((await s.admin.post('/api/my-connection/key')).status, 400, 'admin has no member record');
+      assert.equal((await lok.get('/api/my-connection')).data.key, null);
+      const key = (await lok.post('/api/my-connection/key')).data.key;
+      assert.match(key, /^pk_/);
+      assert.equal(JSON.stringify(s.app.repo.members()).includes(key), false, 'only a hash is stored');
+
+      assert.equal((await rpc(s.base, '', 'initialize', {})).status, 401, 'no key');
+      assert.equal((await rpc(s.base, 'pk_wrongwrongwrongwrongwrong', 'initialize', {})).status, 401, 'wrong key');
+      assert.equal((await fetch(s.base + '/mcp', { headers: { Authorization: 'Bearer ' + key } })).status, 405);
+      const initRes = await rpc(s.base, key, 'initialize', { protocolVersion: '2025-06-18' }); const init = await initRes.json(); if (!init.result) console.log('DEBUG', initRes.status, JSON.stringify(init));
+      assert.equal(init.result.protocolVersion, '2025-06-18'); assert.ok(init.result.capabilities.tools);
+      assert.equal((await fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) })).status, 202);
+      const list = (await (await rpc(s.base, key, 'tools/list')).json()).result.tools.map((t) => t.name);
+      assert.deepEqual(list, ['who_am_i', 'list_team', 'search_customers', 'get_customer', 'add_customer', 'log_interaction', 'my_follow_ups', 'add_file']);
+      assert.equal(list.some((n) => /delete|remove/.test(n)), false, 'nothing can be deleted');
+      assert.equal(data(await call(s.base, key, 'who_am_i', {})).name, 'Lokesh');
+
+      const added = data(await call(s.base, key, 'add_customer', { name: 'Mr Rao', company: 'Rao Traders', phone: '98111 22233', city: 'Pune' }));
+      assert.equal((await call(s.base, key, 'add_customer', { name: 'Rao again', phone: '+91 9811122233' })).isError, true, 'same phone is refused');
+      const dueYesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      assert.equal((await call(s.base, key, 'log_interaction', { customer_id: added.id, type: 'dance', summary: 'x' })).isError, true);
+      assert.equal((await call(s.base, key, 'log_interaction', { customer_id: 'nope', type: 'call', summary: 'x' })).isError, true);
+      assert.equal((await call(s.base, key, 'log_interaction', { customer_id: added.id, type: 'call', summary: 'Wants nickel strip', next_date: dueYesterday })).isError, undefined);
+      assert.equal(data(await call(s.base, key, 'my_follow_ups', {})).length, 1, 'follow-up is due');
+      await call(s.base, key, 'log_interaction', { customer_id: added.id, type: 'quote', summary: 'Sent quote', amount: 15000 });
+      assert.equal(data(await call(s.base, key, 'my_follow_ups', {})).length, 0, 'a later entry without a date closes it');
+      const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      assert.equal(data(await call(s.base, key, 'add_file', { customer_id: added.id, name: 'shot.png', mime_type: 'image/png', data_base64: png })).saved, true);
+      assert.equal((await call(s.base, key, 'add_file', { customer_id: added.id, name: 'bad', data_base64: '!!!' })).isError, true);
+
+      const found = data(await call(s.base, key, 'search_customers', { query: '9811122233' }));
+      assert.equal(found.length, 1); assert.equal(found[0].owner, 'Lokesh');
+      const full = data(await call(s.base, key, 'get_customer', { customer_id: added.id }));
+      assert.deepEqual(full.interactions.map((i) => [i.type, i.by]), [['quote', 'Lokesh'], ['call', 'Lokesh']]);
+      assert.equal(full.files.length, 1);
+      assert.equal(data(await call(s.base, key, 'list_team', {})).length, 2);
+      assert.equal((await call(s.base, key, 'add_customer', { name: 'X', owner_username: 'ghost' })).isError, true);
+      assert.equal((await rpc(s.base, key, 'nothing/here')).status, 200);
+      assert.equal((await (await rpc(s.base, key, 'nothing/here')).json()).error.code, -32601);
+
+      // the portal pages show it, under Lokesh's name
+      assert.equal((await s.admin.get('/api/customers/' + added.id)).data.customer.interactions[0].by_name, 'Lokesh');
+
+      // a new key replaces the old; revoking or switching off cuts access at once
+      const key2 = (await lok.post('/api/my-connection/key')).data.key;
+      assert.equal((await rpc(s.base, key, 'ping')).status, 401, 'old key stops');
+      assert.equal((await rpc(s.base, key2, 'ping')).status, 200);
+      assert.equal((await s.admin.get('/api/members')).data.members.find((m) => m.id === L.id).hasKey, true);
+      assert.equal((await s.admin.post('/api/members/' + L.id + '/revoke-key')).status, 200);
+      assert.equal((await rpc(s.base, key2, 'ping')).status, 401, 'revoked');
+      const key3 = (await lok.post('/api/my-connection/key')).data.key;
+      await s.admin.patch('/api/members/' + L.id, { active: false });
+      assert.equal((await rpc(s.base, key3, 'ping')).status, 401, 'switched off');
+      assert.equal((await lok.post('/api/my-connection/key')).status, 401);
+    } finally { await s.stop(); }
+  });
+});
