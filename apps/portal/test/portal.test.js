@@ -334,6 +334,8 @@ describe('mcp', () => {
       assert.equal(data(await call(s.base, key, 'update_customer', { mobile: '9811122233', state: 'Gujarat', urgency: 'immediate' })).changed.length, 2);
       assert.equal((await call(s.base, key, 'update_customer', { mobile: '9811122233', buyer_type: 'bogus' })).isError, true);
       assert.equal((await call(s.base, key, 'log_interaction', { mobile: '9811122233', type: 'dance', summary: 'x' })).isError, true);
+      // a Claude holding the older tool list sends customer_id: a mobile number there still works
+      assert.equal(data(await call(s.base, key, 'log_interaction', { customer_id: '98111 22233', type: 'note', summary: 'logged the old way' })).saved, true);
       const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
       assert.equal((await call(s.base, key, 'log_interaction', { mobile: '9811122233', type: 'call', summary: 'Wants nickel strip', next_date: yesterday })).isError, undefined);
       assert.equal(data(await call(s.base, key, 'my_follow_ups', {})).length, 1);
@@ -345,7 +347,7 @@ describe('mcp', () => {
       assert.equal(data(await call(s.base, key, 'search_customers', { query: 'rao' }))[0].owner, 'Lokesh');
       assert.equal(data(await call(s.base, key, 'search_customers', { buyer_type: 'trader' })).length, 1);
       const full = data(await call(s.base, key, 'get_customer', { mobile: '09811122233' }));
-      assert.deepEqual(full.interactions.map((i) => [i.type, i.by]), [['quote', 'Lokesh'], ['call', 'Lokesh']]); assert.equal(full.state, 'Gujarat');
+      assert.deepEqual(full.interactions.map((i) => [i.type, i.by]), [['quote', 'Lokesh'], ['call', 'Lokesh'], ['note', 'Lokesh']]); assert.equal(full.state, 'Gujarat');
 
       // Claude reads Zoho Books with its own connector and saves it; the portal then shows the next steps
       assert.equal(data(await call(s.base, key, 'customer_purchases', { mobile: '9811122233' })).found, false, 'nothing saved yet');

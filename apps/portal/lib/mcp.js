@@ -161,7 +161,7 @@ async function handle(ctx, me, msg) {
       const args = (msg.params && msg.params.arguments) || {};
       if (typeof args !== 'object' || Array.isArray(args)) return reply(fail('The arguments must be an object'));
       // a Claude that still holds the older tool list sends "phone"; treat it as the mobile number
-      if (args.mobile == null) { const alt = args.phone || args.mobile_number || args.phone_number; if (alt) args.mobile = alt; }
+      if (args.mobile == null) { const alt = args.phone || args.mobile_number || args.phone_number || args.customer_id; if (alt) args.mobile = alt; } // the older tools took customer_id: a mobile number given there is understood
       try { return reply(await tool.run(ctx, me, args)); } catch (e) { return reply(fail('Something went wrong. Nothing was changed.')); }
     }
     default: return error(-32601, 'Method not found');
