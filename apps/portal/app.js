@@ -55,7 +55,7 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
   };
   const requireAdmin = (req, res, next) => (req.user.role === 'admin' ? next() : res.status(403).json({ error: 'Admin only' }));
   app.use('/api', (req, res, next) => {
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && !/^application\/json/i.test(req.headers['content-type'] || '')) return res.status(415).json({ error: 'JSON only' });
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && req.path !== '/upload' && !/^application\/json/i.test(req.headers['content-type'] || '')) return res.status(415).json({ error: 'JSON only' });
     next();
   });
 
@@ -118,6 +118,15 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
   app.post('/api/members/:id/password', requireAdmin, (req, res) => answer(res, repo.setPassword(req.params.id, (req.body || {}).password, req.user.id)));
   app.patch('/api/members/:id', requireAdmin, (req, res) => answer(res, repo.setActive(req.params.id, !!(req.body || {}).active, req.user.id)));
 
+  // ---- adding a file from the page: the original bytes go straight in. kind is customer, vendor or item; key is the mobile number or item id.
+  // The custom header cannot be sent by another website, so only this page can use it. ----
+  app.post('/api/upload', express.raw({ type: () => true, limit: '11mb' }), (req, res) => {
+    if (req.headers['x-portal-upload'] !== '1') return res.status(400).json({ error: 'Not an upload from the portal page' });
+    const q = req.query, buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0), kind = String(q.kind || '');
+    const r = kind === 'customer' ? repo.addFile({ mobile: q.key, name: q.name, note: q.note, buffer }, req.user.id) : repo.addAttachment({ kind, key: q.key, name: q.name, note: q.note, buffer }, req.user.id);
+    return r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json({ ok: true, name: (r.file || r.attachment).name });
+  });
+
   // ---- customers (view only) ----
   app.get('/api/customers', (req, res) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -131,6 +140,11 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
     return c ? res.json({ customer: c }) : res.status(404).json({ error: 'Customer not found' });
   });
   app.delete('/api/customers/:mobile/contacts/:contact', requireAdmin, (req, res) => { const r = repo.removeContact(req.params.mobile, req.params.contact, req.user.id); answer(res, r, r); });
+  // who looks after this customer: admin only. owner is a member id, or empty for nobody. (Who created the customer never changes.)
+  app.patch('/api/customers/:mobile/assign', requireAdmin, (req, res) => {
+    if (!repo.customer(req.params.mobile)) return res.status(404).json({ error: 'Customer not found' });
+    const r = repo.assignCustomer(req.params.mobile, (req.body || {}).owner || null, req.user.id); answer(res, r, r);
+  });
   // admin only, and the admin has to send the customer's mobile number back as a confirmation
   app.delete('/api/customers/:mobile', requireAdmin, (req, res) => {
     const c = repo.customer(req.params.mobile);

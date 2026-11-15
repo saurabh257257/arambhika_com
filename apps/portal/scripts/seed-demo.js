@@ -19,7 +19,7 @@ repo.addInteraction({ mobile: '9811100001', type: 'quote', summary: 'Sent quote 
 repo.addInteraction({ mobile: '9811100001', type: 'order', summary: 'Confirmed the order, wants delivery by Friday.', amount: 15000 }, L.id);
 repo.addInteraction({ mobile: '9811100001', type: 'payment', summary: 'Payment received by UPI.', amount: 15000 }, V.id);
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
-repo.addFile({ mobile: '9811100001', name: 'payment-screenshot.png', mime: 'image/png', buffer: png }, V.id);
+repo.addFile({ mobile: '9811100001', name: 'payment-screenshot.png', note: 'UPI payment screenshot for the 20 kg nickel strip order', buffer: png }, V.id);
 repo.addInteraction({ mobile: '9811100002', type: 'whatsapp', summary: 'Asked for copper busbar 55x20x2 mm price.', nextDate: day(1) }, V.id);
 repo.replaceItems([
   { id: 'p1', sku: 'NS-015', name: 'Nickel strip 0.15 mm x 8 mm', category: 'Nickel strip', price: 900, stock: 25, unit: 'kg', moq: 1, description: 'Pure nickel strip for spot welding 18650 cells.', collections: ['18650'] },
@@ -42,8 +42,8 @@ repo.saveBooksDocs('9811100001', {
 repo.updateVendor('9000000001', { address: 'Lohar Chawl, Mumbai', about: 'Nickel and copper strip maker', payment_terms: '15 days credit', lead_time: '3 days', min_order: '50 kg' }, L.id);
 repo.addNote('vendor', '9000000001', 'Pays on time. Quality was poor in the October lot, check thickness on delivery.', L.id);
 repo.addNote('item', 'p1', 'Customers ask for this one most. Keep 50 kg in stock.', V.id);
-repo.addAttachment({ kind: 'vendor', key: '9000000001', name: 'price-list-nov.png', mime: 'image/png', note: 'November price list', buffer: png }, L.id);
-repo.addAttachment({ kind: 'item', key: 'p1', name: 'datasheet.pdf', mime: 'application/pdf', note: 'Supplier datasheet', buffer: Buffer.from('%PDF-1.4 demo') }, L.id);
+repo.addAttachment({ kind: 'vendor', key: '9000000001', name: 'price-list-nov.png', note: 'November price list from Saurav, valid till 30 Nov', buffer: png }, L.id);
+repo.addAttachment({ kind: 'item', key: 'p1', name: 'datasheet.pdf', note: 'Supplier datasheet for the 0.15 mm nickel strip', buffer: Buffer.from('%PDF-1.4 demo' + String.fromCharCode(10) + '%%EOF' + String.fromCharCode(10)) }, L.id);
 repo.setZohoStatus('9811100001', true, 'Shakti Batteries Pvt Ltd', L.id);
 repo.setZohoStatus('9811100003', false, '', L.id);
 console.log('Demo data ready (members lokesh / vikas, password name-pass-1234)');

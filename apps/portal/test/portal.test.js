@@ -16,7 +16,7 @@ function client(base) {
     const type = res.headers.get('content-type') || '';
     return { status: res.status, headers: res.headers, data: type.includes('json') ? await res.json() : await res.text(), location: res.headers.get('location') };
   };
-  return { get: (u) => call('GET', u), post: (u, b) => call('POST', u, b === undefined ? {} : b), patch: (u, b) => call('PATCH', u, b), raw: call };
+  return { get: (u) => call('GET', u), post: (u, b) => call('POST', u, b === undefined ? {} : b), patch: (u, b) => call('PATCH', u, b), raw: call, cookie: () => cookie };
 }
 
 // a pretend Zoho Commerce storefront: two nickel strips and a BMS, one collection
@@ -141,8 +141,8 @@ describe('portal', () => {
       for (const [m, u2] of [['post', '/api/customers'], ['post', '/api/customers/9811122233/interactions'], ['patch', '/api/customers/9811122233']]) assert.equal((await s.admin[m](u2, { name: 'x' })).status, 404, 'view only: ' + m + ' ' + u2);
 
       const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
-      const img = s.app.repo.addFile({ mobile: '9811122233', name: 'shot.png', mime: 'image/png', buffer: png }, L.id).file;
-      const page = s.app.repo.addFile({ mobile: '9811122233', name: 'x.html', mime: 'text/html', buffer: Buffer.from('<script>alert(1)</script>') }, L.id).file;
+      const img = s.app.repo.addFile({ mobile: '9811122233', name: 'shot.png', note: 'UPI payment screenshot for the nickel order', buffer: png }, L.id).file;
+      const page = s.app.repo.addFile({ mobile: '9811122233', name: 'x.html', note: 'UPI payment screenshot for the nickel order', buffer: Buffer.from('<script>alert(1)</script>') }, L.id).file;
       assert.match((await s.admin.get('/api/files/' + img.id)).headers.get('content-disposition'), /^inline/);
       const dl = await s.admin.get('/api/files/' + page.id);
       assert.match(dl.headers.get('content-disposition'), /^attachment/); assert.equal(dl.headers.get('content-type'), 'application/octet-stream');
@@ -255,7 +255,7 @@ describe('portal', () => {
       const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
       s.app.repo.addCustomer({ name: 'Mr Rao', mobile: '9811122233' }, L.id); s.app.repo.addCustomer({ name: 'Keep Me', mobile: '9811100002' }, L.id);
       s.app.repo.addInteraction({ mobile: '9811122233', type: 'call', summary: 'hello' }, L.id);
-      const f = s.app.repo.addFile({ mobile: '9811122233', name: 'a.png', mime: 'image/png', buffer: Buffer.from('x') }, L.id).file;
+      const f = s.app.repo.addFile({ mobile: '9811122233', name: 'a.txt', note: 'UPI payment screenshot for the nickel order', buffer: Buffer.from('x') }, L.id).file;
       const del = (c, mobile, body) => c.raw('DELETE', '/api/customers/' + mobile, body);
       assert.equal((await del(lok, '9811122233', { confirm: '9811122233' })).status, 403, 'a team member cannot');
       assert.equal((await del(client(s.base), '9811122233', { confirm: '9811122233' })).status, 401);
@@ -346,6 +346,29 @@ describe('portal', () => {
     } finally { await s.stop(); }
   });
 
+  test('the list shows who created each customer and who they are assigned to; only the admin changes the assignment', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      const V = s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' }).member;
+      const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
+      s.app.repo.addCustomer({ name: 'Rao', mobile: '9811122233' }, L.id);
+      let row = (await s.admin.get('/api/customers')).data.customers[0];
+      assert.equal(row.created_by_name, 'Lokesh'); assert.equal(row.owner_name, 'Lokesh', 'a new customer starts assigned to the person who created it');
+      assert.equal((await lok.raw('PATCH', '/api/customers/9811122233/assign', { owner: V.id })).status, 403, 'a team member cannot reassign');
+      assert.equal((await client(s.base).raw('PATCH', '/api/customers/9811122233/assign', { owner: V.id })).status, 401);
+      assert.equal((await s.admin.raw('PATCH', '/api/customers/9811122233/assign', { owner: 'ghost-id' })).status, 400);
+      assert.equal((await s.admin.raw('PATCH', '/api/customers/9000000000/assign', { owner: V.id })).status, 404);
+      const done = await s.admin.raw('PATCH', '/api/customers/9811122233/assign', { owner: V.id });
+      assert.equal(done.status, 200); assert.equal(done.data.owner, 'Vikas');
+      row = (await s.admin.get('/api/customers')).data.customers[0];
+      assert.equal(row.created_by_name, 'Lokesh', 'created by does not change'); assert.equal(row.owner_name, 'Vikas'); assert.equal(row.owner_id, V.id);
+      assert.equal((await s.admin.raw('PATCH', '/api/customers/9811122233/assign', { owner: null })).data.owner, null);
+      assert.equal((await s.admin.get('/api/customers?owner=none')).data.customers.length, 1);
+      assert.match((await s.admin.get('/api/members')).data.activity[0].action, /Unassigned Rao/);
+    } finally { await s.stop(); }
+  });
+
   test('purchases are grouped by our item categories, with pending quotes and what was sold so far', async () => {
     const s = await boot();
     try {
@@ -390,8 +413,8 @@ describe('portal', () => {
       // attachments: a picture shows in the page, anything else is only a download
       const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
       const pic = s.app.repo.addAttachment({ kind: 'item', key: 'p1', name: 'sample.png', mime: 'image/png', note: 'sample photo', buffer: png }, L.id).attachment;
-      const pdf = s.app.repo.addAttachment({ kind: 'vendor', key: '9000000001', name: 'price-list.html', mime: 'text/html', buffer: Buffer.from('<script>alert(1)</script>') }, L.id).attachment;
-      assert.equal(s.app.repo.addAttachment({ kind: 'vendor', key: '9111111111', name: 'x', buffer: png }, L.id).status, 404);
+      const pdf = s.app.repo.addAttachment({ kind: 'vendor', key: '9000000001', name: 'price-list.html', note: 'Saurav price list as a web page', buffer: Buffer.from('<script>alert(1)</script>') }, L.id).attachment;
+      assert.equal(s.app.repo.addAttachment({ kind: 'vendor', key: '9111111111', name: 'x.png', note: 'a picture of nothing', buffer: png }, L.id).status, 404);
       assert.match((await s.admin.get('/api/attachments/' + pic.id)).headers.get('content-disposition'), /^inline/);
       const dl = await s.admin.get('/api/attachments/' + pdf.id);
       assert.match(dl.headers.get('content-disposition'), /^attachment/); assert.equal(dl.headers.get('content-type'), 'application/octet-stream');
@@ -424,6 +447,52 @@ describe('portal', () => {
       assert.equal(s.app.repo.db.prepare("SELECT COUNT(*) AS n FROM attachments WHERE kind = 'vendor'").get().n, 0);
       assert.equal(fs.existsSync(s.app.repo.filePath(pdf.id)), false, 'the vendor files are gone from disk');
       assert.equal(s.app.repo.attachments('item', 'p1').length, 1, 'the item keeps its own picture');
+    } finally { await s.stop(); }
+  });
+
+  test('files are saved exactly as given, with a short description; a damaged or cut-off file is refused; the page uploads the original bytes', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
+      await s.app.itemSync.sync();
+      s.app.repo.addCustomer({ name: 'Mr Rao', mobile: '9811122233' }, L.id);
+      s.app.repo.addVendor({ name: 'Saurav', mobile: '9000000001', itemIds: ['p1'] }, L.id);
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+      const add = (o) => s.app.repo.addFile({ mobile: '9811122233', name: 'shot.png', note: 'UPI payment screenshot, 15 Nov', buffer: png, ...o }, L.id);
+
+      // a cut-off or altered picture is refused, and nothing is saved
+      const cut = add({ buffer: png.subarray(0, png.length - 9) }); assert.match(cut.error, /arrived damaged/); assert.match(cut.error, /Add a file button/);
+      const changed = Buffer.from(png); changed[30] ^= 0xff; assert.match(add({ buffer: changed }).error, /arrived damaged/);
+      assert.match(add({ name: 'photo.jpg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]) }).error, /cut off/);
+      assert.match(add({ name: 'doc.pdf', buffer: Buffer.from('%PDF-1.4 half a document') }).error, /cut off/);
+      assert.equal(s.app.repo.db.prepare('SELECT COUNT(*) AS n FROM files').get().n, 0);
+      // a description of a few words is required
+      assert.match(add({ note: '' }).error, /short description/); assert.match(add({ note: 'pic' }).error, /short description/);
+      // a whole file is kept byte for byte, and its type comes from its name, not from the sender
+      const ok = add({ mime: 'text/html' }).file; assert.equal(ok.mime, 'image/png'); assert.equal(ok.note, 'UPI payment screenshot, 15 Nov');
+      assert.ok(fs.readFileSync(s.app.repo.filePath(ok.id)).equals(png), 'saved exactly as it was');
+
+      // from the page: the original bytes, with the description, for a customer, a vendor and an item
+      const up = (q, body, headers = { 'X-Portal-Upload': '1' }) => fetch(s.base + '/api/upload?' + new URLSearchParams(q), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', Cookie: lok.cookie(), ...headers }, body });
+      const orig = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.from(Array.from({ length: 5000 }, (_, i) => i % 256)), Buffer.from('\n%%EOF\n')]);
+      const r1 = await up({ kind: 'customer', key: '9811122233', name: 'quotation.pdf', note: 'Signed quotation for 20 kg nickel strip' }, orig);
+      assert.equal(r1.status, 200);
+      const stored = (await s.admin.get('/api/customers/9811122233')).data.customer.files.find((f) => f.name === 'quotation.pdf');
+      assert.equal(stored.note, 'Signed quotation for 20 kg nickel strip'); assert.equal(stored.size, orig.length);
+      assert.ok(fs.readFileSync(s.app.repo.filePath(stored.id)).equals(orig), 'every byte of the original is kept');
+      assert.equal((await up({ kind: 'vendor', key: '9000000001', name: 'list.png', note: 'Saurav price list photo' }, png)).status, 200);
+      assert.equal((await up({ kind: 'item', key: 'p1', name: 'sample.png', note: 'Sample photo of the strip' }, png)).status, 200);
+      assert.equal((await s.admin.get('/api/vendors/9000000001')).data.vendor.attachments[0].note, 'Saurav price list photo');
+      assert.equal((await up({ kind: 'item', key: 'p1', name: 'broken.png', note: 'a broken picture here' }, png.subarray(0, 40))).status, 400, 'the page refuses a damaged file too');
+      assert.equal((await up({ kind: 'item', key: 'p1', name: 'x.png', note: '' }, png)).status, 400, 'a description is needed');
+      assert.equal((await up({ kind: 'customer', key: '9000000000', name: 'x.png', note: 'for nobody at all' }, png)).status, 404);
+      assert.equal((await up({ kind: 'thing', key: 'x', name: 'x.png', note: 'for nothing at all' }, png)).status, 404);
+      assert.equal((await up({ kind: 'item', key: 'p1', name: 'x.png', note: 'sneaky cross site' }, png, {})).status, 400, 'needs the portal header');
+      assert.equal((await fetch(s.base + '/api/upload?kind=item&key=p1&name=x.png&note=not+signed+in', { method: 'POST', headers: { 'X-Portal-Upload': '1' }, body: png })).status, 401);
+      // and it can always be downloaded exactly as saved
+      const dl = await fetch(s.base + '/api/files/' + stored.id + '?download=1', { headers: { Cookie: lok.cookie() } });
+      assert.match(dl.headers.get('content-disposition'), /^attachment/); assert.ok(Buffer.from(await dl.arrayBuffer()).equals(orig));
     } finally { await s.stop(); }
   });
 
@@ -498,9 +567,9 @@ describe('mcp', () => {
       await call(s.base, key, 'log_interaction', { mobile: '9811122233', type: 'quote', summary: 'Sent quote', amount: 15000 });
       assert.equal(data(await call(s.base, key, 'my_follow_ups', {})).length, 0, 'a later entry without a date closes it');
       const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-      assert.equal(data(await call(s.base, key, 'add_file', { mobile: '9811122233', name: 'shot.png', mime_type: 'image/png', data_base64: png })).saved, true);
-      assert.equal((await call(s.base, key, 'add_file', { mobile: '9811122233', name: 'bad', data_base64: '!!!' })).isError, true);
-      assert.equal(data(await call(s.base, key, 'search_customers', { query: 'rao' }))[0].owner, 'Lokesh');
+      assert.equal(data(await call(s.base, key, 'add_file', { mobile: '9811122233', name: 'shot.png', note: 'Payment screenshot for the nickel order', data_base64: png })).saved, true);
+      assert.equal((await call(s.base, key, 'add_file', { mobile: '9811122233', name: 'bad', note: 'not valid at all', data_base64: '!!!' })).isError, true);
+      assert.equal(data(await call(s.base, key, 'search_customers', { query: 'rao' }))[0].assigned_to, 'Lokesh');
       assert.equal(data(await call(s.base, key, 'search_customers', { buyer_type: 'trader' })).length, 1);
       const full = data(await call(s.base, key, 'get_customer', { mobile: '09811122233' }));
       assert.deepEqual(full.interactions.map((i) => [i.type, i.by]), [['quote', 'Lokesh'], ['call', 'Lokesh'], ['note', 'Lokesh']]); assert.equal(full.state, 'Gujarat');
@@ -547,9 +616,9 @@ describe('mcp', () => {
       assert.equal(data(await call(s.base, key, 'add_note', { kind: 'vendor', key: '90000 00001', text: 'Pays on time' })).saved, true);
       assert.equal(data(await call(s.base, key, 'add_note', { kind: 'item', key: itemId, text: 'Check thickness on delivery' })).saved, true);
       assert.equal((await call(s.base, key, 'add_note', { kind: 'item', key: 'nope', text: 'x' })).isError, true);
-      const att = data(await call(s.base, key, 'add_attachment', { kind: 'vendor', key: '9000000001', name: 'price-list.png', mime_type: 'image/png', data_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', note: 'November list' }));
+      const att = data(await call(s.base, key, 'add_attachment', { kind: 'vendor', key: '9000000001', name: 'price-list.png', data_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', note: 'November list' }));
       assert.equal(att.saved, true);
-      assert.equal((await call(s.base, key, 'add_attachment', { kind: 'vendor', key: '9000000001', name: 'bad', data_base64: '!!!' })).isError, true);
+      assert.equal((await call(s.base, key, 'add_attachment', { kind: 'vendor', key: '9000000001', name: 'bad', note: 'not valid at all', data_base64: '!!!' })).isError, true);
       const gv2 = data(await call(s.base, key, 'get_vendor', { mobile: '9000000001' }));
       assert.equal(gv2.payment_terms, '15 days'); assert.equal(gv2.dated_notes[0].text, 'Pays on time'); assert.equal(gv2.attachments[0].note, 'November list'); assert.ok(gv2.recent_updates.length >= 3);
       assert.equal(data(await call(s.base, key, 'get_item', { item_id: itemId })).notes[0].text, 'Check thickness on delivery');
@@ -623,11 +692,21 @@ describe('mcp: finishing a customer profile', () => {
       s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' });
       assert.equal(data(await call(s.base, key, 'update_customer', { mobile: '9811122233', buyer_type: 'oem', address: 'Plot 4, MIDC', about: 'Makes e-bike packs' })).saved, true);
       assert.equal(s.app.repo.customer('9811122233').owner_name, 'Lokesh', 'added by Lokesh without naming an owner: Lokesh looks after them');
-      assert.equal(data(await call(s.base, key, 'assign_customer', { mobile: '9811122233', owner_username: 'vikas' })).assigned_to, 'Vikas');
+      // assigning is the admin's job: a team member who tries through Claude is told so, and nothing changes
+      const refused = await call(s.base, key, 'assign_customer', { mobile: '9811122233', owner_username: 'vikas' });
+      assert.equal(refused.isError, true); assert.match(refused.content[0].text, /Only the admin can change who a customer is assigned to/);
+      assert.equal(s.app.repo.customer('9811122233').owner_name, 'Lokesh');
+      const sneaky = await call(s.base, key, 'add_customer', { mobile: '9811177777', name: 'For Vikas', owner_username: 'vikas' });
+      assert.equal(sneaky.isError, true); assert.equal(s.app.repo.customer('9811177777'), null, 'not even created for someone else');
+      assert.equal(data(await call(s.base, key, 'add_customer', { mobile: '9811177778', name: 'For myself', owner_username: 'lokesh' })).saved, true);
+      assert.equal(s.app.repo.customer('9811177778').owner_name, 'Lokesh');
+      // the admin's side: done in the portal
+      assert.equal(s.app.repo.assignCustomer('9811122233', 'vikas', 'admin').owner, 'Vikas');
       assert.equal(data(await call(s.base, key, 'search_customers', { owner_username: 'vikas' })).length, 1);
-      assert.equal(data(await call(s.base, key, 'assign_customer', { mobile: '9811122233', owner_username: 'unassigned' })).assigned_to, 'nobody (unassigned)');
+      assert.equal(data(await call(s.base, key, 'get_customer', { mobile: '9811122233' })).created_by, 'Lokesh', 'who created it never changes');
+      assert.equal(data(await call(s.base, key, 'get_customer', { mobile: '9811122233' })).assigned_to, 'Vikas');
+      assert.equal(s.app.repo.assignCustomer('9811122233', 'unassigned', 'admin').owner, null);
       assert.equal(data(await call(s.base, key, 'search_customers', { owner_username: 'unassigned' })).length, 1);
-      assert.equal((await call(s.base, key, 'assign_customer', { mobile: '9811122233', owner_username: 'ghost' })).isError, true);
       assert.equal(data(await call(s.base, key, 'save_customer_contact', { mobile: '9811122233', contact_mobile: '90000 11111', name: 'Anil Rao', role: 'Buyer' })).created, true);
       assert.equal((await call(s.base, key, 'save_customer_contact', { mobile: '9811122233', contact_mobile: '12', name: 'Bad' })).isError, true);
       const withContacts = data(await call(s.base, key, 'get_customer', { mobile: '9811122233' }));

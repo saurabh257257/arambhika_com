@@ -27,7 +27,7 @@ const NEW_TABLES = `
   CREATE INDEX IF NOT EXISTS interactions_customer ON interactions(customer_mobile, at);
   CREATE TABLE IF NOT EXISTS files (
     id TEXT PRIMARY KEY, customer_mobile TEXT NOT NULL REFERENCES customers(mobile), interaction_id TEXT REFERENCES interactions(id),
-    name TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, by_member TEXT NOT NULL REFERENCES members(id), at TEXT NOT NULL
+    name TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, note TEXT NOT NULL DEFAULT '', by_member TEXT NOT NULL REFERENCES members(id), at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS vendors (
     mobile TEXT PRIMARY KEY CHECK (length(mobile) = 10),
@@ -103,6 +103,8 @@ function ensure(db, dataDir) {
 function upgrade(db) {
   const cols = db.prepare('PRAGMA table_info(customers)').all().map((c) => c.name);
   for (const c of ['address', 'about', 'zoho_status', 'zoho_contact']) if (!cols.includes(c)) db.exec('ALTER TABLE customers ADD COLUMN ' + c + " TEXT NOT NULL DEFAULT ''");
+  const fcols = db.prepare('PRAGMA table_info(files)').all().map((c) => c.name);
+  if (fcols.length && !fcols.includes('note')) db.exec("ALTER TABLE files ADD COLUMN note TEXT NOT NULL DEFAULT ''");
   if (!cols.includes('zoho_checked_at')) db.exec('ALTER TABLE customers ADD COLUMN zoho_checked_at TEXT');
   db.exec("UPDATE customers SET buyer_type = 'oem' WHERE buyer_type = 'non_trader'");
 }

@@ -97,3 +97,15 @@ header.fixed { position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 8px rgba
 .cplace { color: #334155; font-size: 14px; overflow-wrap: anywhere; } .herolines .place { font-weight: 600; }
 .crow { grid-template-columns: minmax(170px, 2fr) minmax(110px, 1.1fr) 110px minmax(110px, 1fr) minmax(120px, 1fr) minmax(150px, 2fr); }
 @media (max-width: 760px) { .crow { grid-template-columns: 1fr 1fr; } }
+
+/* created by / assigned to */
+.cown .lbl { display: none; font-size: 11px; color: var(--muted); } select.assign { padding: 5px 8px; border-radius: 8px; font-size: 13px; max-width: 150px; } select.assign.light { background: rgba(255,255,255,.95); }
+.crow { grid-template-columns: minmax(190px, 2.2fr) minmax(110px, 1.1fr) 105px minmax(105px, 1fr) minmax(120px, 1.1fr) minmax(150px, 1.8fr); }
+@media (max-width: 760px) { .cown .lbl { display: block; width: 100%; } .cown { flex-wrap: wrap; } }
+
+/* adding files */
+textarea { width: 100%; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; font: inherit; resize: vertical; } textarea:focus { outline: 2px solid #99f6e4; border-color: var(--teal-2); }
+.upform { background: #f0fdfa; border: 1px dashed #5eead4; border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.fnote { color: #334155; font-size: 13px; overflow-wrap: anywhere; } .file .btn { justify-self: start; }
+.chead { display: grid; grid-template-columns: minmax(190px, 2.2fr) minmax(110px, 1.1fr) 105px minmax(105px, 1fr) minmax(120px, 1.1fr) minmax(150px, 1.8fr); gap: 10px; padding: 0 12px 0 16px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+@media (max-width: 760px) { .chead { display: none; } }

@@ -39,6 +39,11 @@
   function chips(list) { return (list || []).map(function (a) { return '<span class="pill ' + (TONE[a.tone] || '') + '">' + esc(a.label) + '</span>'; }).join(' '); }
 
   function zohoChip(c) { return c.zoho_status === 'created' ? '<span class="pill ok" title="In the Zoho Books customer directory">In Zoho</span>' : c.zoho_status === 'not_created' ? '<span class="pill off" title="Not created in Zoho Books yet">Not in Zoho</span>' : '<span class="pill grey" title="Not checked in Zoho Books yet">Zoho ?</span>'; }
+  // who looks after a customer: shown to everyone; the admin gets a dropdown to change it
+  function assignCell(c, people) {
+    if (me.role !== 'admin') return c.owner_name ? avatar(c.owner_name) + ' <span>' + esc(c.owner_name) + '</span>' : '<span class="pill due">Unassigned</span>';
+    return '<select class="assign" data-assign="' + c.mobile + '"><option value=""' + (c.owner_id ? '' : ' selected') + '>Unassigned</option>' + people.map(function (p) { return '<option value="' + p.id + '"' + (c.owner_id === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select>';
+  }
   var listState = { q: '', owner: '', buyer: '', business: '', state: '', attention: false };
   function customersScreen() {
     var my = seq;
@@ -55,16 +60,19 @@
         '<label>State<select id="st"><option value="">All states</option>' + opt.states.map(function (s) { return '<option value="' + esc(s.state) + '"' + (listState.state.toLowerCase() === s.state.toLowerCase() ? ' selected' : '') + '>' + esc(s.state) + ' (' + s.n + ')</option>'; }).join('') + '</select></label>' +
         '<label>Type<select id="buyer"><option value="">Trader or OEM</option>' + opt.buyer_types.filter(function (b) { return b !== 'unknown'; }).map(function (b) { return '<option value="' + b + '"' + (listState.buyer === b ? ' selected' : '') + '>' + nice(b) + '</option>'; }).join('') + '</select></label>' +
         '<label>Business<select id="biz"><option value="">Any</option>' + opt.businesses.map(function (b) { return '<option value="' + b + '"' + (listState.business === b ? ' selected' : '') + '>' + nice(b) + '</option>'; }).join('') + '</select></label></div>' +
-        (rows.length ? '<div class="clist">' + rows.map(function (c) {
-          return '<div class="crow" data-go="customer/' + c.mobile + '"><div class="cmain">' + avatar(c.name) + '<div><b>' + esc(c.name) + '</b><div class="muted small">' + esc(c.company || '') + '</div></div></div>' +
+        (rows.length ? '<div class="clist"><div class="chead"><span>Customer</span><span>City, state</span><span>Mobile</span><span>Created by</span><span>Assigned to</span><span>Status</span></div>' + rows.map(function (c) {
+          return '<div class="crow" data-go="customer/' + c.mobile + '"><div class="cmain">' + avatar(c.name) + '<div><b>' + esc(c.name) + '</b><div class="muted small">' + esc(c.company || '') + '</div><div class="cmeta">' + typePill(c.buyer_type) + ' ' + zohoChip(c) + '</div></div></div>' +
             '<div class="cplace">' + esc([c.city, c.state].filter(Boolean).join(', ')) + '</div><div class="cnum">' + esc(c.mobile) + '</div>' +
-            '<div class="cown">' + (c.owner_name ? avatar(c.owner_name) + ' <span>' + esc(c.owner_name) + '</span>' : '<span class="pill due">Unassigned</span>') + '</div>' +
-            '<div class="cmeta">' + typePill(c.buyer_type) + ' ' + zohoChip(c) + '</div>' +
+            '<div class="cown"><span class="lbl">Created by</span>' + (c.created_by_name ? avatar(c.created_by_name) + ' <span>' + esc(c.created_by_name) + '</span>' : '<span class="muted small">\u2014</span>') + '</div>' +
+            '<div class="cown"><span class="lbl">Assigned to</span>' + assignCell(c, people) + '</div>' +
             '<div class="cflags">' + (chips(c.attention) || '<span class="muted small">' + (c.last_at ? 'Last contact ' + ago(c.last_at).toLowerCase() : 'No contact yet') + '</span>') + '</div></div>';
         }).join('') + '</div>' : '<div class="empty">No customers match. They appear here as your team adds them through Claude.</div>') + '</div>';
       var q = $('q');
       debounce(q, function () { listState.q = q.value; customersScreen().then(function () { var n = $('q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); });
       [['own', 'owner'], ['st', 'state'], ['buyer', 'buyer'], ['biz', 'business']].forEach(function (p) { $(p[0]).addEventListener('change', function (e) { listState[p[1]] = e.target.value; customersScreen(); }); });
+      view.querySelectorAll('select[data-assign]').forEach(function (sel) { sel.addEventListener('change', function () {
+        api('PATCH', '/api/customers/' + sel.dataset.assign + '/assign', { owner: sel.value || null }).then(function (x) { toast(x.owner ? 'Assigned to ' + x.owner : 'Now unassigned'); return customersScreen(); }).catch(fail);
+      }); });
       $('quick').addEventListener('click', function (e) {
         var b = e.target.closest('[data-q]'); if (!b) return; var k = b.dataset.q;
         listState.attention = k === 'attention'; listState.owner = k === 'none' ? 'none' : k === 'mine' ? me.id : ''; customersScreen();
@@ -95,6 +103,20 @@
       doc('All quotes', b.quotes, [], function (q) { return '<b>' + esc(q.number) + '</b><span>' + date(q.date) + '</span><span>' + money(q.total) + '</span>' + pill(q.next.label, TONE[q.next.tone]); });
   }
 
+  // adding a file from the page: the original goes up byte for byte, with a one or two line description
+  function uploadBox(kind, key) {
+    return '<form class="upform" data-kind="' + kind + '" data-key="' + esc(key) + '"><div class="row"><label>Add a file (a picture or any document)<input type="file" name="f" required></label><label style="flex:2 1 260px">What is it? One or two lines<textarea name="note" rows="2" maxlength="240" minlength="8" required placeholder="e.g. Saurav November price list, valid till 30 Nov"></textarea></label><button class="btn fit" type="submit">Add file</button></div><div class="muted small">Saved exactly as it is, up to 10 MB.</div></form>';
+  }
+  function filesCard(c) {
+    var isImg = function (f) { return /^image\/(png|jpeg|webp|gif)$/.test(f.mime); }, imgs = c.files.filter(isImg), docs = c.files.filter(function (f) { return !isImg(f); });
+    var meta = function (f) { return '<span class="muted small">' + esc(f.by_name || '') + ' &middot; ' + when(f.at) + ' &middot; ' + size(f.size) + '</span>'; };
+    return '<div class="card"><h3>Photos and documents (' + c.files.length + ')</h3>' + uploadBox('customer', c.mobile) +
+      (imgs.length ? '<div class="files">' + imgs.map(function (f) {
+        return '<div class="file"><a href="/api/files/' + f.id + '" target="_blank" rel="noopener"><img src="/api/files/' + f.id + '" alt="' + esc(f.name) + '" loading="lazy"></a><b>' + esc(f.name) + '</b>' + (f.note ? '<span class="fnote">' + esc(f.note) + '</span>' : '') + meta(f) + '<a class="btn sm" href="/api/files/' + f.id + '?download=1" download>Download</a></div>'; }).join('') + '</div>' : '') +
+      (docs.length ? '<div class="docs">' + docs.map(function (f) { return '<a class="docfile" href="/api/files/' + f.id + '?download=1" download><span class="docico">\uD83D\uDCC4</span><span><b>' + esc(f.name) + '</b>' + (f.note ? '<div class="fnote">' + esc(f.note) + '</div>' : '') + meta(f) + '</span><span class="btn sm">Download</span></a>'; }).join('') + '</div>' : '') +
+      (c.files.length ? '' : '<div class="muted">No photos or documents yet.</div>') + '</div>';
+  }
+
   // is this customer created in the Zoho Books customer directory?
   function zohoTile(c) {
     var st = c.zoho_status, cls = st === 'created' ? 'k-green' : st === 'not_created' ? 'k-red' : 'k-grey';
@@ -113,7 +135,7 @@
       view.innerHTML = '<a class="btn ghost sm back" href="#customers">&larr; All customers</a>' +
         '<div class="hero"><div class="herotop">' + avatar(c.name, true) + '<div class="heroname"><h2>' + esc(c.name) + '</h2><div>' + esc(c.company || '') + '</div></div>' +
         '<div class="heropills">' + typePill(c.buyer_type) + (c.business ? pill(nice(c.business), 'light') : '') + (c.source ? pill('From ' + nice(c.source), 'light') : '') + '</div></div>' +
-        '<div class="herolines">' + (place ? '<span class="place">📍 ' + esc(place) + '</span>' : '') + '<a class="tel" href="tel:+91' + c.mobile + '">📞 ' + esc(c.mobile) + '</a><span>' + (c.owner_name ? 'Assigned to <b>' + esc(c.owner_name) + '</b>' : '<b>Unassigned</b>') + '</span><span>Onboarded ' + date(c.created_at) + '</span></div>' +
+        '<div class="herolines">' + (place ? '<span class="place">📍 ' + esc(place) + '</span>' : '') + '<a class="tel" href="tel:+91' + c.mobile + '">📞 ' + esc(c.mobile) + '</a><span>Created by <b>' + esc(c.created_by_name || '\u2014') + '</b> on ' + date(c.created_at) + '</span><span>' + (me.role === 'admin' ? 'Assigned to <select class="assign light" id="assignSel"></select>' : (c.owner_name ? 'Assigned to <b>' + esc(c.owner_name) + '</b>' : '<b>Unassigned</b>')) + '</span></div>' +
         '<div class="kpis" id="kpis"><div class="kpi k-green"><small>Sold so far</small><b id="kSold">&hellip;</b></div><div class="kpi k-teal"><small>Collected</small><b id="kColl">&hellip;</b></div><div class="kpi k-red"><small>Still to collect</small><b id="kDue">&hellip;</b></div><div class="kpi k-blue"><small>Quotes waiting</small><b id="kQuote">&hellip;</b></div>' + zohoTile(c) + '</div></div>' +
         '<div class="card pursue"><h3>What to do next</h3><div class="plines">' +
         '<div class="pl">' + (next ? '<span class="pill ' + (next < new Date().toISOString().slice(0, 10) ? 'off' : 'info') + '">Follow up ' + dueText(next) + ' (' + date(next) + ')</span> <span class="muted">' + esc(last.summary.slice(0, 140)) + '</span>' : '<span class="pill due">No follow-up date set</span> <span class="muted">Ask Claude to log the next call with a date.</span>') + '</div>' +
@@ -129,14 +151,17 @@
         '<div class="card"><h3>Purchases and orders</h3><div id="books" class="muted">Loading...</div>' + (logged && true ? '<div class="muted small" id="loggedNote" hidden>Logged by the team: ' + money(logged) + ' in orders.</div>' : '') + '</div>' +
         '<div class="card"><div class="between"><h3>Every interaction (' + items.length + ')</h3><label style="min-width:200px">Search this history<input id="hq" value="' + esc(histQ) + '" placeholder="Words in a note"></label></div>' +
         (types.length > 1 ? '<div class="chips" id="tchips"><button class="chip' + (typeFilter ? '' : ' on') + '" data-t="" type="button">All</button>' + types.map(function (t) { return '<button class="chip' + (typeFilter === t ? ' on' : '') + '" data-t="' + t + '" type="button">' + LABEL[t] + '</button>'; }).join('') + '</div>' : '') + '<div id="tl"></div></div>' +
-        (c.files.length ? '<div class="card"><h3>Photos and documents (' + c.files.length + ')</h3>' + (imgs.length ? '<div class="files">' + imgs.map(function (f) {
-          return '<div class="file"><a href="/api/files/' + f.id + '" target="_blank" rel="noopener"><img src="/api/files/' + f.id + '" alt="' + esc(f.name) + '" loading="lazy"></a><b>' + esc(f.name) + '</b><span class="muted small">' + esc(f.by_name || '') + ' &middot; ' + when(f.at) + '</span></div>'; }).join('') + '</div>' : '') +
-          (docs.length ? '<div class="docs">' + docs.map(function (f) { return '<a class="docfile" href="/api/files/' + f.id + '?download=1"><span class="docico">📄</span><span><b>' + esc(f.name) + '</b><span class="muted small"> ' + size(f.size) + ' &middot; ' + esc(f.by_name || '') + ' &middot; ' + when(f.at) + '</span></span><span class="btn sm">Download</span></a>'; }).join('') + '</div>' : '') + '</div>' : '');
+        filesCard(c);
       if (me.role === 'admin') view.insertAdjacentHTML('beforeend', '<div class="card" style="border-color:#fecaca"><div class="between"><div><h3>Delete this customer</h3><div class="muted small">Admin only. Removes the customer, all ' + items.length + ' interaction' + (items.length === 1 ? '' : 's') + ', ' + c.contacts.length + ' contact' + (c.contacts.length === 1 ? '' : 's') + ' and ' + c.files.length + ' file' + (c.files.length === 1 ? '' : 's') + ' for good. It cannot be undone. Zoho Books is not touched.</div></div><button class="btn bad sm" id="delCust" type="button">Delete customer</button></div></div>');
       if ($('delCust')) $('delCust').addEventListener('click', function () {
         var typed = window.prompt('This permanently deletes ' + c.name + ' and their whole history.\nTo confirm, type their mobile number (' + c.mobile + '):');
         if (typed == null) return;
         api('DELETE', '/api/customers/' + c.mobile, { confirm: typed.replace(/\D/g, '').slice(-10) }).then(function () { toast('Customer deleted'); location.hash = 'customers'; }).catch(fail);
+      });
+      if ($('assignSel')) api('GET', '/api/people').then(function (p) {
+        var sel = $('assignSel'); if (!sel) return;
+        sel.innerHTML = '<option value=""' + (c.owner_id ? '' : ' selected') + '>Unassigned</option>' + p.people.map(function (x) { return '<option value="' + x.id + '"' + (c.owner_id === x.id ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('');
+        sel.addEventListener('change', function () { api('PATCH', '/api/customers/' + c.mobile + '/assign', { owner: sel.value || null }).then(function (x) { toast(x.owner ? 'Assigned to ' + x.owner : 'Now unassigned'); return customerScreen(mobile); }).catch(fail); });
       });
       view.querySelectorAll('[data-rmc]').forEach(function (b) { b.addEventListener('click', function () {
         if (window.confirm('Remove ' + b.dataset.name + ' from this customer\'s contacts?')) api('DELETE', '/api/customers/' + c.mobile + '/contacts/' + b.dataset.rmc, {}).then(function () { toast('Contact removed'); return customerScreen(mobile); }).catch(fail);
@@ -179,8 +204,8 @@
   function attachHtml(list, hint) {
     var isImg = function (a) { return /^image\/(png|jpeg|webp|gif)$/.test(a.mime); }, imgs = list.filter(isImg), docs = list.filter(function (a) { return !isImg(a); });
     if (!list.length) return '<div class="muted">' + esc(hint) + '</div>';
-    return (imgs.length ? '<div class="files">' + imgs.map(function (a) { return '<div class="file"><a href="/api/attachments/' + a.id + '" target="_blank" rel="noopener"><img src="/api/attachments/' + a.id + '" alt="' + esc(a.name) + '" loading="lazy"></a><b>' + esc(a.name) + '</b><span class="muted small">' + esc(a.note || '') + ' ' + esc(a.by_name || '') + ' &middot; ' + when(a.at) + (me.role === 'admin' ? ' &middot; <a href="#" data-delatt="' + a.id + '">remove</a>' : '') + '</span></div>'; }).join('') + '</div>' : '') +
-      (docs.length ? '<div class="docs">' + docs.map(function (a) { return '<a class="docfile" href="/api/attachments/' + a.id + '?download=1"><span class="docico">📄</span><span><b>' + esc(a.name) + '</b><span class="muted small"> ' + esc(a.note || '') + ' ' + size(a.size) + ' &middot; ' + esc(a.by_name || '') + ' &middot; ' + when(a.at) + '</span></span><span class="btn sm">Download</span></a>'; }).join('') + '</div>' : '') +
+    return (imgs.length ? '<div class="files">' + imgs.map(function (a) { return '<div class="file"><a href="/api/attachments/' + a.id + '" target="_blank" rel="noopener"><img src="/api/attachments/' + a.id + '" alt="' + esc(a.name) + '" loading="lazy"></a><b>' + esc(a.name) + '</b>' + (a.note ? '<span class="fnote">' + esc(a.note) + '</span>' : '') + '<span class="muted small">' + esc(a.by_name || '') + ' &middot; ' + when(a.at) + (me.role === 'admin' ? ' &middot; <a href="#" data-delatt="' + a.id + '">remove</a>' : '') + '</span><a class="btn sm" href="/api/attachments/' + a.id + '?download=1" download>Download</a></div>'; }).join('') + '</div>' : '') +
+      (docs.length ? '<div class="docs">' + docs.map(function (a) { return '<a class="docfile" href="/api/attachments/' + a.id + '?download=1"><span class="docico">📄</span><span><b>' + esc(a.name) + '</b>' + (a.note ? '<div class="fnote">' + esc(a.note) + '</div>' : '') + '<span class="muted small">' + size(a.size) + ' &middot; ' + esc(a.by_name || '') + ' &middot; ' + when(a.at) + '</span></span><span class="btn sm">Download</span></a>'; }).join('') + '</div>' : '') +
       (docs.length && me.role === 'admin' ? '<div class="muted small">Admin: ' + docs.map(function (a) { return '<a href="#" data-delatt="' + a.id + '">remove ' + esc(a.name) + '</a>'; }).join(' &middot; ') + '</div>' : '');
   }
   // removing a wrong note or file (admin only) from whichever page is open
@@ -189,6 +214,19 @@
     if (!n && !a) return; e.preventDefault();
     if (!window.confirm(n ? 'Remove this note for good?' : 'Remove this file for good?')) return;
     api('DELETE', n ? '/api/notes/' + n.dataset.delnote : '/api/attachments/' + a.dataset.delatt, {}).then(function () { toast('Removed'); route(); }).catch(fail);
+  });
+
+  view.addEventListener('submit', function (e) {
+    var f = e.target.closest('.upform'); if (!f) return; e.preventDefault();
+    var file = f.f.files[0], note = f.note.value.trim(), btn = f.querySelector('button');
+    if (!file) return toast('Choose a file first');
+    if (file.size > 10 * 1024 * 1024) return toast('That file is over 10 MB');
+    if (note.length < 8) return toast('Add a short description of one or two lines');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    fetch('/api/upload?' + new URLSearchParams({ kind: f.dataset.kind, key: f.dataset.key, name: file.name, note: note }), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Portal-Upload': '1' }, body: file })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Could not save the file'); return j; }); })
+      .then(function () { toast('Saved ' + file.name); route(); })
+      .catch(function (err) { btn.disabled = false; btn.textContent = 'Add file'; fail(err); });
   });
 
   var src = { view: 'item', q: '', category: '', stock: false };
@@ -245,7 +283,7 @@
           return '<tr class="go" data-go="item/' + i.id + '"><td><b>' + esc(i.name) + '</b><div class="muted small">' + esc(i.sku) + '</div></td><td>' + (i.rate != null ? '<b>' + money(i.rate) + '</b>' + (i.unit ? ' / ' + esc(i.unit) : '') : '<span class="muted">No rate yet</span>') + '</td><td>' + date(i.offer_date) + '</td></tr>';
         }).join('') + '</tbody></table>' : '<div class="empty">None linked.</div>') + '</div>' +
         '<div class="card"><h3>Notes (' + v.notes_list.length + ')</h3>' + notesHtml(v.notes_list, 'No notes yet. Tell Claude: "Note on Saurav: ..."') + '</div>' +
-        '<div class="card"><h3>Files and pictures (' + v.attachments.length + ')</h3>' + attachHtml(v.attachments, 'Nothing attached yet. Give Claude a price list, quotation or photo and ask it to attach it to this vendor.') + '</div>' +
+        '<div class="card"><h3>Files and pictures (' + v.attachments.length + ')</h3>' + uploadBox('vendor', v.mobile) + attachHtml(v.attachments, 'Nothing attached yet. Add a price list, quotation or photo above.') + '</div>' +
         '<div class="card"><h3>What they supply now (latest rate for each material)</h3>' + (v.latest.length ? '<table><thead><tr><th>Material</th><th>Rate</th><th class="hide-sm">Available</th><th class="hide-sm">Valid till</th><th>As of</th></tr></thead><tbody>' + v.latest.map(function (o) {
           return '<tr><td>' + mat(o) + '</td><td><b>' + money(o.rate) + '</b>' + (o.unit ? ' / ' + esc(o.unit) : '') + '</td><td class="hide-sm">' + esc(o.quantity) + '</td><td class="hide-sm">' + (o.valid_till ? (o.valid_till < today ? pill('Expired ' + date(o.valid_till), 'off') : date(o.valid_till)) : '') + '</td><td>' + date(o.offer_date) + '</td></tr>';
         }).join('') + '</tbody></table>' : '<div class="empty">No rates yet.</div>') + '</div>' +
@@ -271,7 +309,7 @@
           return '<tr class="go" data-go="vendor/' + s.vendor_mobile + '"><td><b>' + esc(s.vendor_name) + '</b><div class="muted small">' + esc([s.vendor_company, s.vendor_city, s.vendor_mobile].filter(Boolean).join(' · ')) + '</div></td><td>' + (s.rate != null ? '<b>' + money(s.rate) + '</b>' + (s.unit ? ' / ' + esc(s.unit) : '') : '<span class="muted">No rate yet</span>') + '</td><td class="hide-sm">' + esc(s.quantity) + (s.expired ? ' ' + pill('Expired', 'off') : '') + '</td><td>' + date(s.offered_on) + '</td></tr>';
         }).join('') + '</tbody></table>' : '<div class="empty">No vendor supplies this yet. Tell Claude: "Saurav has this at 700 a kg today".</div>') + '</div>' +
         '<div class="card"><h3>Notes (' + i.notes.length + ')</h3>' + notesHtml(i.notes, 'No notes yet. Tell Claude: "Note on this item: ..."') + '</div>' +
-        '<div class="card"><h3>Files and pictures (' + i.attachments.length + ')</h3>' + attachHtml(i.attachments, 'Nothing attached yet. Give Claude a datasheet, certificate or photo and ask it to attach it to this item.') + '</div>' +
+        '<div class="card"><h3>Files and pictures (' + i.attachments.length + ')</h3>' + uploadBox('item', i.id) + attachHtml(i.attachments, 'Nothing attached yet. Add a datasheet, certificate or photo above.') + '</div>' +
         '<div class="card"><h3>Everything that changed, newest first (' + i.log.length + ')</h3>' + logHtml(i.log, false) + '</div>';
     });
   }
@@ -342,7 +380,7 @@
   }
   $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) location.hash = b.dataset.tab; });
   // a row or card with data-go opens that page
-  view.addEventListener('click', function (e) { if (e.target.closest('a, button, summary')) return; var g = e.target.closest('[data-go]'); if (g) location.hash = g.dataset.go; });
+  view.addEventListener('click', function (e) { if (e.target.closest('a, button, summary, select, input')) return; var g = e.target.closest('[data-go]'); if (g) location.hash = g.dataset.go; });
   $('out').addEventListener('click', function () { api('POST', '/api/auth/logout', {}).then(function () { location.replace('/login.html'); }); });
   window.addEventListener('hashchange', route);
   api('GET', '/api/me').then(function (r) { me = r.user; $('who').textContent = me.name + (me.role === 'admin' ? ' (admin)' : ''); route(); }).catch(fail);

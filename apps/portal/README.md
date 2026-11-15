@@ -72,3 +72,16 @@ One **Suppliers** tab with three views: **By item** (all items from Zoho Commerc
 Each customer shows whether they are created in the Zoho Books customer directory: Created, Not created, or Not checked. Claude looks the customer up in its own Zoho Books connector and reports with `set_zoho_directory_status`; saving the customer's Zoho documents also marks them as created.
 
 Menu order: Customers, Suppliers, Members (admin only), My connection (last). The top bar and menu stay fixed while the page scrolls.
+
+### Files: saved exactly as given
+
+Claude cannot hand over a real file: it has to type the whole file out as text (base64), and for photos that text gets cut off or altered, which is how a half-grey picture got saved. So:
+- **Add a file** (a form on every customer, vendor and item page) uploads the original, byte for byte, straight from the browser (`POST /api/upload`, raw bytes, up to 10 MB). This is the way to keep a photo or document.
+- Every file needs a **one or two line description**; the page shows it under the file.
+- Every file is checked whole before it is saved (`lib/filecheck.js`: PNG chunk checksums, JPEG/GIF/WebP/PDF/zip endings). A cut-off or altered file is **refused**, so a broken file is never saved. The file type comes from its name, not from what the sender claims.
+- Claude's `add_file` / `add_attachment` still work for small files, with the same checks and a required description; when a file is damaged Claude is told to ask the user to add it from the page.
+- Every picture and document has a **Download** button that returns the saved bytes unchanged.
+
+### Created by and Assigned to
+
+The list shows **Created by** (the team member who first added the customer; never changes) and **Assigned to** (who pursues them). A new customer starts assigned to its creator. Only the admin changes the assignment, from a dropdown in the list or on the customer page (`PATCH /api/customers/:mobile/assign`); Claude's `assign_customer` refuses team members, and a member cannot create a customer for someone else.

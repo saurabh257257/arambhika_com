@@ -2,6 +2,7 @@
 // customer and of a vendor: it is cleaned to 10 digits first, and a second row with the same number is refused.
 'use strict';
 const fs = require('fs');
+const filecheck = require('./filecheck');
 const path = require('path');
 const crypto = require('crypto');
 
@@ -23,6 +24,7 @@ const ASK = {
   cell_format: 'Which cell type or size (18650, 21700, 32650, LiFePO4...)?', monthly_volume: 'How much do they need, and how often?', urgency: 'How soon do they need it?', email: 'What is their email?', gstin: 'What is their GST number?',
 };
 
+const NOTE_ERR = 'Add a short description of one or two lines saying what this file is (at least a few words), so the team knows what they are looking at. Nothing was saved.';
 const now = () => new Date().toISOString();
 const id = () => crypto.randomUUID();
 const clean = (v, max) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max);
@@ -97,14 +99,15 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       audit(by, 'Logged ' + type + ' for ' + c.name);
       return { interaction: i };
     },
-    addFile({ mobile: m0, interactionId, name, mime, buffer }, by) {
+    addFile({ mobile: m0, interactionId, name, note, buffer }, by) {
       const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
       if (!c) return { error: 'No customer with that mobile number', status: 404 };
-      if (!buffer || !buffer.length) return { error: 'The file is empty' };
-      if (buffer.length > 10 * 1024 * 1024) return { error: 'The file is too big (10 MB at most)' };
-      const f = { id: id(), customer_mobile: m, interaction_id: interactionId || null, name: clean(name, 150).replace(/[\\/:*?"<>|]/g, '') || 'file', mime: clean(mime, 100) || 'application/octet-stream', size: buffer.length, by_member: by, at: now() };
+      if (buffer && buffer.length > 10 * 1024 * 1024) return { error: 'The file is too big (10 MB at most)' };
+      const ck = filecheck.check(name, buffer); if (!ck.ok) return { error: ck.error };
+      const nt = clean(note, 240); if (nt.length < 8) return { error: NOTE_ERR };
+      const f = { id: id(), customer_mobile: m, interaction_id: interactionId || null, name: clean(name, 150).replace(/[\\/:*?"<>|]/g, '') || 'file', mime: ck.mime, size: buffer.length, note: nt, by_member: by, at: now() };
       fs.writeFileSync(path.join(dataDir, 'files', f.id), buffer);
-      run('INSERT INTO files (id, customer_mobile, interaction_id, name, mime, size, by_member, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', f.id, f.customer_mobile, f.interaction_id, f.name, f.mime, f.size, f.by_member, f.at);
+      run('INSERT INTO files (id, customer_mobile, interaction_id, name, mime, size, note, by_member, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', f.id, f.customer_mobile, f.interaction_id, f.name, f.mime, f.size, f.note, f.by_member, f.at);
       audit(by, 'Uploaded ' + f.name + ' for ' + c.name);
       return { file: f };
     },
@@ -124,12 +127,12 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       if (state) { where.push('lower(c.state) = ?'); args.push(String(state).toLowerCase()); }
       if (buyer) { where.push('c.buyer_type = ?'); args.push(buyer); }
       if (business) { where.push('c.business = ?'); args.push(business); }
-      return all(`SELECT c.*, m.name AS owner_name,
+      return all(`SELECT c.*, m.name AS owner_name, cb.name AS created_by_name,
           (SELECT COUNT(*) FROM interactions i WHERE i.customer_mobile = c.mobile) AS interactions,
           (SELECT MAX(at) FROM interactions i WHERE i.customer_mobile = c.mobile) AS last_at,
           (SELECT MIN(next_date) FROM interactions i WHERE i.customer_mobile = c.mobile AND next_date >= ?) AS next_follow_up,
           (SELECT next_date FROM interactions i WHERE i.customer_mobile = c.mobile ORDER BY at DESC, rowid DESC LIMIT 1) AS latest_next
-        FROM customers c LEFT JOIN members m ON m.id = c.owner_id ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY COALESCE(last_at, c.created_at) DESC`, new Date().toISOString().slice(0, 10), ...args).map(plain);
+        FROM customers c LEFT JOIN members m ON m.id = c.owner_id LEFT JOIN members cb ON cb.id = c.created_by ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY COALESCE(last_at, c.created_at) DESC`, new Date().toISOString().slice(0, 10), ...args).map(plain);
     },
     customer(m0) {
       const m = mobile(m0); if (!m) return null;
@@ -211,7 +214,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       if (!c) return { error: 'No customer with that mobile number', status: 404 };
       let owner = null;
       if (username != null && String(username).trim() && String(username).trim().toLowerCase() !== 'unassigned') {
-        const o = get('SELECT id, name FROM members WHERE username = ? AND active = 1', clean(username, 40).toLowerCase());
+        const o = get('SELECT id, name FROM members WHERE (username = ? OR id = ?) AND active = 1', clean(username, 40).toLowerCase(), String(username).trim());
         if (!o) return { error: 'No active team member with that username' };
         owner = o;
       }
@@ -371,11 +374,12 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     },
     notes: (kind, key) => all('SELECT n.id, n.text, n.at, mm.name AS by_name FROM notes n LEFT JOIN members mm ON mm.id = n.by_member WHERE n.kind = ? AND n.key = ? ORDER BY n.at DESC, n.rowid DESC', kind, String(key)).map(plain),
     deleteNote(nid, by) { const n = get('SELECT id FROM notes WHERE id = ?', String(nid || '')); if (!n) return { error: 'Note not found', status: 404 }; run('DELETE FROM notes WHERE id = ?', n.id); audit(by, 'DELETED a note'); return { ok: true }; },
-    addAttachment({ kind, key, name, mime, note, buffer }, by) {
+    addAttachment({ kind, key, name, note, buffer }, by) {
       const sub = repo.subject(kind, key); if (!sub) return { error: kind === 'vendor' || kind === 'item' ? 'No such ' + kind + '. For a vendor use their mobile number, for an item its id from search_items.' : 'kind must be vendor or item', status: 404 };
-      if (!buffer || !buffer.length) return { error: 'The file is empty' };
-      if (buffer.length > 10 * 1024 * 1024) return { error: 'The file is too big (10 MB at most)' };
-      const a = { id: id(), kind, key: sub.key, name: clean(name, 150).replace(/[\\/:*?"<>|]/g, '') || 'file', mime: clean(mime, 100) || 'application/octet-stream', size: buffer.length, note: clean(note, 300), by_member: by, at: now() };
+      if (buffer && buffer.length > 10 * 1024 * 1024) return { error: 'The file is too big (10 MB at most)' };
+      const ck = filecheck.check(name, buffer); if (!ck.ok) return { error: ck.error };
+      const nt = clean(note, 240); if (nt.length < 8) return { error: NOTE_ERR };
+      const a = { id: id(), kind, key: sub.key, name: clean(name, 150).replace(/[\\/:*?"<>|]/g, '') || 'file', mime: ck.mime, size: buffer.length, note: nt, by_member: by, at: now() };
       fs.writeFileSync(path.join(dataDir, 'files', a.id), buffer);
       run('INSERT INTO attachments (id, kind, key, name, mime, size, note, by_member, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', a.id, a.kind, a.key, a.name, a.mime, a.size, a.note, a.by_member, a.at);
       audit(by, 'Attached ' + a.name + ' to ' + kind + ' ' + sub.name);
