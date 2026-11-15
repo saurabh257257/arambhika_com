@@ -16,7 +16,7 @@ function client(base) {
     const type = res.headers.get('content-type') || '';
     return { status: res.status, headers: res.headers, data: type.includes('json') ? await res.json() : await res.text(), location: res.headers.get('location') };
   };
-  return { get: (u) => call('GET', u), post: (u, b) => call('POST', u, b === undefined ? {} : b), patch: (u, b) => call('PATCH', u, b) };
+  return { get: (u) => call('GET', u), post: (u, b) => call('POST', u, b === undefined ? {} : b), patch: (u, b) => call('PATCH', u, b), raw: call };
 }
 
 // a pretend Zoho Commerce storefront: two nickel strips and a BMS, one collection
@@ -233,6 +233,31 @@ describe('portal', () => {
       try { none.app.repo.addCustomer({ name: 'A', mobile: '9811122233' }, none.app.repo.createMember({ name: 'L', username: 'lok', password: 'lokesh-pass-1234' }).member.id);
         assert.equal((await none.admin.get('/api/customers/9811122233/books')).data.connected, false);
       } finally { await none.stop(); }
+    } finally { await s.stop(); }
+  });
+
+  test('only the admin can delete a customer, only after typing their mobile, and it removes their history and files too', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
+      s.app.repo.addCustomer({ name: 'Mr Rao', mobile: '9811122233' }, L.id); s.app.repo.addCustomer({ name: 'Keep Me', mobile: '9811100002' }, L.id);
+      s.app.repo.addInteraction({ mobile: '9811122233', type: 'call', summary: 'hello' }, L.id);
+      const f = s.app.repo.addFile({ mobile: '9811122233', name: 'a.png', mime: 'image/png', buffer: Buffer.from('x') }, L.id).file;
+      const del = (c, mobile, body) => c.raw('DELETE', '/api/customers/' + mobile, body);
+      assert.equal((await del(lok, '9811122233', { confirm: '9811122233' })).status, 403, 'a team member cannot');
+      assert.equal((await del(client(s.base), '9811122233', { confirm: '9811122233' })).status, 401);
+      assert.equal((await del(s.admin, '9811122233', {})).status, 400, 'needs the typed mobile');
+      assert.equal((await del(s.admin, '9811122233', { confirm: '9811100002' })).status, 400, 'the wrong number does not count');
+      assert.equal((await del(s.admin, '9000000000', { confirm: '9000000000' })).status, 404);
+      assert.equal(s.app.repo.customer('9811122233').name, 'Mr Rao', 'still there after the refusals');
+      const ok = await del(s.admin, '098111-22233', { confirm: '9811122233' });
+      assert.equal(ok.status, 200); assert.equal(ok.data.interactions, 1); assert.equal(ok.data.files, 1);
+      assert.equal(s.app.repo.customer('9811122233'), null);
+      assert.equal(s.app.repo.db.prepare('SELECT COUNT(*) AS n FROM interactions').get().n, 0);
+      assert.equal(fs.existsSync(s.app.repo.filePath(f.id)), false, 'the file is gone from disk');
+      assert.equal(s.app.repo.customer('9811100002').name, 'Keep Me', 'other customers are untouched');
+      assert.match((await s.admin.get('/api/members')).data.activity[0].action, /DELETED customer Mr Rao/);
     } finally { await s.stop(); }
   });
 

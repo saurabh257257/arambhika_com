@@ -87,6 +87,12 @@
         (c.files.length ? '<div class="card"><h3>Files and pictures (' + c.files.length + ')</h3><div class="files">' + c.files.map(function (f) {
           return '<div class="file">' + (/^image\/(png|jpeg|webp|gif)$/.test(f.mime) ? '<a href="/api/files/' + f.id + '" target="_blank" rel="noopener"><img src="/api/files/' + f.id + '" alt="' + esc(f.name) + '" loading="lazy"></a>' : '') + '<b>' + esc(f.name) + '</b><span class="muted small">' + size(f.size) + ' &middot; ' + esc(f.by_name || '') + ' &middot; ' + when(f.at) + '</span><a class="btn sm" href="/api/files/' + f.id + '?download=1">Download</a></div>';
         }).join('') + '</div></div>' : '');
+      if (me.role === 'admin') view.insertAdjacentHTML('beforeend', '<div class="card" style="border-color:#fecaca"><div class="between"><div><h3>Delete this customer</h3><div class="muted small">Admin only. Removes the customer, all ' + items.length + ' interaction' + (items.length === 1 ? '' : 's') + ' and ' + c.files.length + ' file' + (c.files.length === 1 ? '' : 's') + ' for good. It cannot be undone. Zoho Books is not touched.</div></div><button class="btn bad sm" id="delCust" type="button">Delete customer</button></div></div>');
+      if ($('delCust')) $('delCust').addEventListener('click', function () {
+        var typed = window.prompt('This permanently deletes ' + c.name + ' and their whole history.\nTo confirm, type their mobile number (' + c.mobile + '):');
+        if (typed == null) return;
+        api('DELETE', '/api/customers/' + c.mobile, { confirm: typed.replace(/\D/g, '').slice(-10) }).then(function () { toast('Customer deleted'); location.hash = 'customers'; }).catch(fail);
+      });
       function timeline() {
         var w = histQ.toLowerCase(), shown = items.filter(function (i) { return (!typeFilter || i.type === typeFilter) && (!w || i.summary.toLowerCase().indexOf(w) >= 0); });
         $('tl').innerHTML = shown.length ? '<div class="timeline">' + shown.map(function (i) {

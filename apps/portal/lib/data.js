@@ -136,6 +136,16 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
         missing: missing(c),
       };
     },
+    // permanent: the customer, their history and their files. Only the admin route calls this, after a typed confirmation.
+    deleteCustomer(m0, by) {
+      const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
+      if (!c) return { error: 'Customer not found', status: 404 };
+      const files = all('SELECT id FROM files WHERE customer_mobile = ?', m), n = get('SELECT COUNT(*) AS n FROM interactions WHERE customer_mobile = ?', m).n;
+      tx(() => { run('DELETE FROM files WHERE customer_mobile = ?', m); run('DELETE FROM interactions WHERE customer_mobile = ?', m); run('DELETE FROM customers WHERE mobile = ?', m); });
+      for (const f of files) { try { fs.unlinkSync(path.join(dataDir, 'files', f.id)); } catch (e) { /* already gone */ } }
+      audit(by, 'DELETED customer ' + c.name + ' (' + m + ') with ' + n + ' interaction' + (n === 1 ? '' : 's') + ' and ' + files.length + ' file' + (files.length === 1 ? '' : 's'));
+      return { ok: true, name: c.name, interactions: n, files: files.length };
+    },
     // customers this member owns whose latest interaction asked for a follow-up on or before the given day
     followUps(mid, upTo) {
       return all("SELECT c.mobile, c.name, c.company, i.type, i.summary, i.next_date, i.at FROM customers c JOIN interactions i ON i.id = (SELECT id FROM interactions WHERE customer_mobile = c.mobile ORDER BY at DESC, rowid DESC LIMIT 1) WHERE c.owner_id = ? AND i.next_date IS NOT NULL AND i.next_date <= ? ORDER BY i.next_date", mid, upTo).map(plain);

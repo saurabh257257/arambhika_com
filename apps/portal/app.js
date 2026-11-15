@@ -57,7 +57,7 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho, fetchFn, start
   };
   const requireAdmin = (req, res, next) => (req.user.role === 'admin' ? next() : res.status(403).json({ error: 'Admin only' }));
   app.use('/api', (req, res, next) => {
-    if (['POST', 'PUT', 'PATCH'].includes(req.method) && !/^application\/json/i.test(req.headers['content-type'] || '')) return res.status(415).json({ error: 'JSON only' });
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && !/^application\/json/i.test(req.headers['content-type'] || '')) return res.status(415).json({ error: 'JSON only' });
     next();
   });
 
@@ -125,6 +125,13 @@ function createApp({ dataDir, adminPassword, sessionSecret, zoho, fetchFn, start
   app.get('/api/customers/:mobile', (req, res) => {
     const c = repo.customer(req.params.mobile);
     return c ? res.json({ customer: c }) : res.status(404).json({ error: 'Customer not found' });
+  });
+  // admin only, and the admin has to send the customer's mobile number back as a confirmation
+  app.delete('/api/customers/:mobile', requireAdmin, (req, res) => {
+    const c = repo.customer(req.params.mobile);
+    if (!c) return res.status(404).json({ error: 'Customer not found' });
+    if (String((req.body || {}).confirm || '') !== c.mobile) return res.status(400).json({ error: 'Type the customer\'s mobile number to confirm' });
+    const r = repo.deleteCustomer(c.mobile, req.user.id); answer(res, r, r);
   });
   // what Zoho Books says about this customer (matched by mobile number): purchases, orders, quotes and what to do next
   app.get('/api/customers/:mobile/books', async (req, res) => {
