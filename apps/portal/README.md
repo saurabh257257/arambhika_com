@@ -89,3 +89,5 @@ The list shows **Created by** (the team member who first added the customer; nev
 ### Address
 
 The Portal's address is **https://crm.arambhika.com** (MCP: `https://crm.arambhika.com/mcp`). It needs a DNS **A record** `crm` → the dev droplet's IP; the deploy then makes the nginx site and the Let's Encrypt certificate (if DNS is not there yet it still deploys and prints a note, and the next deploy gets the certificate). The older address `https://134-209-153-189.sslip.io` and `http://<ip>:4200` keep working.
+
+DNS for `crm.arambhika.com` was added on 15 Nov 2026 and points at the dev droplet (134.209.153.189); the deploy after that issued its certificate.
