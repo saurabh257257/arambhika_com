@@ -153,6 +153,19 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
     if (String((req.body || {}).confirm || '') !== v.mobile) return res.status(400).json({ error: 'Type the vendor\'s mobile number to confirm' });
     const r = repo.deleteVendor(v.mobile, req.user.id); answer(res, r, r);
   });
+  // suppliers page: updates across all vendors and items, newest first, and the items grouped by collection
+  app.get('/api/sourcing/log', (req, res) => res.json({ log: repo.events({ limit: Math.min(Number(req.query.limit) || 40, 100) }) }));
+  app.get('/api/collections', (req, res) => res.json({ collections: repo.collections(), status: itemSync.status() }));
+  // files attached to a vendor or an item: pictures show in the page, anything else is only ever a download
+  app.get('/api/attachments/:id', (req, res) => {
+    const a = repo.attachment(req.params.id), p = repo.filePath(req.params.id);
+    if (!a || !p || !require('fs').existsSync(p)) return res.status(404).json({ error: 'File not found' });
+    const inline = /^image\/(png|jpeg|webp|gif)$/.test(a.mime) && req.query.download !== '1';
+    res.set({ 'Content-Type': inline ? a.mime : 'application/octet-stream', 'Cache-Control': 'private, no-store', 'Content-Disposition': (inline ? 'inline' : 'attachment') + '; filename="' + a.name.replace(/[^\x20-\x7e]/g, '_') + '"' });
+    require('fs').createReadStream(p).pipe(res);
+  });
+  app.delete('/api/attachments/:id', requireAdmin, (req, res) => { const r = repo.deleteAttachment(req.params.id, req.user.id); answer(res, r, r); });
+  app.delete('/api/notes/:id', requireAdmin, (req, res) => { const r = repo.deleteNote(req.params.id, req.user.id); answer(res, r, r); });
   app.get('/api/vendors/:mobile', (req, res) => {
     const v = repo.vendor(req.params.mobile);
     return v ? res.json({ vendor: v }) : res.status(404).json({ error: 'Vendor not found' });

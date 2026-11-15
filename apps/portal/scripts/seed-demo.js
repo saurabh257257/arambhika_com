@@ -39,5 +39,12 @@ repo.saveBooksDocs('9811100001', {
   orders: [{ number: 'SO-00041', date: rel(10), total: 12000, status: 'open', shipped_status: 'not_shipped', invoiced_status: 'not_invoiced', lines: line }, { number: 'SO-00044', date: rel(2), total: 7000, status: 'open', shipped_status: 'shipped', invoiced_status: 'not_invoiced' }],
   quotes: [{ number: 'EST-00019', date: rel(3), total: 8000, status: 'accepted' }],
 }, L.id);
+repo.updateVendor('9000000001', { address: 'Lohar Chawl, Mumbai', about: 'Nickel and copper strip maker', payment_terms: '15 days credit', lead_time: '3 days', min_order: '50 kg' }, L.id);
+repo.addNote('vendor', '9000000001', 'Pays on time. Quality was poor in the October lot, check thickness on delivery.', L.id);
+repo.addNote('item', 'p1', 'Customers ask for this one most. Keep 50 kg in stock.', V.id);
+repo.addAttachment({ kind: 'vendor', key: '9000000001', name: 'price-list-nov.png', mime: 'image/png', note: 'November price list', buffer: png }, L.id);
+repo.addAttachment({ kind: 'item', key: 'p1', name: 'datasheet.pdf', mime: 'application/pdf', note: 'Supplier datasheet', buffer: Buffer.from('%PDF-1.4 demo') }, L.id);
+repo.setZohoStatus('9811100001', true, 'Shakti Batteries Pvt Ltd', L.id);
+repo.setZohoStatus('9811100003', false, '', L.id);
 console.log('Demo data ready (members lokesh / vikas, password name-pass-1234)');
 repo.close();

@@ -38,6 +38,7 @@
   var TONE = { bad: 'off', warn: 'due', ok: 'ok', info: 'info' };
   function chips(list) { return (list || []).map(function (a) { return '<span class="pill ' + (TONE[a.tone] || '') + '">' + esc(a.label) + '</span>'; }).join(' '); }
 
+  function zohoChip(c) { return c.zoho_status === 'created' ? '<span class="pill ok" title="In the Zoho Books customer directory">In Zoho</span>' : c.zoho_status === 'not_created' ? '<span class="pill off" title="Not created in Zoho Books yet">Not in Zoho</span>' : '<span class="pill grey" title="Not checked in Zoho Books yet">Zoho ?</span>'; }
   var listState = { q: '', owner: '', buyer: '', business: '', state: '', attention: false };
   function customersScreen() {
     var my = seq;
@@ -56,9 +57,9 @@
         '<label>Business<select id="biz"><option value="">Any</option>' + opt.businesses.map(function (b) { return '<option value="' + b + '"' + (listState.business === b ? ' selected' : '') + '>' + nice(b) + '</option>'; }).join('') + '</select></label></div>' +
         (rows.length ? '<div class="clist">' + rows.map(function (c) {
           return '<div class="crow" data-go="customer/' + c.mobile + '"><div class="cmain">' + avatar(c.name) + '<div><b>' + esc(c.name) + '</b><div class="muted small">' + esc(c.company || '') + '</div></div></div>' +
-            '<div class="cnum">' + esc(c.mobile) + '</div>' +
+            '<div class="cplace">' + esc([c.city, c.state].filter(Boolean).join(', ')) + '</div><div class="cnum">' + esc(c.mobile) + '</div>' +
             '<div class="cown">' + (c.owner_name ? avatar(c.owner_name) + ' <span>' + esc(c.owner_name) + '</span>' : '<span class="pill due">Unassigned</span>') + '</div>' +
-            '<div class="cmeta">' + typePill(c.buyer_type) + (c.state ? ' <span class="state">' + esc(c.state) + '</span>' : '') + '</div>' +
+            '<div class="cmeta">' + typePill(c.buyer_type) + ' ' + zohoChip(c) + '</div>' +
             '<div class="cflags">' + (chips(c.attention) || '<span class="muted small">' + (c.last_at ? 'Last contact ' + ago(c.last_at).toLowerCase() : 'No contact yet') + '</span>') + '</div></div>';
         }).join('') + '</div>' : '<div class="empty">No customers match. They appear here as your team adds them through Claude.</div>') + '</div>';
       var q = $('q');
@@ -94,6 +95,12 @@
       doc('All quotes', b.quotes, [], function (q) { return '<b>' + esc(q.number) + '</b><span>' + date(q.date) + '</span><span>' + money(q.total) + '</span>' + pill(q.next.label, TONE[q.next.tone]); });
   }
 
+  // is this customer created in the Zoho Books customer directory?
+  function zohoTile(c) {
+    var st = c.zoho_status, cls = st === 'created' ? 'k-green' : st === 'not_created' ? 'k-red' : 'k-grey';
+    return '<div class="kpi ' + cls + '"><small>Zoho Books directory</small><b>' + (st === 'created' ? 'Created \u2713' : st === 'not_created' ? 'Not created' : 'Not checked') + '</b>' + (st === 'created' && c.zoho_contact ? '<div class="muted small">' + esc(c.zoho_contact) + '</div>' : st === 'not_created' ? '<div class="muted small">Needs to be created in Zoho Books</div>' : '<div class="muted small">Ask Claude to check</div>') + '</div>';
+  }
+
   function customerScreen(mobile) {
     var my = seq;
     return api('GET', '/api/customers/' + mobile).then(function (r) {
@@ -106,8 +113,8 @@
       view.innerHTML = '<a class="btn ghost sm back" href="#customers">&larr; All customers</a>' +
         '<div class="hero"><div class="herotop">' + avatar(c.name, true) + '<div class="heroname"><h2>' + esc(c.name) + '</h2><div>' + esc(c.company || '') + '</div></div>' +
         '<div class="heropills">' + typePill(c.buyer_type) + (c.business ? pill(nice(c.business), 'light') : '') + (c.source ? pill('From ' + nice(c.source), 'light') : '') + '</div></div>' +
-        '<div class="herolines"><a class="tel" href="tel:+91' + c.mobile + '">📞 ' + esc(c.mobile) + '</a>' + (place ? '<span>📍 ' + esc(place) + '</span>' : '') + '<span>' + (c.owner_name ? 'Assigned to <b>' + esc(c.owner_name) + '</b>' : '<b>Unassigned</b>') + '</span><span>Onboarded ' + date(c.created_at) + '</span></div>' +
-        '<div class="kpis" id="kpis"><div class="kpi k-green"><small>Sold so far</small><b id="kSold">&hellip;</b></div><div class="kpi k-teal"><small>Collected</small><b id="kColl">&hellip;</b></div><div class="kpi k-red"><small>Still to collect</small><b id="kDue">&hellip;</b></div><div class="kpi k-blue"><small>Quotes waiting</small><b id="kQuote">&hellip;</b></div></div></div>' +
+        '<div class="herolines">' + (place ? '<span class="place">📍 ' + esc(place) + '</span>' : '') + '<a class="tel" href="tel:+91' + c.mobile + '">📞 ' + esc(c.mobile) + '</a><span>' + (c.owner_name ? 'Assigned to <b>' + esc(c.owner_name) + '</b>' : '<b>Unassigned</b>') + '</span><span>Onboarded ' + date(c.created_at) + '</span></div>' +
+        '<div class="kpis" id="kpis"><div class="kpi k-green"><small>Sold so far</small><b id="kSold">&hellip;</b></div><div class="kpi k-teal"><small>Collected</small><b id="kColl">&hellip;</b></div><div class="kpi k-red"><small>Still to collect</small><b id="kDue">&hellip;</b></div><div class="kpi k-blue"><small>Quotes waiting</small><b id="kQuote">&hellip;</b></div>' + zohoTile(c) + '</div></div>' +
         '<div class="card pursue"><h3>What to do next</h3><div class="plines">' +
         '<div class="pl">' + (next ? '<span class="pill ' + (next < new Date().toISOString().slice(0, 10) ? 'off' : 'info') + '">Follow up ' + dueText(next) + ' (' + date(next) + ')</span> <span class="muted">' + esc(last.summary.slice(0, 140)) + '</span>' : '<span class="pill due">No follow-up date set</span> <span class="muted">Ask Claude to log the next call with a date.</span>') + '</div>' +
         '<div class="pl muted small">' + (last ? 'Last contact: ' + esc(LABEL[last.type]) + ' by ' + esc(last.by_name || '') + ', ' + ago(last.at).toLowerCase() : 'Nobody has contacted them yet.') + '</div>' +
@@ -158,77 +165,114 @@
     });
   }
 
-  // ---------- vendors ----------
-  var vq = '';
-  function vendorsScreen() {
-    var my = seq;
-    return api('GET', '/api/vendors?q=' + encodeURIComponent(vq)).then(function (r) {
+  // ---------- suppliers: by item, by vendor, by collection, with the latest updates ----------
+  var EV_ICON = { rate: '💱', note: '📝', file: '📎', link: '🔗', vendor: '🏭' };
+  function logHtml(list, withTarget) {
+    return list.length ? '<div class="timeline">' + list.map(function (e) {
+      var go = e.item ? 'item/' + e.item.id : e.vendor ? 'vendor/' + e.vendor.mobile : '';
+      return '<div class="tl ev-' + e.type + '"' + (withTarget && go ? ' data-go="' + go + '" style="cursor:pointer"' : '') + '><div class="dot">' + (EV_ICON[e.type] || '•') + '</div><div><div class="what">' + esc(e.title) + '</div>' + (e.text ? '<p>' + esc(e.text) + '</p>' : '') + '<div class="muted small">' + esc(e.by || '') + ' &middot; ' + when(e.at) + '</div></div></div>';
+    }).join('') + '</div>' : '<div class="empty">Nothing yet.</div>';
+  }
+  function notesHtml(list, hint) {
+    return list.length ? '<div class="notes">' + list.map(function (n) { return '<div class="note"><div>' + esc(n.text) + '</div><div class="muted small">' + esc(n.by_name || '') + ' &middot; ' + when(n.at) + (me.role === 'admin' ? ' &middot; <a href="#" data-delnote="' + n.id + '">remove</a>' : '') + '</div></div>'; }).join('') + '</div>' : '<div class="muted">' + esc(hint) + '</div>';
+  }
+  function attachHtml(list, hint) {
+    var isImg = function (a) { return /^image\/(png|jpeg|webp|gif)$/.test(a.mime); }, imgs = list.filter(isImg), docs = list.filter(function (a) { return !isImg(a); });
+    if (!list.length) return '<div class="muted">' + esc(hint) + '</div>';
+    return (imgs.length ? '<div class="files">' + imgs.map(function (a) { return '<div class="file"><a href="/api/attachments/' + a.id + '" target="_blank" rel="noopener"><img src="/api/attachments/' + a.id + '" alt="' + esc(a.name) + '" loading="lazy"></a><b>' + esc(a.name) + '</b><span class="muted small">' + esc(a.note || '') + ' ' + esc(a.by_name || '') + ' &middot; ' + when(a.at) + (me.role === 'admin' ? ' &middot; <a href="#" data-delatt="' + a.id + '">remove</a>' : '') + '</span></div>'; }).join('') + '</div>' : '') +
+      (docs.length ? '<div class="docs">' + docs.map(function (a) { return '<a class="docfile" href="/api/attachments/' + a.id + '?download=1"><span class="docico">📄</span><span><b>' + esc(a.name) + '</b><span class="muted small"> ' + esc(a.note || '') + ' ' + size(a.size) + ' &middot; ' + esc(a.by_name || '') + ' &middot; ' + when(a.at) + '</span></span><span class="btn sm">Download</span></a>'; }).join('') + '</div>' : '') +
+      (docs.length && me.role === 'admin' ? '<div class="muted small">Admin: ' + docs.map(function (a) { return '<a href="#" data-delatt="' + a.id + '">remove ' + esc(a.name) + '</a>'; }).join(' &middot; ') + '</div>' : '');
+  }
+  // removing a wrong note or file (admin only) from whichever page is open
+  view.addEventListener('click', function (e) {
+    var n = e.target.closest('[data-delnote]'), a = e.target.closest('[data-delatt]');
+    if (!n && !a) return; e.preventDefault();
+    if (!window.confirm(n ? 'Remove this note for good?' : 'Remove this file for good?')) return;
+    api('DELETE', n ? '/api/notes/' + n.dataset.delnote : '/api/attachments/' + a.dataset.delatt, {}).then(function () { toast('Removed'); route(); }).catch(fail);
+  });
+
+  var src = { view: 'item', q: '', category: '', stock: false };
+  function suppliersScreen() {
+    var my = seq, v = src.view;
+    var data = v === 'vendor' ? api('GET', '/api/vendors?q=' + encodeURIComponent(src.q)) : v === 'collection' ? api('GET', '/api/collections') : api('GET', '/api/items?q=' + encodeURIComponent(src.q) + '&category=' + encodeURIComponent(src.category) + (src.stock ? '&stock=1' : ''));
+    return Promise.all([data, api('GET', '/api/sourcing/log?limit=20')]).then(function (r) {
       if (my !== seq) return;
-      var rows = r.vendors;
-      view.innerHTML = '<div class="card"><div class="between"><h2>Vendors</h2><span class="muted">' + rows.length + ' shown</span></div><label>Search<input id="vq" value="' + esc(vq) + '" placeholder="Vendor, mobile, city, or a material like nickel strip"></label>' +
-        (rows.length ? '<table><thead><tr><th>Vendor</th><th class="hide-sm">City</th><th>Our items they supply</th><th>Last rate</th></tr></thead><tbody>' + rows.map(function (v) {
-          return '<tr class="go" data-go="vendor/' + v.mobile + '"><td><b>' + esc(v.name) + '</b><div class="muted small">' + esc([v.company, v.mobile].filter(Boolean).join(' · ')) + '</div></td><td class="hide-sm">' + esc(v.city) + '</td><td>' + (v.materials ? v.materials : pill('No item linked', 'off')) + '</td><td>' + (v.last_offer ? date(v.last_offer) : '') + '</td></tr>';
-        }).join('') + '</tbody></table>' : '<div class="empty">No vendors yet. Tell Claude: "Add vendor Saurav, 98xxxxxx, he supplies nickel strip at 700 a kg".</div>') + '</div>';
-      var q = $('vq'); debounce(q, function () { vq = q.value; vendorsScreen().then(function () { var n = $('vq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); });
+      var d = r[0], st = v === 'vendor' ? null : d.status, body = '';
+      var rateCell = function (b) { return b ? '<b>' + money(b.rate) + '</b>' + (b.unit ? ' / ' + esc(b.unit) : '') + '<div class="muted small">' + esc(b.vendor) + (b.vendors > 1 ? ' +' + (b.vendors - 1) + ' more' : '') + '</div>' : '<span class="muted small">No rate yet</span>'; };
+      if (v === 'item') {
+        body = (d.items.length ? '<div class="clist">' + d.items.map(function (i) {
+          return '<div class="srow" data-go="item/' + i.id + '"><div class="smain">' + (i.image_url ? '<img class="thumb" src="' + esc(i.image_url) + '" alt="" loading="lazy">' : '<span class="thumb ph"></span>') + '<div><b>' + esc(i.name) + '</b><div class="muted small">' + esc(i.sku) + (i.category ? ' &middot; ' + esc(i.category) : '') + '</div></div></div><div>' + money(i.price) + '</div><div>' + (i.stock == null ? '' : i.stock > 0 ? i.stock + ' in stock' : pill('Out of stock', 'off')) + '</div><div>' + rateCell(i.best) + '</div></div>';
+        }).join('') + '</div>' : '<div class="empty">No items match.</div>');
+      } else if (v === 'vendor') {
+        body = (d.vendors.length ? '<div class="clist">' + d.vendors.map(function (x) {
+          return '<div class="srow" data-go="vendor/' + x.mobile + '"><div class="smain">' + avatar(x.name) + '<div><b>' + esc(x.name) + '</b><div class="muted small">' + esc(x.company || '') + '</div></div></div><div>' + esc([x.city, x.state].filter(Boolean).join(', ')) + '</div><div>' + esc(x.mobile) + '</div><div>' + (x.materials ? pill(x.materials + ' item' + (x.materials === 1 ? '' : 's'), 'info') : pill('No item linked', 'off')) + (x.last_offer ? '<div class="muted small">Last rate ' + date(x.last_offer) + '</div>' : '') + '</div></div>';
+        }).join('') + '</div>' : '<div class="empty">No vendors yet. Tell Claude: "Add vendor Saurav, 98xxxxxx, he supplies nickel strip 0.15".</div>');
+      } else {
+        var w = src.q.toLowerCase().split(/\s+/).filter(Boolean);
+        var cols = d.collections.map(function (c) { return { name: c.name, vendors: c.vendors, items: c.items.filter(function (i) { var h = (i.name + ' ' + i.sku + ' ' + i.category + ' ' + c.name).toLowerCase(); return w.every(function (x) { return h.indexOf(x) >= 0; }); }) }; }).filter(function (c) { return c.items.length; });
+        body = cols.length ? cols.map(function (c, k) {
+          return '<details class="cat" ' + (k < 2 || w.length ? 'open' : '') + '><summary><span class="catname"><i style="background:' + COLORS[k % COLORS.length] + '"></i>' + esc(c.name) + '</span><span class="muted small">' + c.items.length + ' item' + (c.items.length === 1 ? '' : 's') + ' &middot; ' + c.vendors + ' vendor link' + (c.vendors === 1 ? '' : 's') + '</span><span></span></summary><div class="clist">' + c.items.map(function (i) {
+            return '<div class="srow" data-go="item/' + i.id + '"><div class="smain"><div><b>' + esc(i.name) + '</b><div class="muted small">' + esc(i.sku) + '</div></div></div><div>' + money(i.price) + '</div><div>' + (i.stock != null && i.stock <= 0 ? pill('Out of stock', 'off') : '') + '</div><div>' + rateCell(i.best) + '</div></div>';
+          }).join('') + '</div></details>';
+        }).join('') : '<div class="empty">Nothing here yet. Press Refresh from Zoho on the By item view.</div>';
+      }
+      view.innerHTML = '<div class="card"><div class="between"><h2>Suppliers</h2>' + (st ? '<span class="muted small">Items from Zoho Commerce, updated ' + (st.at ? ago(st.at).toLowerCase() : 'never') + ' <button class="btn ghost sm" id="sync" type="button">Refresh from Zoho</button></span>' : '') + '</div>' +
+        '<div class="seg" id="seg">' + [['item', 'By item'], ['vendor', 'By vendor'], ['collection', 'By collection']].map(function (s) { return '<button class="segb' + (v === s[0] ? ' on' : '') + '" data-v="' + s[0] + '" type="button">' + s[1] + '</button>'; }).join('') + '</div>' +
+        '<div class="row"><label>Search<input id="sq" value="' + esc(src.q) + '" placeholder="' + (v === 'vendor' ? 'Vendor, mobile, city, or a material' : 'Name, code or category, e.g. nickel strip 0.15') + '"></label>' +
+        (v === 'item' ? '<label>Category<select id="scat"><option value="">All</option>' + d.categories.map(function (c) { return '<option value="' + esc(c.category) + '"' + (src.category === c.category ? ' selected' : '') + '>' + esc(c.category) + ' (' + c.n + ')</option>'; }).join('') + '</select></label><label class="check" style="flex:0 0 auto"><input type="checkbox" id="sstock"' + (src.stock ? ' checked' : '') + '> In stock only</label>' : '') + '</div>' +
+        (st && st.last && st.last.ok === false ? '<div class="banner">Zoho could not be read: ' + esc(st.last.error) + '. Showing the last list we have.</div>' : '') + body + '</div>' +
+        '<div class="card"><h3>Latest updates</h3><div class="muted small">Every rate, note, file and new vendor, newest first. Updates are made by talking to Claude.</div>' + logHtml(r[1].log, true) + '</div>';
+      var q = $('sq'); debounce(q, function () { src.q = q.value; suppliersScreen().then(function () { var n = $('sq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); });
+      $('seg').addEventListener('click', function (e) { var b = e.target.closest('[data-v]'); if (b) { src.view = b.dataset.v; src.q = ''; location.hash = 'suppliers/' + b.dataset.v; } });
+      if ($('scat')) $('scat').addEventListener('change', function (e) { src.category = e.target.value; suppliersScreen(); });
+      if ($('sstock')) $('sstock').addEventListener('change', function (e) { src.stock = e.target.checked; suppliersScreen(); });
+      if ($('sync')) $('sync').addEventListener('click', function () { $('sync').disabled = true; api('POST', '/api/items/sync', {}).then(function (x) { toast(x.result.throttled ? 'Updated a moment ago' : x.result.ok ? 'Updated from Zoho' : 'Zoho: ' + x.result.error); return suppliersScreen(); }).catch(fail); });
     });
   }
+
   function vendorScreen(mobile) {
     var my = seq;
     return api('GET', '/api/vendors/' + mobile).then(function (r) {
       if (my !== seq) return;
       var v = r.vendor, today = new Date().toISOString().slice(0, 10);
       var mat = function (o) { return o.item_id ? '<a href="#item/' + o.item_id + '">' + esc(o.item_name) + '</a>' : esc(o.item_text) + ' <span class="pill due">not linked</span>'; };
-      view.innerHTML = '<a class="btn ghost sm back" href="#vendors">&larr; All vendors</a>' +
-        '<div class="card"><h2>' + esc(v.name) + '</h2><div class="muted">' + esc(v.company) + '</div>' + facts([['Mobile (key)', v.mobile], ['Email', v.email], ['City', [v.city, v.state].filter(Boolean).join(', ')], ['GST', v.gstin], ['Added', when(v.created_at) + (v.created_by_name ? ' by ' + v.created_by_name : '')]]) + (v.notes ? '<div>' + esc(v.notes) + '</div>' : '') + '</div>' +
+      view.innerHTML = '<a class="btn ghost sm back" href="#suppliers/vendor">&larr; All suppliers</a>' +
+        '<div class="hero vendorhero"><div class="herotop">' + avatar(v.name, true) + '<div class="heroname"><h2>' + esc(v.name) + '</h2><div>' + esc(v.company || '') + '</div></div></div>' +
+        '<div class="herolines">' + ([v.city, v.state].filter(Boolean).length ? '<span>📍 ' + esc([v.city, v.state].filter(Boolean).join(', ')) + '</span>' : '') + '<a class="tel" href="tel:+91' + v.mobile + '">📞 ' + esc(v.mobile) + '</a><span>Added ' + date(v.created_at) + (v.created_by_name ? ' by ' + esc(v.created_by_name) : '') + '</span></div></div>' +
         (v.items.length ? '' : '<div class="banner"><b>This vendor has no matching item.</b> A vendor must be linked to at least one of our items. Ask Claude to link the items they supply' + (me.role === 'admin' ? ', or delete this vendor below.' : '.') + '</div>') +
+        '<div class="card"><h3>Details</h3>' + facts([['Address', v.address], ['What they do', v.about], ['Payment terms', v.payment_terms], ['Delivery time', v.lead_time], ['Minimum order', v.min_order], ['Email', v.email], ['GST', v.gstin]]) + (v.notes ? '<div>' + esc(v.notes) + '</div>' : '') + '<div class="muted small">Add or change details by telling Claude, e.g. "Saurav pays in 15 days and delivers in 3 days".</div></div>' +
         '<div class="card"><h3>Our items they supply (' + v.items.length + ')</h3>' + (v.items.length ? '<table><thead><tr><th>Item</th><th>Latest rate</th><th>As of</th></tr></thead><tbody>' + v.items.map(function (i) {
           return '<tr class="go" data-go="item/' + i.id + '"><td><b>' + esc(i.name) + '</b><div class="muted small">' + esc(i.sku) + '</div></td><td>' + (i.rate != null ? '<b>' + money(i.rate) + '</b>' + (i.unit ? ' / ' + esc(i.unit) : '') : '<span class="muted">No rate yet</span>') + '</td><td>' + date(i.offer_date) + '</td></tr>';
         }).join('') + '</tbody></table>' : '<div class="empty">None linked.</div>') + '</div>' +
+        '<div class="card"><h3>Notes (' + v.notes_list.length + ')</h3>' + notesHtml(v.notes_list, 'No notes yet. Tell Claude: "Note on Saurav: ..."') + '</div>' +
+        '<div class="card"><h3>Files and pictures (' + v.attachments.length + ')</h3>' + attachHtml(v.attachments, 'Nothing attached yet. Give Claude a price list, quotation or photo and ask it to attach it to this vendor.') + '</div>' +
         '<div class="card"><h3>What they supply now (latest rate for each material)</h3>' + (v.latest.length ? '<table><thead><tr><th>Material</th><th>Rate</th><th class="hide-sm">Available</th><th class="hide-sm">Valid till</th><th>As of</th></tr></thead><tbody>' + v.latest.map(function (o) {
           return '<tr><td>' + mat(o) + '</td><td><b>' + money(o.rate) + '</b>' + (o.unit ? ' / ' + esc(o.unit) : '') + '</td><td class="hide-sm">' + esc(o.quantity) + '</td><td class="hide-sm">' + (o.valid_till ? (o.valid_till < today ? pill('Expired ' + date(o.valid_till), 'off') : date(o.valid_till)) : '') + '</td><td>' + date(o.offer_date) + '</td></tr>';
         }).join('') + '</tbody></table>' : '<div class="empty">No rates yet.</div>') + '</div>' +
-        '<div class="card"><h3>Rate history (' + v.offers.length + ')</h3>' + (v.offers.length ? '<div class="timeline">' + v.offers.map(function (o) {
-          return '<div class="tl"><div class="dot">💱</div><div><div class="what">' + mat(o) + ' <span class="pill">' + money(o.rate) + (o.unit ? ' / ' + esc(o.unit) : '') + '</span></div><p>' + esc([o.quantity && 'Available: ' + o.quantity, o.note].filter(Boolean).join(' · ')) + '</p><div class="muted small">' + date(o.offer_date) + ' &middot; ' + esc(o.by_name || '') + '</div></div></div>';
-        }).join('') + '</div>' : '<div class="empty">Nothing yet.</div>') + '</div>';
-      if (me.role === 'admin') view.insertAdjacentHTML('beforeend', '<div class="card" style="border-color:#fecaca"><div class="between"><div><h3>Delete this vendor</h3><div class="muted small">Admin only. Removes the vendor and all ' + v.offers.length + ' rate' + (v.offers.length === 1 ? '' : 's') + ' they gave, for good. It cannot be undone.</div></div><button class="btn bad sm" id="delVendor" type="button">Delete vendor</button></div></div>');
+        '<div class="card"><h3>Everything that changed, newest first (' + v.log.length + ')</h3>' + logHtml(v.log, false) + '</div>';
+      if (me.role === 'admin') view.insertAdjacentHTML('beforeend', '<div class="card" style="border-color:#fecaca"><div class="between"><div><h3>Delete this vendor</h3><div class="muted small">Admin only. Removes the vendor and all ' + v.offers.length + ' rate' + (v.offers.length === 1 ? '' : 's') + ', ' + v.notes_list.length + ' note' + (v.notes_list.length === 1 ? '' : 's') + ' and ' + v.attachments.length + ' file' + (v.attachments.length === 1 ? '' : 's') + ' for good. It cannot be undone.</div></div><button class="btn bad sm" id="delVendor" type="button">Delete vendor</button></div></div>');
       if ($('delVendor')) $('delVendor').addEventListener('click', function () {
         var typed = window.prompt('This permanently deletes ' + v.name + ' and all their rates.\nTo confirm, type their mobile number (' + v.mobile + '):');
         if (typed == null) return;
-        api('DELETE', '/api/vendors/' + v.mobile, { confirm: typed.replace(/\D/g, '').slice(-10) }).then(function () { toast('Vendor deleted'); location.hash = 'vendors'; }).catch(fail);
+        api('DELETE', '/api/vendors/' + v.mobile, { confirm: typed.replace(/\D/g, '').slice(-10) }).then(function () { toast('Vendor deleted'); location.hash = 'suppliers/vendor'; }).catch(fail);
       });
     });
   }
 
-  // ---------- items ----------
-  var itemState = { q: '', category: '', stock: false };
-  function itemsScreen() {
-    var my = seq;
-    return api('GET', '/api/items?q=' + encodeURIComponent(itemState.q) + '&category=' + encodeURIComponent(itemState.category) + (itemState.stock ? '&stock=1' : '')).then(function (r) {
-      if (my !== seq) return;
-      var rows = r.items, st = r.status;
-      view.innerHTML = '<div class="card"><div class="between"><h2>Items</h2><span class="muted">' + rows.length + ' shown &middot; ' + (st.at ? 'from Zoho Commerce, updated ' + ago(st.at).toLowerCase() : 'not synced yet') + ' <button class="btn ghost sm" id="sync" type="button">Refresh from Zoho</button></span></div>' +
-        (st.last && st.last.ok === false ? '<div class="banner">Zoho could not be read: ' + esc(st.last.error) + '. Showing the last list we have.</div>' : '') +
-        '<div class="row"><label>Search<input id="iq" value="' + esc(itemState.q) + '" placeholder="Name, code or category, e.g. nickel strip 0.15"></label><label>Category<select id="icat"><option value="">All</option>' + r.categories.map(function (c) { return '<option value="' + esc(c.category) + '"' + (itemState.category === c.category ? ' selected' : '') + '>' + esc(c.category) + ' (' + c.n + ')</option>'; }).join('') + '</select></label><label class="check" style="flex:0 0 auto"><input type="checkbox" id="istock"' + (itemState.stock ? ' checked' : '') + '> In stock only</label></div>' +
-        (rows.length ? '<table><thead><tr><th></th><th>Item</th><th class="hide-sm">Category</th><th>Our price</th><th class="hide-sm">Stock</th><th>Best vendor rate</th></tr></thead><tbody>' + rows.map(function (i) {
-          return '<tr class="go" data-go="item/' + i.id + '"><td style="width:54px">' + (i.image_url ? '<img class="thumb" src="' + esc(i.image_url) + '" alt="" loading="lazy">' : '') + '</td><td><b>' + esc(i.name) + '</b><div class="muted small">' + esc(i.sku) + '</div></td><td class="hide-sm">' + esc(i.category) + '</td><td>' + money(i.price) + '</td><td class="hide-sm">' + (i.stock == null ? '' : i.stock > 0 ? i.stock : pill('Out', 'off')) + '</td><td>' + (i.best ? '<b>' + money(i.best.rate) + '</b>' + (i.best.unit ? ' / ' + esc(i.best.unit) : '') + '<div class="muted small">' + esc(i.best.vendor) + (i.best.vendors > 1 ? ' +' + (i.best.vendors - 1) + ' more' : '') + '</div>' : '') + '</td></tr>';
-        }).join('') + '</tbody></table>' : '<div class="empty">' + (st.count ? 'No items match.' : 'No items yet. Press Refresh from Zoho.') + '</div>') + '</div>';
-      var q = $('iq'); debounce(q, function () { itemState.q = q.value; itemsScreen().then(function () { var n = $('iq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); });
-      $('icat').addEventListener('change', function (e) { itemState.category = e.target.value; itemsScreen(); });
-      $('istock').addEventListener('change', function (e) { itemState.stock = e.target.checked; itemsScreen(); });
-      $('sync').addEventListener('click', function () { $('sync').disabled = true; api('POST', '/api/items/sync', {}).then(function (x) { toast(x.result.throttled ? 'Updated a moment ago' : x.result.ok ? 'Updated from Zoho' : 'Zoho: ' + x.result.error); return itemsScreen(); }).catch(fail); });
-    });
-  }
   function itemScreen(iid) {
     var my = seq;
     return api('GET', '/api/items/' + iid).then(function (r) {
       if (my !== seq) return;
-      var i = r.item, today = new Date().toISOString().slice(0, 10);
-      view.innerHTML = '<a class="btn ghost sm back" href="#items">&larr; All items</a>' +
+      var i = r.item;
+      view.innerHTML = '<a class="btn ghost sm back" href="#suppliers/item">&larr; All suppliers</a>' +
         '<div class="card"><div class="between"><div><h2>' + esc(i.name) + '</h2><div class="muted">' + esc(i.sku) + (i.category ? ' &middot; ' + esc(i.category) : '') + '</div></div>' + (i.image_url ? '<img class="thumb big" src="' + esc(i.image_url) + '" alt="">' : '') + '</div>' +
         facts([['Our price', money(i.price)], ['In stock', i.stock == null ? '' : String(i.stock)], ['Unit', i.unit], ['Minimum order', i.moq == null ? '' : String(i.moq)], ['Collections', (i.collections || []).join(', ')]]) + (i.description ? '<div class="desc">' + esc(i.description) + '</div>' : '') + '</div>' +
         '<div class="card"><h3>Who supplies this (cheapest first)</h3>' + (i.suppliers.length ? '<table><thead><tr><th>Vendor</th><th>Rate</th><th class="hide-sm">Available</th><th>As of</th></tr></thead><tbody>' + i.suppliers.map(function (s) {
           return '<tr class="go" data-go="vendor/' + s.vendor_mobile + '"><td><b>' + esc(s.vendor_name) + '</b><div class="muted small">' + esc([s.vendor_company, s.vendor_city, s.vendor_mobile].filter(Boolean).join(' · ')) + '</div></td><td>' + (s.rate != null ? '<b>' + money(s.rate) + '</b>' + (s.unit ? ' / ' + esc(s.unit) : '') : '<span class="muted">No rate yet</span>') + '</td><td class="hide-sm">' + esc(s.quantity) + (s.expired ? ' ' + pill('Expired', 'off') : '') + '</td><td>' + date(s.offered_on) + '</td></tr>';
-        }).join('') + '</tbody></table>' : '<div class="empty">No vendor supplies this yet. Tell Claude: "Saurav has this at 700 a kg today".</div>') + '</div>';
+        }).join('') + '</tbody></table>' : '<div class="empty">No vendor supplies this yet. Tell Claude: "Saurav has this at 700 a kg today".</div>') + '</div>' +
+        '<div class="card"><h3>Notes (' + i.notes.length + ')</h3>' + notesHtml(i.notes, 'No notes yet. Tell Claude: "Note on this item: ..."') + '</div>' +
+        '<div class="card"><h3>Files and pictures (' + i.attachments.length + ')</h3>' + attachHtml(i.attachments, 'Nothing attached yet. Give Claude a datasheet, certificate or photo and ask it to attach it to this item.') + '</div>' +
+        '<div class="card"><h3>Everything that changed, newest first (' + i.log.length + ')</h3>' + logHtml(i.log, false) + '</div>';
     });
   }
 
@@ -288,11 +332,11 @@
   function route() {
     var h = location.hash.replace(/^#/, '') || 'customers', parts = h.split('/');
     seq++; view.removeEventListener('click', onMembersClick);
-    var tabs = [['customers', 'Customers'], ['vendors', 'Vendors'], ['items', 'Items']].concat(me.role === 'admin' ? [['members', 'Members']] : []).concat([['connection', 'My connection']]);
-    var base = { customer: 'customers', vendor: 'vendors', item: 'items' }[parts[0]] || parts[0];
+    var tabs = [['customers', 'Customers'], ['suppliers', 'Suppliers']].concat(me.role === 'admin' ? [['members', 'Members']] : []).concat([['connection', 'My connection']]);
+    var base = { customer: 'customers', vendor: 'suppliers', item: 'suppliers', vendors: 'suppliers', items: 'suppliers' }[parts[0]] || parts[0];
     $('tabs').innerHTML = tabs.map(function (t) { return '<button class="tab' + (base === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '" type="button">' + t[1] + '</button>'; }).join('');
     var arg = decodeURIComponent(parts[1] || '');
-    var screen = parts[0] === 'customer' && arg ? customerScreen(arg) : parts[0] === 'vendor' && arg ? vendorScreen(arg) : parts[0] === 'item' && arg ? itemScreen(arg) : parts[0] === 'vendors' ? vendorsScreen() : parts[0] === 'items' ? itemsScreen()
+    var screen = parts[0] === 'customer' && arg ? customerScreen(arg) : parts[0] === 'vendor' && arg ? vendorScreen(arg) : parts[0] === 'item' && arg ? itemScreen(arg) : parts[0] === 'suppliers' || parts[0] === 'vendors' || parts[0] === 'items' ? (src.view = parts[0] === 'vendors' ? 'vendor' : parts[0] === 'items' ? 'item' : ['item', 'vendor', 'collection'].indexOf(parts[1]) >= 0 ? parts[1] : src.view, suppliersScreen())
       : parts[0] === 'connection' ? connectionScreen() : parts[0] === 'members' && me.role === 'admin' ? membersScreen() : customersScreen();
     screen.catch(function (e) { view.innerHTML = '<div class="card"><div class="err">' + esc(e.message) + '</div></div>'; });
   }

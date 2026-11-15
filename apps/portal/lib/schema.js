@@ -9,7 +9,7 @@ const NEW_TABLES = `
   CREATE TABLE IF NOT EXISTS customers (
     mobile TEXT PRIMARY KEY CHECK (length(mobile) = 10),
     name TEXT NOT NULL, company TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '',
-    city TEXT NOT NULL DEFAULT '', state TEXT NOT NULL DEFAULT '', pincode TEXT NOT NULL DEFAULT '', gstin TEXT NOT NULL DEFAULT '', address TEXT NOT NULL DEFAULT '', about TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL DEFAULT '', state TEXT NOT NULL DEFAULT '', pincode TEXT NOT NULL DEFAULT '', gstin TEXT NOT NULL DEFAULT '', address TEXT NOT NULL DEFAULT '', about TEXT NOT NULL DEFAULT '', zoho_status TEXT NOT NULL DEFAULT '', zoho_contact TEXT NOT NULL DEFAULT '', zoho_checked_at TEXT,
     source TEXT NOT NULL DEFAULT '', source_detail TEXT NOT NULL DEFAULT '',
     buyer_type TEXT NOT NULL DEFAULT 'unknown', business TEXT NOT NULL DEFAULT '',
     looking_for TEXT NOT NULL DEFAULT '', application TEXT NOT NULL DEFAULT '', cell_format TEXT NOT NULL DEFAULT '',
@@ -47,6 +47,15 @@ const NEW_TABLES = `
   CREATE TABLE IF NOT EXISTS vendor_items (
     vendor_mobile TEXT NOT NULL REFERENCES vendors(mobile), item_id TEXT NOT NULL REFERENCES items(id), added_by TEXT NOT NULL, added_at TEXT NOT NULL, PRIMARY KEY (vendor_mobile, item_id)
   );
+  CREATE TABLE IF NOT EXISTS notes (
+    id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('vendor', 'item')), key TEXT NOT NULL, text TEXT NOT NULL, by_member TEXT NOT NULL REFERENCES members(id), at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS notes_key ON notes(kind, key, at);
+  CREATE TABLE IF NOT EXISTS attachments (
+    id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('vendor', 'item')), key TEXT NOT NULL, name TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, note TEXT NOT NULL DEFAULT '',
+    by_member TEXT NOT NULL REFERENCES members(id), at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS attachments_key ON attachments(kind, key, at);
   CREATE TABLE IF NOT EXISTS vendor_offers (
     id TEXT PRIMARY KEY, vendor_mobile TEXT NOT NULL REFERENCES vendors(mobile), item_id TEXT REFERENCES items(id), item_text TEXT NOT NULL,
     rate REAL NOT NULL, unit TEXT NOT NULL DEFAULT '', quantity TEXT NOT NULL DEFAULT '', valid_till TEXT, note TEXT NOT NULL DEFAULT '',
@@ -87,13 +96,21 @@ function ensure(db, dataDir) {
     `);
   }
   upgrade(db);
+  upgradeVendors(db);
 }
 
 // columns added after the first release, and the move from "non-trader" to "OEM"
 function upgrade(db) {
   const cols = db.prepare('PRAGMA table_info(customers)').all().map((c) => c.name);
-  for (const c of ['address', 'about']) if (!cols.includes(c)) db.exec('ALTER TABLE customers ADD COLUMN ' + c + " TEXT NOT NULL DEFAULT ''");
+  for (const c of ['address', 'about', 'zoho_status', 'zoho_contact']) if (!cols.includes(c)) db.exec('ALTER TABLE customers ADD COLUMN ' + c + " TEXT NOT NULL DEFAULT ''");
+  if (!cols.includes('zoho_checked_at')) db.exec('ALTER TABLE customers ADD COLUMN zoho_checked_at TEXT');
   db.exec("UPDATE customers SET buyer_type = 'oem' WHERE buyer_type = 'non_trader'");
 }
 
-module.exports = { ensure, upgrade };
+// vendor details added after the first release (done separately so a brand new database is not affected)
+function upgradeVendors(db) {
+  const cols = db.prepare('PRAGMA table_info(vendors)').all().map((c) => c.name);
+  for (const c of ['address', 'about', 'payment_terms', 'lead_time', 'min_order']) if (!cols.includes(c)) db.exec('ALTER TABLE vendors ADD COLUMN ' + c + " TEXT NOT NULL DEFAULT ''");
+}
+
+module.exports = { ensure, upgrade, upgradeVendors };

@@ -368,6 +368,65 @@ describe('portal', () => {
     } finally { await s.stop(); }
   });
 
+  test('suppliers: notes, attachments and details on vendors and items, the collections view, and one update log newest first', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
+      await s.app.itemSync.sync();
+      s.app.repo.addVendor({ name: 'Saurav', mobile: '9000000001', itemIds: ['p1'], notes: 'First contact via IndiaMART' }, L.id);
+      s.app.repo.addOffer({ vendorMobile: '9000000001', itemId: 'p1', rate: 700, unit: 'kg' }, L.id);
+
+      // more details on a vendor, and a note on a vendor and on an item
+      assert.deepEqual(s.app.repo.updateVendor('9000000001', { address: 'Lohar Chawl, Mumbai', about: 'Nickel and copper strip', payment_terms: '15 days credit', lead_time: '3 days', min_order: '50 kg', notes: '' }, L.id).changed.sort(), ['about', 'address', 'lead_time', 'min_order', 'payment_terms']);
+      assert.equal(s.app.repo.vendor('9000000001').notes, 'First contact via IndiaMART', 'the free-text notes are untouched');
+      assert.match(s.app.repo.addNote('vendor', '90000 00001', 'Pays on time', L.id).subject, /Saurav/);
+      assert.match(s.app.repo.addNote('item', 'p1', 'Check the thickness on delivery', L.id).subject, /Nickel strip/);
+      assert.equal(s.app.repo.addNote('vendor', '9111111111', 'x', L.id).status, 404);
+      assert.equal(s.app.repo.addNote('item', 'nope', 'x', L.id).status, 404);
+      assert.match(s.app.repo.addNote('vendor', '9000000001', '   ', L.id).error, /Write the note/);
+      assert.equal(s.app.repo.addNote('thing', 'x', 'x', L.id).error, 'kind must be vendor or item');
+
+      // attachments: a picture shows in the page, anything else is only a download
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+      const pic = s.app.repo.addAttachment({ kind: 'item', key: 'p1', name: 'sample.png', mime: 'image/png', note: 'sample photo', buffer: png }, L.id).attachment;
+      const pdf = s.app.repo.addAttachment({ kind: 'vendor', key: '9000000001', name: 'price-list.html', mime: 'text/html', buffer: Buffer.from('<script>alert(1)</script>') }, L.id).attachment;
+      assert.equal(s.app.repo.addAttachment({ kind: 'vendor', key: '9111111111', name: 'x', buffer: png }, L.id).status, 404);
+      assert.match((await s.admin.get('/api/attachments/' + pic.id)).headers.get('content-disposition'), /^inline/);
+      const dl = await s.admin.get('/api/attachments/' + pdf.id);
+      assert.match(dl.headers.get('content-disposition'), /^attachment/); assert.equal(dl.headers.get('content-type'), 'application/octet-stream');
+      assert.equal((await client(s.base).get('/api/attachments/' + pic.id)).status, 401);
+
+      // the pages carry notes, attachments and a log, newest first
+      const item = (await s.admin.get('/api/items/p1')).data.item;
+      assert.equal(item.notes.length, 1); assert.equal(item.attachments[0].name, 'sample.png');
+      assert.ok(item.log.every((e, i, a) => !i || a[i - 1].at >= e.at), 'newest first');
+      assert.ok(item.log.some((e) => e.type === 'rate' && /Saurav gave a rate/.test(e.title) && /700/.test(e.text)));
+      assert.ok(item.log.some((e) => e.type === 'note') && item.log.some((e) => e.type === 'file') && item.log.some((e) => e.type === 'link'));
+      const vend = (await s.admin.get('/api/vendors/9000000001')).data.vendor;
+      assert.equal(vend.notes_list[0].text, 'Pays on time'); assert.equal(vend.payment_terms, '15 days credit'); assert.equal(vend.attachments.length, 1);
+      assert.ok(vend.log.some((e) => e.type === 'note') && vend.log.some((e) => e.type === 'file') && vend.log.some((e) => e.type === 'vendor'));
+      const feed = (await s.admin.get('/api/sourcing/log')).data.log;
+      assert.ok(feed.length >= 5); assert.ok(feed.every((e, i, a) => !i || a[i - 1].at >= e.at)); assert.equal((await client(s.base).get('/api/sourcing/log')).status, 401);
+
+      // collections: the items grouped as set up in Zoho Commerce
+      const cols = (await s.admin.get('/api/collections')).data.collections;
+      assert.deepEqual(cols.map((c) => c.name), ['18650', 'Not in a collection']);
+      assert.equal(cols[0].items[0].best.rate, 700); assert.equal(cols[0].vendors, 1);
+
+      // only the admin removes a note or a file; deleting a vendor takes them along
+      const noteId = vend.notes_list[0].id;
+      assert.equal((await lok.raw('DELETE', '/api/notes/' + noteId, {})).status, 403);
+      assert.equal((await lok.raw('DELETE', '/api/attachments/' + pdf.id, {})).status, 403);
+      assert.equal((await s.admin.raw('DELETE', '/api/notes/' + noteId, {})).status, 200);
+      assert.equal(s.app.repo.vendor('9000000001').notes_list.length, 0);
+      assert.equal((await s.admin.raw('DELETE', '/api/vendors/9000000001', { confirm: '9000000001' })).status, 200);
+      assert.equal(s.app.repo.db.prepare("SELECT COUNT(*) AS n FROM attachments WHERE kind = 'vendor'").get().n, 0);
+      assert.equal(fs.existsSync(s.app.repo.filePath(pdf.id)), false, 'the vendor files are gone from disk');
+      assert.equal(s.app.repo.attachments('item', 'p1').length, 1, 'the item keeps its own picture');
+    } finally { await s.stop(); }
+  });
+
   test('the next step for each order, invoice and quote', () => {
     const today = '2026-11-15';
     const o = (x) => orderAction({ date: '2026-11-14', status: 'open', shipped: 'not_shipped', invoiced: 'not_invoiced', ...x }, today);
@@ -414,7 +473,7 @@ describe('mcp', () => {
       assert.equal(init.result.protocolVersion, '2025-06-18'); assert.match(init.result.instructions, /mobile number/);
       assert.equal((await fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) })).status, 202);
       const names = (await (await rpc(s.base, key, 'tools/list')).json()).result.tools.map((t) => t.name);
-      for (const n of ['add_customer', 'update_customer', 'customer_purchases', 'search_items', 'get_item', 'add_vendor', 'link_vendor_items', 'log_vendor_rate', 'map_vendor_rate', 'find_suppliers', 'get_vendor', 'search_vendors']) assert.ok(names.includes(n), n);
+      for (const n of ['add_customer', 'update_customer', 'customer_purchases', 'search_items', 'get_item', 'add_vendor', 'link_vendor_items', 'add_note', 'add_attachment', 'recent_updates', 'set_zoho_directory_status', 'log_vendor_rate', 'map_vendor_rate', 'find_suppliers', 'get_vendor', 'search_vendors']) assert.ok(names.includes(n), n);
       assert.equal(names.some((n) => /delete|remove/.test(n)), false, 'nothing can be deleted');
       assert.equal(data(await call(s.base, key, 'who_am_i', {})).name, 'Lokesh');
 
@@ -483,6 +542,19 @@ describe('mcp', () => {
       assert.equal(data(await call(s.base, key, 'get_item', { item_id: itemId })).suppliers.length, 1);
       const gv = data(await call(s.base, key, 'get_vendor', { mobile: '9000000001' })); assert.equal(gv.history.length, 2); assert.equal(gv.supplies.length, 2); assert.equal(gv.supplies.find((x) => x.item_id === itemId).latest_rate, 810);
       assert.equal(data(await call(s.base, key, 'search_vendors', { query: 'nickel' })).length, 1);
+      // details, notes and files on a vendor or an item, all through Claude
+      assert.equal(data(await call(s.base, key, 'update_vendor', { mobile: '9000000001', payment_terms: '15 days', lead_time: '3 days', about: 'Nickel strip maker' })).changed.length, 3);
+      assert.equal(data(await call(s.base, key, 'add_note', { kind: 'vendor', key: '90000 00001', text: 'Pays on time' })).saved, true);
+      assert.equal(data(await call(s.base, key, 'add_note', { kind: 'item', key: itemId, text: 'Check thickness on delivery' })).saved, true);
+      assert.equal((await call(s.base, key, 'add_note', { kind: 'item', key: 'nope', text: 'x' })).isError, true);
+      const att = data(await call(s.base, key, 'add_attachment', { kind: 'vendor', key: '9000000001', name: 'price-list.png', mime_type: 'image/png', data_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', note: 'November list' }));
+      assert.equal(att.saved, true);
+      assert.equal((await call(s.base, key, 'add_attachment', { kind: 'vendor', key: '9000000001', name: 'bad', data_base64: '!!!' })).isError, true);
+      const gv2 = data(await call(s.base, key, 'get_vendor', { mobile: '9000000001' }));
+      assert.equal(gv2.payment_terms, '15 days'); assert.equal(gv2.dated_notes[0].text, 'Pays on time'); assert.equal(gv2.attachments[0].note, 'November list'); assert.ok(gv2.recent_updates.length >= 3);
+      assert.equal(data(await call(s.base, key, 'get_item', { item_id: itemId })).notes[0].text, 'Check thickness on delivery');
+      assert.ok(data(await call(s.base, key, 'recent_updates', { limit: 5 })).length >= 3);
+      assert.ok(data(await call(s.base, key, 'recent_updates', { item_id: itemId })).length >= 2);
       assert.equal((await call(s.base, key, 'log_vendor_rate', { vendor_mobile: '9123456789', material: 'x', rate: 5 })).isError, true);
 
       // the portal shows it, under Lokesh's name
@@ -524,13 +596,27 @@ describe('mcp: finishing a customer profile', () => {
       assert.ok(byField.buyer_type.options.includes('trader') && byField.buyer_type.options.includes('oem') && !byField.buyer_type.options.includes('unknown'));
       assert.ok(byField.business.options.includes('battery_pack_maker'));
       assert.match(byField.company.look_in, /Zoho Books/);
-      assert.deepEqual(p.unknown.slice(0, 3).map((u) => u.field), ['company', 'about', 'address'], 'asked in a sensible order');
+      assert.deepEqual(p.unknown.slice(0, 3).map((u) => u.field), ['zoho_status', 'company', 'about'], 'asked in a sensible order, the Zoho directory first');
+      assert.match(byField.zoho_status.look_in, /Zoho Books connector/);
 
       assert.match(p.how, /Zoho Books connector/);
       // what Claude finds in Zoho Books is saved with update_customer, and a detail already known is not overwritten by blanks
       const up = data(await call(s.base, key, 'update_customer', { mobile: '9811122233', company: 'Rao Traders Pvt Ltd', about: 'Makes e-bike battery packs', address: 'Plot 4, MIDC, Bhosari', gstin: '27ABCDE1234F1Z5', city: 'Pune', state: 'Maharashtra', pincode: '411001', email: '' }));
       assert.deepEqual(up.changed.sort(), ['about', 'address', 'city', 'company', 'gstin', 'pincode', 'state']);
+      // is the customer in the Zoho Books directory? Claude looks and reports; the page shows a tile
+      assert.equal(s.app.repo.customer('9811122233').zoho_status, '');
+      assert.equal(data(await call(s.base, key, 'get_customer', { mobile: '9811122233' })).zoho_directory, 'not checked');
+      const nc = data(await call(s.base, key, 'set_zoho_directory_status', { mobile: '9811122233', created: false }));
+      assert.equal(nc.zoho_directory, 'not created yet'); assert.match(nc.next, /still has to be created in Zoho Books/);
+      assert.equal(data(await call(s.base, key, 'get_customer', { mobile: '9811122233' })).zoho_directory, 'not created');
+      assert.equal(data(await call(s.base, key, 'set_zoho_directory_status', { mobile: '9811122233', created: true, zoho_contact_name: 'Rao Traders Pvt Ltd' })).zoho_directory, 'created');
+      const cz = (await s.admin.get('/api/customers/9811122233')).data.customer; assert.equal(cz.zoho_status, 'created'); assert.equal(cz.zoho_contact, 'Rao Traders Pvt Ltd'); assert.ok(cz.zoho_checked_at);
+      assert.equal((await call(s.base, key, 'set_zoho_directory_status', { mobile: '9000000000', created: true })).isError, true);
       assert.deepEqual(data(await call(s.base, key, 'complete_profile', { mobile: '9811122233' })).unknown.slice(0, 1).map((u) => u.field), ['source']);
+      // saving their Zoho documents also proves they are in the directory
+      s.app.repo.addCustomer({ name: 'Other', mobile: '9811100009' }, L.id);
+      s.app.repo.saveBooksDocs('9811100009', { quotes: [{ number: 'EST-9', total: 1, status: 'sent' }] }, L.id);
+      assert.equal(s.app.repo.customer('9811100009').zoho_status, 'created');
       assert.equal((await call(s.base, key, 'complete_profile', { mobile: '9000000000' })).isError, true);
 
       // OEM or trader, who looks after them, and the other people there: all through Claude

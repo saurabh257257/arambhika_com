@@ -15,6 +15,7 @@ const TEXT = { address: 300, about: 500, name: 100, company: 100, email: 100, ci
 const PROFILE = ['name', 'company', 'email', 'address', 'city', 'state', 'pincode', 'gstin', 'about', 'source', 'source_detail', 'buyer_type', 'business', 'looking_for', 'application', 'cell_format', 'monthly_volume', 'urgency'];
 // what a salesperson should try to learn about a battery customer, with the question to ask
 const ASK = {
+  zoho_status: 'Is this customer created in the Zoho Books customer directory? Look them up there by mobile number.',
   company: 'Which company or shop are they from?', about: 'What does the company do?', address: 'What is their full address?', city: 'Which city are they in?', state: 'Which state?',
   source: 'Where did they come from (email, WhatsApp, call, IndiaMART, website, referral)?', buyer_type: 'Are they a trader (buys to resell) or an OEM (makes products with it)?',
   business: 'What do they do (battery pack maker, EV maker, solar storage, UPS/inverter, repair, DIY, institution, reseller)?',
@@ -51,7 +52,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     return { fields: out };
   }
   // where Claude can look before it bothers the user
-  const LOOK = { company: 'the Zoho Books connector (the contact), the email signature, the sender\'s website', email: 'the email they wrote from, Zoho Books', gstin: 'Zoho Books contact, their invoice or website footer', city: 'Zoho Books, the email signature', state: 'Zoho Books, the email signature', pincode: 'Zoho Books, the email signature',
+  const LOOK = { zoho_status: 'the Zoho Books connector: search contacts by mobile number', company: 'the Zoho Books connector (the contact), the email signature, the sender\'s website', email: 'the email they wrote from, Zoho Books', gstin: 'Zoho Books contact, their invoice or website footer', city: 'Zoho Books, the email signature', state: 'Zoho Books, the email signature', pincode: 'Zoho Books, the email signature',
     source: 'the conversation or email they first came in through', buyer_type: 'their website or IndiaMART listing; otherwise ask', business: 'their website or IndiaMART listing; otherwise ask', looking_for: 'their email or chat', application: 'their email or chat', cell_format: 'their email or chat', monthly_volume: 'their email or chat', urgency: 'their email or chat' };
   const missing = (c) => Object.keys(ASK).filter((k) => !c[k] || (k === 'buyer_type' && c[k] === 'unknown')).map((k) => ({ field: k, ask: ASK[k], ...(ENUMS[k] ? { options: ENUMS[k].filter((o) => o !== 'unknown') } : {}), look_in: LOOK[k] }));
 
@@ -143,6 +144,15 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       };
     },
     states: () => all("SELECT state, COUNT(*) AS n FROM customers WHERE state != '' GROUP BY lower(state) ORDER BY state COLLATE NOCASE").map(plain),
+    // is this customer in the Zoho Books customer directory? Claude looks them up with its own Zoho connector and reports here
+    setZohoStatus(m0, created, contactName, by) {
+      const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
+      if (!c) return { error: 'No customer with that mobile number', status: 404 };
+      const st = created ? 'created' : 'not_created';
+      run('UPDATE customers SET zoho_status = ?, zoho_contact = ?, zoho_checked_at = ?, updated_at = ? WHERE mobile = ?', st, created ? clean(contactName, 100) : '', now(), now(), m);
+      audit(by, c.name + (created ? ' is in the Zoho Books directory' : ' is NOT in the Zoho Books directory'));
+      return { ok: true, status: st };
+    },
     // what Claude read from Zoho Books for this customer: invoices, sales orders and quotes, saved by number (the same number again updates it)
     saveBooksDocs(m0, input, by) {
       const m = mobile(m0), c = m && get('SELECT name FROM customers WHERE mobile = ?', m);
@@ -165,6 +175,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
         ON CONFLICT(customer_mobile, kind, number) DO UPDATE SET date = excluded.date, due_date = excluded.due_date, expiry = excluded.expiry, total = excluded.total, balance = excluded.balance, status = excluded.status, shipped = excluded.shipped,
           invoiced = excluded.invoiced, payment_expected = excluded.payment_expected, lines = excluded.lines, synced_at = excluded.synced_at, synced_by = excluded.synced_by`,
         m, r.kind, r.number, r.date, r.due_date, r.expiry, r.total, r.balance, r.status, r.shipped, r.invoiced, r.payment_expected, r.lines, t, by); });
+      run("UPDATE customers SET zoho_status = 'created', zoho_checked_at = ? WHERE mobile = ?", t, m);
       audit(by, 'Saved ' + rows.length + ' Zoho Books document' + (rows.length === 1 ? '' : 's') + ' for ' + c.name);
       return { saved: rows.length, invoices: rows.filter((r) => r.kind === 'invoice').length, orders: rows.filter((r) => r.kind === 'order').length, quotes: rows.filter((r) => r.kind === 'quote').length };
     },
@@ -263,6 +274,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       const p = profile(input); if (p.error) return p;
       const f = { ...p.fields }; for (const k of Object.keys(f)) if (!['name', 'company', 'email', 'city', 'state', 'gstin'].includes(k)) delete f[k];
       if (input.notes != null && clean(input.notes, 1000)) f.notes = clean(input.notes, 1000);
+      for (const [k, max] of Object.entries({ address: 300, about: 500, payment_terms: 100, lead_time: 100, min_order: 100 })) if (input[k] != null && clean(input[k], max)) f[k] = clean(input[k], max);
       const changed = Object.keys(f).filter((k) => f[k] !== v[k]);
       if (changed.length) { run('UPDATE vendors SET ' + changed.map((k) => k + ' = ?').join(', ') + ', updated_at = ? WHERE mobile = ?', ...changed.map((k) => f[k]), now(), m); audit(by, 'Updated vendor ' + v.name + ' (' + changed.join(', ') + ')'); }
       return { vendor: repo.vendor(m), changed };
@@ -272,7 +284,9 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       const m = mobile(m0), v = m && get('SELECT name FROM vendors WHERE mobile = ?', m);
       if (!v) return { error: 'Vendor not found', status: 404 };
       const n = get('SELECT COUNT(*) AS n FROM vendor_offers WHERE vendor_mobile = ?', m).n;
-      tx(() => { run('DELETE FROM vendor_offers WHERE vendor_mobile = ?', m); run('DELETE FROM vendor_items WHERE vendor_mobile = ?', m); run('DELETE FROM vendors WHERE mobile = ?', m); });
+      const atts = all("SELECT id FROM attachments WHERE kind = 'vendor' AND key = ?", m);
+      tx(() => { run("DELETE FROM notes WHERE kind = 'vendor' AND key = ?", m); run("DELETE FROM attachments WHERE kind = 'vendor' AND key = ?", m); run('DELETE FROM vendor_offers WHERE vendor_mobile = ?', m); run('DELETE FROM vendor_items WHERE vendor_mobile = ?', m); run('DELETE FROM vendors WHERE mobile = ?', m); });
+      for (const a of atts) { try { fs.unlinkSync(path.join(dataDir, 'files', a.id)); } catch (e) { /* already gone */ } }
       audit(by, 'DELETED vendor ' + v.name + ' (' + m + ') with ' + n + ' rate' + (n === 1 ? '' : 's'));
       return { ok: true, name: v.name, rates: n };
     },
@@ -293,7 +307,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       for (const o of offers) { const k = o.item_id || 'text:' + o.item_text.toLowerCase(); if (!seen.has(k)) { seen.add(k); latest.push(o); } }
       const rate = new Map(latest.filter((o) => o.item_id).map((o) => [o.item_id, o]));
       const items = all('SELECT i.id, i.name, i.sku, i.category FROM vendor_items vi JOIN items i ON i.id = vi.item_id WHERE vi.vendor_mobile = ? ORDER BY i.name COLLATE NOCASE', m).map((i) => ({ ...plain(i), rate: rate.has(i.id) ? rate.get(i.id).rate : null, unit: rate.has(i.id) ? rate.get(i.id).unit : '', offer_date: rate.has(i.id) ? rate.get(i.id).offer_date : '' }));
-      return { ...v, offers, latest, items };
+      return { ...v, offers, latest, items, notes_list: repo.notes('vendor', m), attachments: repo.attachments('vendor', m), log: repo.events({ vendorMobile: m, limit: 80 }) };
     },
 
     // ================= items (from Zoho Commerce) =================
@@ -331,7 +345,77 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
     },
     item(iid) {
       const r = get('SELECT * FROM items WHERE id = ?', String(iid || '')); if (!r) return null;
-      return { ...plain(r), collections: JSON.parse(r.collections || '[]'), suppliers: repo.findSuppliers({ itemId: r.id }) };
+      return { ...plain(r), collections: JSON.parse(r.collections || '[]'), suppliers: repo.findSuppliers({ itemId: r.id }), notes: repo.notes('item', r.id), attachments: repo.attachments('item', r.id), log: repo.events({ itemId: r.id, limit: 80 }) };
+    },
+    // the items grouped by the collections set up in Zoho Commerce (18650, 21700...), with how many vendors can supply each
+    collections() {
+      const list = repo.items(), by = new Map();
+      for (const it of list) for (const c of (it.collections.length ? it.collections : ['Not in a collection'])) { if (!by.has(c)) by.set(c, []); by.get(c).push(it); }
+      const vend = all('SELECT item_id, COUNT(*) AS n FROM vendor_items GROUP BY item_id'), vendorsOf = new Map(vend.map((r) => [r.item_id, r.n]));
+      return [...by.entries()].map(([name, items]) => ({ name, items: items.map((i) => ({ id: i.id, name: i.name, sku: i.sku, category: i.category, price: i.price, stock: i.stock, unit: i.unit, image_url: i.image_url, best: i.best, vendors: vendorsOf.get(i.id) || 0 })), vendors: items.reduce((n, i) => n + (vendorsOf.get(i.id) || 0), 0) }))
+        .sort((a, b) => (a.name === 'Not in a collection') - (b.name === 'Not in a collection') || a.name.localeCompare(b.name, 'en', { numeric: true }));
+    },
+    // ---- notes and attachments on a vendor (key = mobile) or an item (key = id) ----
+    subject(kind, key) {
+      if (kind === 'vendor') { const m = mobile(key); return m ? (get('SELECT mobile AS key, name FROM vendors WHERE mobile = ?', m) || null) : null; }
+      if (kind === 'item') return get('SELECT id AS key, name FROM items WHERE id = ?', String(key || '')) || null;
+      return null;
+    },
+    addNote(kind, key, text, by) {
+      const sub = repo.subject(kind, key); if (!sub) return { error: kind === 'vendor' || kind === 'item' ? 'No such ' + kind + '. For a vendor use their mobile number, for an item its id from search_items.' : 'kind must be vendor or item', status: 404 };
+      const t = clean(text, 2000); if (!t) return { error: 'Write the note' };
+      const n = { id: id(), kind, key: sub.key, text: t, by_member: by, at: now() };
+      run('INSERT INTO notes (id, kind, key, text, by_member, at) VALUES (?, ?, ?, ?, ?, ?)', n.id, n.kind, n.key, n.text, n.by_member, n.at);
+      audit(by, 'Added a note on ' + kind + ' ' + sub.name);
+      return { note: n, subject: sub.name };
+    },
+    notes: (kind, key) => all('SELECT n.id, n.text, n.at, mm.name AS by_name FROM notes n LEFT JOIN members mm ON mm.id = n.by_member WHERE n.kind = ? AND n.key = ? ORDER BY n.at DESC, n.rowid DESC', kind, String(key)).map(plain),
+    deleteNote(nid, by) { const n = get('SELECT id FROM notes WHERE id = ?', String(nid || '')); if (!n) return { error: 'Note not found', status: 404 }; run('DELETE FROM notes WHERE id = ?', n.id); audit(by, 'DELETED a note'); return { ok: true }; },
+    addAttachment({ kind, key, name, mime, note, buffer }, by) {
+      const sub = repo.subject(kind, key); if (!sub) return { error: kind === 'vendor' || kind === 'item' ? 'No such ' + kind + '. For a vendor use their mobile number, for an item its id from search_items.' : 'kind must be vendor or item', status: 404 };
+      if (!buffer || !buffer.length) return { error: 'The file is empty' };
+      if (buffer.length > 10 * 1024 * 1024) return { error: 'The file is too big (10 MB at most)' };
+      const a = { id: id(), kind, key: sub.key, name: clean(name, 150).replace(/[\\/:*?"<>|]/g, '') || 'file', mime: clean(mime, 100) || 'application/octet-stream', size: buffer.length, note: clean(note, 300), by_member: by, at: now() };
+      fs.writeFileSync(path.join(dataDir, 'files', a.id), buffer);
+      run('INSERT INTO attachments (id, kind, key, name, mime, size, note, by_member, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', a.id, a.kind, a.key, a.name, a.mime, a.size, a.note, a.by_member, a.at);
+      audit(by, 'Attached ' + a.name + ' to ' + kind + ' ' + sub.name);
+      return { attachment: a, subject: sub.name };
+    },
+    attachments: (kind, key) => all('SELECT a.id, a.name, a.mime, a.size, a.note, a.at, mm.name AS by_name FROM attachments a LEFT JOIN members mm ON mm.id = a.by_member WHERE a.kind = ? AND a.key = ? ORDER BY a.at DESC', kind, String(key)).map(plain),
+    attachment: (aid) => plain(get('SELECT * FROM attachments WHERE id = ?', String(aid || ''))),
+    deleteAttachment(aid, by) {
+      const a = get('SELECT id, name FROM attachments WHERE id = ?', String(aid || '')); if (!a) return { error: 'Attachment not found', status: 404 };
+      run('DELETE FROM attachments WHERE id = ?', a.id); try { fs.unlinkSync(path.join(dataDir, 'files', a.id)); } catch (e) { /* already gone */ }
+      audit(by, 'DELETED attachment ' + a.name); return { ok: true };
+    },
+    // every update on vendors and items, newest first: rates, notes, attachments, and who was linked to what. Narrow it to one item or one vendor.
+    events({ itemId, vendorMobile, limit = 60 } = {}) {
+      const out = [], inr = (n) => '\u20B9' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 }), dmy = (d) => String(d || '').slice(0, 10).split('-').reverse().join('-');
+      const vm = vendorMobile ? mobile(vendorMobile) : null;
+      const vname = new Map(all('SELECT mobile, name FROM vendors').map((r) => [r.mobile, r.name])), iname = new Map(all('SELECT id, name FROM items').map((r) => [r.id, r.name]));
+      const who = (k, key) => (k === 'vendor' ? { vendor: { mobile: key, name: vname.get(key) || key } } : { item: { id: key, name: iname.get(key) || key } });
+      for (const o of all('SELECT o.*, mm.name AS by_name FROM vendor_offers o LEFT JOIN members mm ON mm.id = o.by_member ORDER BY o.at DESC LIMIT 400')) {
+        if ((itemId && o.item_id !== itemId) || (vm && o.vendor_mobile !== vm)) continue;
+        out.push({ at: o.at, type: 'rate', by: o.by_name || '', vendor: { mobile: o.vendor_mobile, name: vname.get(o.vendor_mobile) || '' }, item: o.item_id ? { id: o.item_id, name: iname.get(o.item_id) || o.item_text } : null,
+          title: (vname.get(o.vendor_mobile) || 'A vendor') + ' gave a rate' + (o.item_id ? ' for ' + (iname.get(o.item_id) || o.item_text) : ''), text: inr(o.rate) + (o.unit ? ' / ' + o.unit : '') + (o.quantity ? ' \u00B7 ' + o.quantity + ' available' : '') + (o.valid_till ? ' \u00B7 valid till ' + dmy(o.valid_till) : '') + (o.note ? ' \u00B7 ' + o.note : '') });
+      }
+      for (const n of all('SELECT n.*, mm.name AS by_name FROM notes n LEFT JOIN members mm ON mm.id = n.by_member ORDER BY n.at DESC LIMIT 300')) {
+        if ((itemId && !(n.kind === 'item' && n.key === itemId)) || (vm && !(n.kind === 'vendor' && n.key === vm))) continue;
+        out.push({ at: n.at, type: 'note', by: n.by_name || '', ...who(n.kind, n.key), title: 'Note on ' + (n.kind === 'vendor' ? vname.get(n.key) : iname.get(n.key)), text: n.text });
+      }
+      for (const a of all('SELECT a.*, mm.name AS by_name FROM attachments a LEFT JOIN members mm ON mm.id = a.by_member ORDER BY a.at DESC LIMIT 300')) {
+        if ((itemId && !(a.kind === 'item' && a.key === itemId)) || (vm && !(a.kind === 'vendor' && a.key === vm))) continue;
+        out.push({ at: a.at, type: 'file', by: a.by_name || '', ...who(a.kind, a.key), attachment: a.id, mime: a.mime, title: 'File added to ' + (a.kind === 'vendor' ? vname.get(a.key) : iname.get(a.key)), text: a.name + (a.note ? ' \u00B7 ' + a.note : '') });
+      }
+      for (const l of all('SELECT vi.*, mm.name AS by_name FROM vendor_items vi LEFT JOIN members mm ON mm.id = vi.added_by ORDER BY vi.added_at DESC LIMIT 300')) {
+        if ((itemId && l.item_id !== itemId) || (vm && l.vendor_mobile !== vm)) continue;
+        out.push({ at: l.added_at, type: 'link', by: l.by_name || '', vendor: { mobile: l.vendor_mobile, name: vname.get(l.vendor_mobile) || '' }, item: { id: l.item_id, name: iname.get(l.item_id) || '' }, title: (vname.get(l.vendor_mobile) || 'A vendor') + ' now supplies', text: iname.get(l.item_id) || '' });
+      }
+      if (!itemId) for (const v of all('SELECT v.mobile, v.name, v.created_at, mm.name AS by_name FROM vendors v LEFT JOIN members mm ON mm.id = v.created_by')) {
+        if (vm && v.mobile !== vm) continue;
+        out.push({ at: v.created_at, type: 'vendor', by: v.by_name || '', vendor: { mobile: v.mobile, name: v.name }, item: null, title: 'Vendor added', text: v.name });
+      }
+      return out.sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, limit);
     },
     // best-scoring items for some words ("nickel strip 0.15"): every word has to appear, shorter names first
     categoryOfName(name) {

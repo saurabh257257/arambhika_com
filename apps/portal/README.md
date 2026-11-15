@@ -62,3 +62,13 @@ A vendor exists only with at least one of our items linked to them (`vendor_item
 The list shows name, mobile, who looks after them, trader or OEM, state, and coloured "needs attention" chips (a late follow-up, a payment overdue, an order not delivered, an accepted quote, quotes waiting, no contact for 30 days). Quick filters: All, Needs attention, Unassigned, Mine; selects for assigned-to, state, type and business; search covers every field and the history. A customer with no owner is "unassigned" (`assign_customer`).
 
 The page: a header with mobile, place, owner, onboarding date and four numbers (sold so far, collected, still to collect, quotes waiting); "What to do next" (next follow-up, last contact, and the open steps from Zoho Books); About (address, what they do, GST, where from, what they want); the other people at the company (`save_customer_contact`); what they bought grouped by our item categories with bars, quotes waiting, orders, invoices; every interaction with photos and attachments; photos and documents. Customer type is **trader** (buys to resell) or **OEM** (makes its own products); the older word "non-trader" is read as OEM. Everything is changed only through Claude.
+
+### Suppliers (vendors and items in one place)
+
+One **Suppliers** tab with three views: **By item** (all items from Zoho Commerce with the best vendor rate), **By vendor**, and **By collection** (the collections set up in Zoho Commerce, such as 18650 and 21700). Under each view, **Latest updates** lists every rate, note, file, new vendor and "now supplies" link, newest first. Vendor and item pages carry details (address, what they do, payment terms, delivery time, minimum order), dated **notes**, **attachments** of any kind (pictures show in the page, other files download), and the full log newest first. All of it is added through Claude (`update_vendor`, `add_note`, `add_attachment`, `recent_updates`); only the admin can remove a wrong note or file.
+
+### Zoho Books directory tile
+
+Each customer shows whether they are created in the Zoho Books customer directory: Created, Not created, or Not checked. Claude looks the customer up in its own Zoho Books connector and reports with `set_zoho_directory_status`; saving the customer's Zoho documents also marks them as created.
+
+Menu order: Customers, Suppliers, Members (admin only), My connection (last). The top bar and menu stay fixed while the page scrolls.
