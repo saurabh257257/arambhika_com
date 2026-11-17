@@ -88,7 +88,7 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
   oauth.install(app, repo, tries);
 
   // ---- MCP: signed in with a member's own key, or the token the Claude apps get after signing in (not the browser cookie) ----
-  app.all(['/mcp', '/mcp/v2'], async (req, res) => {
+  app.all(['/mcp', '/mcp/v2', '/mcp/u/:username'], async (req, res) => {
     if (req.method !== 'POST') return res.status(405).set('Allow', 'POST').json({ error: 'Use POST' });
     const t = Date.now(), recent = (tries.get('mcp' + req.ip) || []).filter((x) => x > t - 10 * 60 * 1000);
     if (recent.length >= 30) return res.status(429).json({ error: 'Too many wrong keys. Please wait a few minutes.' });
@@ -96,6 +96,8 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
     const m = repo.memberByKey(bearer) || repo.memberByAccessToken(bearer);
     if (!m) { recent.push(t); tries.set('mcp' + req.ip, recent); return res.status(401).set('WWW-Authenticate', 'Bearer resource_metadata="' + req.protocol + '://' + req.get('host') + '/.well-known/oauth-protected-resource' + req.path + '"').json({ error: 'Missing or wrong key. Make a new one under My connection in the portal.' }); }
     tries.delete('mcp' + req.ip);
+    // a personal address (/mcp/u/<username>) only serves that one member, so a shared Claude account cannot save under someone else's name
+    if (req.params.username && String(req.params.username).toLowerCase() !== m.username) return res.status(403).json({ error: 'This connector is for ' + String(req.params.username).toLowerCase() + ' but it is signed in as ' + m.username + '. Remove the connector and add it again, signing in as ' + String(req.params.username).toLowerCase() + '.' });
     const body = req.body;
     if (Array.isArray(body)) { const out = (await Promise.all(body.map((x) => mcp.handle(ctx, m, x)))).filter(Boolean); return out.length ? res.json(out) : res.status(202).end(); }
     const out = await mcp.handle(ctx, m, body);

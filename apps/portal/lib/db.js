@@ -147,7 +147,7 @@ function open(dataDir) {
     memberByUsername: (u) => plain(get('SELECT id, name, username FROM members WHERE username = ? AND active = 1', clean(u, 40).toLowerCase())),
     login(username, password) {
       const m = get('SELECT * FROM members WHERE username = ? AND active = 1', clean(username, 40).toLowerCase());
-      return m && checkPassword(password, m.pass_hash) ? { id: m.id, name: m.name, role: m.role } : null;
+      return m && checkPassword(password, m.pass_hash) ? { id: m.id, name: m.name, username: m.username, role: m.role } : null;
     },
 
     activity: (limit = 100) => all('SELECT a.at, a.action, COALESCE(m.name, a.by_member) AS who FROM audit a LEFT JOIN members m ON m.id = a.by_member ORDER BY a.at DESC LIMIT ?', limit).map(plain),

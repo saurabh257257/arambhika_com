@@ -46,6 +46,16 @@
   }
   var listState = { q: '', owner: '', buyer: '', business: '', state: '', attention: false };
   // bk: a member's id shows only that member's basket; empty shows every customer
+  // what to add in Claude so that everything it saves is recorded under this one member: a connector address that only they can sign in to
+  function connectCard(p) {
+    var url = location.origin + '/mcp/u/' + p.username;
+    return '<div class="card connect"><div class="between"><h3>Connect Claude as ' + esc(p.name) + '</h3><span class="muted small">only ' + esc(p.name) + ' can sign in here</span></div>' +
+      '<ol class="small"><li>In Claude: <b>Settings, Connectors, Add custom connector</b>.</li><li>Name: <b>Portal - ' + esc(p.name) + '</b></li><li>Address: <b id="cu">' + esc(url) + '</b> <button class="btn sm" id="cuc" type="button">Copy address</button></li>' +
+      '<li>Sign in with username <b>' + esc(p.username) + '</b> and ' + esc(p.name) + "'s password.</li><li>Check: ask Claude <i>\"who am I on the portal?\"</i> It must answer <b>" + esc(p.name) + '</b>.</li></ol>' +
+      '<div class="muted small">On a Claude account that several people share, each person adds only their own connector and switches the others off.</div></div>';
+  }
+  document.addEventListener('click', function (e) { if (e.target.id !== 'cuc') return; var t = $('cu').textContent; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.resolve()).then(function () { toast('Copied'); }); });
+
   function customersScreen(bk) {
     var my = seq;
     var qs = ['q', 'owner', 'buyer', 'business', 'state'].map(function (k) { return k + '=' + encodeURIComponent(k === 'owner' && bk ? bk : listState[k]); }).join('&') + (listState.attention ? '&attention=1' : '');
@@ -55,7 +65,7 @@
       var title = who ? who.name + "'s basket" : 'Customers';
       var quick = bk ? [['', 'All'], ['attention', 'Needs attention']] : [['', 'All'], ['attention', 'Needs attention'], ['none', 'Unassigned (' + r[0].unassigned + ')']].concat(me.role === 'admin' ? [] : [['mine', 'My basket']]);
       var on = function (k) { return k === 'attention' ? listState.attention : k === 'none' ? ownerNow === 'none' : k === 'mine' ? ownerNow === me.id : (!listState.attention && (bk || !ownerNow)); };
-      view.innerHTML = '<div class="card"><div class="between"><h2>' + esc(title) + '</h2><span class="muted">' + rows.length + ' shown</span></div>' +
+      view.innerHTML = (who && (me.role === 'admin' || who.id === me.id) ? connectCard(who) : '') + '<div class="card"><div class="between"><h2>' + esc(title) + '</h2><span class="muted">' + rows.length + ' shown</span></div>' +
         '<div class="chips" id="quick">' + quick.map(function (q) { return '<button class="chip' + (on(q[0]) ? ' on' : '') + '" data-q="' + q[0] + '" type="button">' + q[1] + '</button>'; }).join('') + '</div>' +
         '<div class="row"><label>Search<input id="q" value="' + esc(listState.q) + '" placeholder="Name, mobile, company, city, what they want, anything in their history"></label>' +
         (bk ? '' : '<label>Basket assigned to<select id="own"><option value="">Any basket</option><option value="none"' + (listState.owner === 'none' ? ' selected' : '') + '>Unassigned</option>' + people.map(function (p) { return '<option value="' + p.id + '"' + (listState.owner === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select></label>') +
@@ -363,11 +373,11 @@
     var my = seq;
     return api('GET', '/api/my-connection').then(function (r) {
       if (my !== seq) return;
-      var url = location.origin + '/mcp';
+      var mine = team.filter(function (p) { return p.id === me.id; })[0], url = location.origin + (mine ? '/mcp/u/' + mine.username : '/mcp');
       if (!r.canConnect) { view.innerHTML = '<div class="card"><h2>My connection</h2><div class="muted">The admin sign-in cannot connect to the MCP. Create a member for yourself under Members, then sign in as that member.</div></div>'; return; }
       view.innerHTML = '<div class="card"><h2>My connection</h2><div class="muted">Connect Claude to the portal, so you can add customers and log calls, quotes, orders and payments by talking to Claude. Everything you save is recorded under your name.</div>' +
         '<div>' + (r.key ? 'You have a key (made ' + when(r.key.at) + '). It cannot be shown again.' : 'You do not have a key yet.') + '</div><div><button class="btn" id="mk" type="button">' + (r.key ? 'Make a new key (the old one stops working)' : 'Make my key') + '</button></div><div id="keyBox"></div></div>' +
-        '<div class="card"><h3>Connect the Claude app (easiest)</h3><ol><li>In Claude, open <b>Settings, Connectors, Add custom connector</b>.</li><li>Name: <b>Arambhika</b>. Address: <b>' + esc(url) + '</b></li><li>Choose <b>Sign in now</b> and <b>Register automatically</b>, then add it.</li><li>Claude opens a sign-in page from this portal. Type your portal <b>username and password</b>. Nothing else is needed, no key.</li></ol></div>' +
+        '<div class="card"><h3>Connect the Claude app (easiest)</h3><ol><li>In Claude, open <b>Settings, Connectors, Add custom connector</b>.</li><li>Name: <b>Portal - ' + esc(me.name) + '</b>. Address: <b>' + esc(url) + '</b></li><li>Choose <b>Sign in now</b> and <b>Register automatically</b>, then add it.</li><li>Claude opens a sign-in page from this portal. Type your portal <b>username and password</b>. Nothing else is needed, no key.</li></ol></div>' +
         '<div class="card"><h3>Or connect Claude Code with a key</h3><ol><li>Make your key above and copy the command that appears.</li><li>Paste it into a terminal on your computer, or in Claude Code.</li><li>Open Claude Code and ask, for example: <i>"Who am I on the portal?"</i> or <i>"Add customer Mr Rao, phone 98xxxxxx, and log a call: interested in nickel strip, follow up on 25 Nov."</i></li></ol><div class="muted small">Address: ' + esc(url) + '. This address is plain http for now, so do not use it on public Wi-Fi.</div></div>';
       $('mk').addEventListener('click', function () {
         if (r.key && !window.confirm('Make a new key? Your old key stops working.')) return;

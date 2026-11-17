@@ -874,4 +874,30 @@ describe('oauth sign-in for the Claude apps', () => {
       assert.equal((await ping(r2.access_token)).status, 401, 'password reset ends sessions');
     } finally { await s.stop(); }
   });
+
+  test('a personal connector address only lets that member in, so a shared Claude account cannot save under another name', async () => {
+    const s = await boot();
+    try {
+      s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' });
+      const V = s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-12345' }).member;
+      const redirect = 'https://claude.ai/api/mcp/auth_callback';
+      const pr = await (await fetch(s.base + '/.well-known/oauth-protected-resource/mcp/u/lokesh')).json();
+      assert.equal(pr.resource, s.base + '/mcp/u/lokesh');
+      const client = await (await fetch(s.base + '/oauth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_name: 'Claude', redirect_uris: [redirect] }) })).json();
+      const challenge = b64(crypto.createHash('sha256').update('v').digest());
+      const q = { response_type: 'code', client_id: client.client_id, redirect_uri: redirect, state: 's', code_challenge: challenge, code_challenge_method: 'S256', resource: s.base + '/mcp/u/lokesh' };
+      const html = await (await fetch(s.base + '/oauth/authorize?' + form(q))).text();
+      assert.match(html, /This connector is for <b>lokesh<\/b>/); assert.match(html, /readonly/);
+      const post = (username, password) => fetch(s.base + '/oauth/authorize', { method: 'POST', redirect: 'manual', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form({ client_id: client.client_id, redirect_uri: redirect, state: 's', code_challenge: challenge, resource: q.resource, username, password }) });
+      assert.equal((await post('vikas', 'vikas-pass-12345')).status, 403, "Vikas cannot sign in on Lokesh's address");
+      assert.equal((await post('lokesh', 'lokesh-pass-1234')).status, 302);
+
+      // even with a valid key, the other person's address refuses it
+      const key = s.app.repo.createKey(V.id).key;
+      const call = (path) => fetch(s.base + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'who_am_i', arguments: {} } }) });
+      assert.equal((await call('/mcp/u/lokesh')).status, 403);
+      const mine = await call('/mcp/u/vikas'); assert.equal(mine.status, 200);
+      assert.equal(JSON.parse((await mine.json()).result.content[0].text).name, 'Vikas');
+    } finally { await s.stop(); }
+  });
 });

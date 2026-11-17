@@ -97,3 +97,10 @@ DNS for `crm.arambhika.com` was added on 15 Nov 2026 and points at the dev dropl
 A customer sits in a member's **basket** ("Basket assigned to"). A new customer is created with a **blank basket**, whoever adds it (a team member or Claude), and keeps showing **Created by**. Only the admin puts a customer in a basket (dropdown in the list or on the customer page; Claude's `assign_customer` refuses team members). The menu is **Customers, Suppliers, one tab per team member (their basket, with a count), Members (admin), My connection**; the Unassigned quick filter shows how many customers are waiting for a basket.
 
 Members page: create with a typed or generated password, **Set password** (typed by the admin, 10+ characters), **Generate new**, switch off, revoke key, and **Delete** (the admin types the member's username to confirm). Deleting ends their login, key and sessions, hides them from every list and frees the username; what they did before keeps their name, and the customers in their basket go back to unassigned.
+
+## One connector per person (shared Claude accounts)
+
+When several people use the same Claude account, each adds their own connector with a personal address:
+`https://crm.arambhika.com/mcp/u/<username>`. Only that member can sign in through it (the sign-in page shows
+the username locked), and a key or token of anyone else is refused with a clear message. Each member's tab shows
+the address and the steps (admin sees everyone's, a member sees their own). `/mcp` still works for one person per Claude account.
