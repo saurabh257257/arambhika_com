@@ -49,6 +49,7 @@ function open(dataDir) {
   ensure(db, dataDir);
   // keys for the MCP connection: only a hash is stored, so a key can be shown once and never read back
   if (!db.prepare('PRAGMA table_info(members)').all().some((c) => c.name === 'key_hash')) db.exec('ALTER TABLE members ADD COLUMN key_hash TEXT; ALTER TABLE members ADD COLUMN key_created_at TEXT; CREATE INDEX members_key ON members(key_hash);');
+  if (!db.prepare('PRAGMA table_info(members)').all().some((c) => c.name === 'deleted')) db.exec('ALTER TABLE members ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0');
   const get = (sql, ...a) => db.prepare(sql).get(...a);
   const all = (sql, ...a) => db.prepare(sql).all(...a);
   const run = (sql, ...a) => db.prepare(sql).run(...a);
@@ -71,13 +72,28 @@ function open(dataDir) {
       audit(by, 'Created member ' + username);
       return { member: { ...m, active: 1 } };
     },
-    members: () => all('SELECT id, name, username, role, active, created_at FROM members ORDER BY name COLLATE NOCASE'),
+    members: () => all('SELECT id, name, username, role, active, created_at FROM members WHERE deleted = 0 ORDER BY name COLLATE NOCASE'),
     member: (mid) => plain(get('SELECT id, name, username, role, active FROM members WHERE id = ?', mid)),
     setPassword(mid, password, by = 'admin') {
       if (String(password || '').length < 10) return { error: 'The password needs at least 10 characters' };
       if (!get('SELECT id FROM members WHERE id = ?', mid)) return { error: 'Member not found', status: 404 };
       run('UPDATE members SET pass_hash = ? WHERE id = ?', hashPassword(password), mid); run('DELETE FROM oauth_tokens WHERE member_id = ?', mid); audit(by, 'Reset password of ' + get('SELECT username FROM members WHERE id = ?', mid).username);
       return { ok: true };
+    },
+    // permanent for the person: their login, key and sign-ins end and they disappear from every list. Their past work keeps their name,
+    // and the customers in their basket go back to unassigned. The admin must type the member's username to confirm.
+    deleteMember(mid, confirm, by = 'admin') {
+      const m = get('SELECT id, name, username FROM members WHERE id = ? AND deleted = 0', String(mid || ''));
+      if (!m) return { error: 'Member not found', status: 404 };
+      if (clean(confirm, 40).toLowerCase() !== m.username) return { error: 'Type the member\'s username to confirm' };
+      const n = get('SELECT COUNT(*) AS n FROM customers WHERE owner_id = ?', m.id).n;
+      tx(() => {
+        run('UPDATE customers SET owner_id = NULL WHERE owner_id = ?', m.id);
+        run('DELETE FROM oauth_tokens WHERE member_id = ?', m.id);
+        run('UPDATE members SET deleted = 1, active = 0, key_hash = NULL, key_created_at = NULL, username = ? WHERE id = ?', 'deleted-' + m.id.slice(0, 8), m.id);
+      });
+      audit(by, 'DELETED member ' + m.name + ' (' + m.username + '); ' + n + ' customer' + (n === 1 ? '' : 's') + ' went back to unassigned');
+      return { ok: true, name: m.name, unassigned: n };
     },
     setActive(mid, active, by = 'admin') {
       if (!get('SELECT id FROM members WHERE id = ?', mid)) return { error: 'Member not found', status: 404 };

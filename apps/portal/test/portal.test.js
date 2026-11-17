@@ -305,16 +305,17 @@ describe('portal', () => {
       add({ name: 'Rao', mobile: '9811122233', state: 'Maharashtra', buyer_type: 'oem', address: 'Plot 4, MIDC', about: 'Makes e-bike packs' });
       add({ name: 'Shah', mobile: '9811122244', state: 'Gujarat', buyer_type: 'trader', ownerId: V.id });
       add({ name: 'Nobody', mobile: '9811122255', state: 'Maharashtra', ownerId: null });
-      assert.equal(s.app.repo.customer('9811122233').owner_name, 'Lokesh', 'the person who adds a customer owns them');
+      assert.equal(s.app.repo.customer('9811122233').owner_id, null, 'a new customer starts in nobody\'s basket'); assert.equal(s.app.repo.customer('9811122233').created_by_name, 'Lokesh', 'but shows who created it');
       assert.equal(s.app.repo.customer('9811122255').owner_id, null);
       const names = async (qs) => (await s.admin.get('/api/customers?' + qs)).data.customers.map((c) => c.name).sort();
       assert.deepEqual(await names('state=maharashtra'), ['Nobody', 'Rao']);
-      assert.deepEqual(await names('owner=none'), ['Nobody']);
+      assert.deepEqual(await names('owner=none'), ['Nobody', 'Rao']);
       assert.deepEqual(await names('owner=' + V.id), ['Shah']);
       assert.deepEqual(await names('buyer=oem'), ['Rao']);
       assert.deepEqual((await s.admin.get('/api/customers')).data.options.states.map((x) => x.state), ['Gujarat', 'Maharashtra']);
-      assert.equal(s.app.repo.assignCustomer('9811122255', 'vikas', L.id).owner, 'Vikas');
+      assert.equal(s.app.repo.assignCustomer('9811122255', 'vikas', L.id).owner, 'Vikas'); assert.equal(s.app.repo.assignCustomer('9811122233', 'vikas', L.id).owner, 'Vikas');
       assert.deepEqual(await names('owner=none'), []);
+      assert.equal(s.app.repo.assignCustomer('9811122233', 'unassigned', L.id).owner, null);
       assert.equal(s.app.repo.assignCustomer('9811122255', 'unassigned', L.id).owner, null);
       assert.match(s.app.repo.assignCustomer('9811122255', 'ghost', L.id).error, /No active team member/);
 
@@ -354,7 +355,7 @@ describe('portal', () => {
       const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
       s.app.repo.addCustomer({ name: 'Rao', mobile: '9811122233' }, L.id);
       let row = (await s.admin.get('/api/customers')).data.customers[0];
-      assert.equal(row.created_by_name, 'Lokesh'); assert.equal(row.owner_name, 'Lokesh', 'a new customer starts assigned to the person who created it');
+      assert.equal(row.created_by_name, 'Lokesh'); assert.equal(row.owner_name, null, 'a new customer starts with a blank basket, even when a team member adds it'); assert.equal(row.owner_id, null);
       assert.equal((await lok.raw('PATCH', '/api/customers/9811122233/assign', { owner: V.id })).status, 403, 'a team member cannot reassign');
       assert.equal((await client(s.base).raw('PATCH', '/api/customers/9811122233/assign', { owner: V.id })).status, 401);
       assert.equal((await s.admin.raw('PATCH', '/api/customers/9811122233/assign', { owner: 'ghost-id' })).status, 400);
@@ -496,6 +497,50 @@ describe('portal', () => {
     } finally { await s.stop(); }
   });
 
+  test('the admin sets a password by hand, deletes a member (history keeps the name, the basket empties), and the team list shows basket counts', async () => {
+    const s = await boot();
+    try {
+      const L = s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' }).member;
+      const V = s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' }).member;
+      const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
+      s.app.repo.addCustomer({ name: 'A', mobile: '9811122233' }, L.id); s.app.repo.addCustomer({ name: 'B', mobile: '9811122244' }, L.id); s.app.repo.addCustomer({ name: 'C', mobile: '9811122255' }, V.id);
+      s.app.repo.assignCustomer('9811122233', 'lokesh', 'admin'); s.app.repo.assignCustomer('9811122244', 'lokesh', 'admin');
+      s.app.repo.addInteraction({ mobile: '9811122233', type: 'call', summary: 'Spoke to A' }, L.id);
+      const key = s.app.repo.createKey(L.id).key;
+
+      // the people list drives the basket tabs
+      const ppl = (await lok.get('/api/people')).data;
+      assert.deepEqual(ppl.people.map((p) => [p.name, p.customers]), [['Lokesh', 2], ['Vikas', 0]]); assert.equal(ppl.unassigned, 1);
+
+      // a password typed by the admin works, and the old one stops
+      assert.equal((await s.admin.post('/api/members/' + V.id + '/password', { password: 'short' })).status, 400);
+      assert.equal((await s.admin.post('/api/members/' + V.id + '/password', { password: 'the-password-I-chose-1' })).status, 200);
+      assert.equal((await client(s.base).post('/api/auth/login', { username: 'vikas', password: 'vikas-pass-1234' })).status, 401);
+      assert.equal((await client(s.base).post('/api/auth/login', { username: 'vikas', password: 'the-password-I-chose-1' })).status, 200);
+
+      // deleting a member: admin only, and only after typing their username
+      assert.equal((await lok.raw('DELETE', '/api/members/' + L.id, { confirm: 'lokesh' })).status, 403);
+      assert.equal((await s.admin.raw('DELETE', '/api/members/' + L.id, {})).status, 400);
+      assert.equal((await s.admin.raw('DELETE', '/api/members/' + L.id, { confirm: 'vikas' })).status, 400, 'the wrong username does not count');
+      assert.equal((await s.admin.raw('DELETE', '/api/members/nope', { confirm: 'x' })).status, 404);
+      assert.equal(s.app.repo.member(L.id).active, 1, 'nothing happened after the refusals');
+      const gone = await s.admin.raw('DELETE', '/api/members/' + L.id, { confirm: 'Lokesh' });
+      assert.equal(gone.status, 200); assert.equal(gone.data.unassigned, 2);
+      assert.equal((await s.admin.get('/api/members')).data.members.some((m) => m.username === 'lokesh'), false, 'gone from the list');
+      assert.deepEqual((await s.admin.get('/api/people')).data.people.map((p) => p.name), ['Vikas']);
+      assert.equal((await s.admin.get('/api/people')).data.unassigned, 3, 'their two customers are back with nobody, plus the one that was already unassigned');
+      assert.equal((await client(s.base).post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' })).status, 401, 'cannot sign in');
+      assert.equal((await lok.get('/api/customers')).status, 401, 'an open session ends at once');
+      assert.equal((await fetch(s.base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: '{}' })).status, 401, 'the key stops');
+      // the history still says who did it
+      const a = (await s.admin.get('/api/customers/9811122233')).data.customer;
+      assert.equal(a.created_by_name, 'Lokesh'); assert.equal(a.interactions[0].by_name, 'Lokesh'); assert.equal(a.owner_id, null);
+      assert.match((await s.admin.get('/api/members')).data.activity[0].action, /DELETED member Lokesh \(lokesh\); 2 customers went back to unassigned/);
+      // the username can be used again by a new person
+      assert.equal((await s.admin.post('/api/members', { name: 'Lokesh Two', username: 'lokesh', password: 'another-long-pass-1' })).status, 200);
+    } finally { await s.stop(); }
+  });
+
   test('the next step for each order, invoice and quote', () => {
     const today = '2026-11-15';
     const o = (x) => orderAction({ date: '2026-11-14', status: 'open', shipped: 'not_shipped', invoiced: 'not_invoiced', ...x }, today);
@@ -561,6 +606,11 @@ describe('mcp', () => {
       assert.equal((await call(s.base, key, 'log_interaction', { mobile: '9811122233', type: 'dance', summary: 'x' })).isError, true);
       // a Claude holding the older tool list sends customer_id: a mobile number there still works
       assert.equal(data(await call(s.base, key, 'log_interaction', { customer_id: '98111 22233', type: 'note', summary: 'logged the old way' })).saved, true);
+      assert.equal(s.app.repo.customer('9811122233').owner_id, null, 'created through Claude: blank basket');
+      assert.equal(data(await call(s.base, key, 'get_customer', { mobile: '9811122233' })).basket, 'unassigned');
+      const sneak = data(await call(s.base, key, 'add_customer', { mobile: '9811177799', name: 'Tried to take it', owner_username: 'lokesh' }));
+      assert.equal(s.app.repo.customer('9811177799').owner_id, null, 'naming an owner when adding changes nothing'); assert.equal(sneak.basket, 'unassigned');
+      s.app.repo.assignCustomer('9811122233', 'lokesh', 'admin'); // the admin puts them in Lokesh's basket in the portal
       const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
       assert.equal((await call(s.base, key, 'log_interaction', { mobile: '9811122233', type: 'call', summary: 'Wants nickel strip', next_date: yesterday })).isError, undefined);
       assert.equal(data(await call(s.base, key, 'my_follow_ups', {})).length, 1);
@@ -569,7 +619,7 @@ describe('mcp', () => {
       const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       assert.equal(data(await call(s.base, key, 'add_file', { mobile: '9811122233', name: 'shot.png', note: 'Payment screenshot for the nickel order', data_base64: png })).saved, true);
       assert.equal((await call(s.base, key, 'add_file', { mobile: '9811122233', name: 'bad', note: 'not valid at all', data_base64: '!!!' })).isError, true);
-      assert.equal(data(await call(s.base, key, 'search_customers', { query: 'rao' }))[0].assigned_to, 'Lokesh');
+      assert.equal(data(await call(s.base, key, 'search_customers', { query: 'rao' }))[0].basket, 'Lokesh');
       assert.equal(data(await call(s.base, key, 'search_customers', { buyer_type: 'trader' })).length, 1);
       const full = data(await call(s.base, key, 'get_customer', { mobile: '09811122233' }));
       assert.deepEqual(full.interactions.map((i) => [i.type, i.by]), [['quote', 'Lokesh'], ['call', 'Lokesh'], ['note', 'Lokesh']]); assert.equal(full.state, 'Gujarat');
@@ -691,22 +741,20 @@ describe('mcp: finishing a customer profile', () => {
       // OEM or trader, who looks after them, and the other people there: all through Claude
       s.app.repo.createMember({ name: 'Vikas', username: 'vikas', password: 'vikas-pass-1234' });
       assert.equal(data(await call(s.base, key, 'update_customer', { mobile: '9811122233', buyer_type: 'oem', address: 'Plot 4, MIDC', about: 'Makes e-bike packs' })).saved, true);
-      assert.equal(s.app.repo.customer('9811122233').owner_name, 'Lokesh', 'added by Lokesh without naming an owner: Lokesh looks after them');
+      assert.equal(s.app.repo.customer('9811122233').owner_id, null, 'added by Lokesh through Claude: nobody\'s basket until the admin assigns it');
       // assigning is the admin's job: a team member who tries through Claude is told so, and nothing changes
       const refused = await call(s.base, key, 'assign_customer', { mobile: '9811122233', owner_username: 'vikas' });
       assert.equal(refused.isError, true); assert.match(refused.content[0].text, /Only the admin can change who a customer is assigned to/);
-      assert.equal(s.app.repo.customer('9811122233').owner_name, 'Lokesh');
-      const sneaky = await call(s.base, key, 'add_customer', { mobile: '9811177777', name: 'For Vikas', owner_username: 'vikas' });
-      assert.equal(sneaky.isError, true); assert.equal(s.app.repo.customer('9811177777'), null, 'not even created for someone else');
-      assert.equal(data(await call(s.base, key, 'add_customer', { mobile: '9811177778', name: 'For myself', owner_username: 'lokesh' })).saved, true);
-      assert.equal(s.app.repo.customer('9811177778').owner_name, 'Lokesh');
+      assert.equal(s.app.repo.customer('9811122233').owner_name, null, 'a refused change leaves the basket as it was');
+      const sneaky = data(await call(s.base, key, 'add_customer', { mobile: '9811177777', name: 'For Vikas', owner_username: 'vikas' }));
+      assert.equal(s.app.repo.customer('9811177777').owner_id, null, 'a member cannot put a new customer in anyone\'s basket'); assert.equal(sneaky.basket, 'unassigned');
       // the admin's side: done in the portal
       assert.equal(s.app.repo.assignCustomer('9811122233', 'vikas', 'admin').owner, 'Vikas');
       assert.equal(data(await call(s.base, key, 'search_customers', { owner_username: 'vikas' })).length, 1);
       assert.equal(data(await call(s.base, key, 'get_customer', { mobile: '9811122233' })).created_by, 'Lokesh', 'who created it never changes');
-      assert.equal(data(await call(s.base, key, 'get_customer', { mobile: '9811122233' })).assigned_to, 'Vikas');
+      assert.equal(data(await call(s.base, key, 'get_customer', { mobile: '9811122233' })).basket, 'Vikas');
       assert.equal(s.app.repo.assignCustomer('9811122233', 'unassigned', 'admin').owner, null);
-      assert.equal(data(await call(s.base, key, 'search_customers', { owner_username: 'unassigned' })).length, 1);
+      assert.ok(data(await call(s.base, key, 'search_customers', { owner_username: 'unassigned' })).some((x) => x.name === 'Mr Rao'), 'unassigned customers are listed');
       assert.equal(data(await call(s.base, key, 'save_customer_contact', { mobile: '9811122233', contact_mobile: '90000 11111', name: 'Anil Rao', role: 'Buyer' })).created, true);
       assert.equal((await call(s.base, key, 'save_customer_contact', { mobile: '9811122233', contact_mobile: '12', name: 'Bad' })).isError, true);
       const withContacts = data(await call(s.base, key, 'get_customer', { mobile: '9811122233' }));

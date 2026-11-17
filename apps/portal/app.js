@@ -107,7 +107,8 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
   app.get('/api/me', (req, res) => res.json({ user: req.user, types: TYPES }));
 
   // ---- members (admin page) ----
-  app.get('/api/people', (req, res) => res.json({ people: repo.members().filter((m) => m.active).map((m) => ({ id: m.id, name: m.name })) }));
+  // the team (for the basket tabs and the assignment dropdowns), with how many customers each basket holds
+  app.get('/api/people', (req, res) => { const b = repo.baskets(); res.json({ people: repo.members().filter((m) => m.active).map((m) => ({ id: m.id, name: m.name, username: m.username, customers: b.per.get(m.id) || 0 })), unassigned: b.unassigned }); });
   app.get('/api/members', requireAdmin, (req, res) => res.json({ members: repo.members().map((m) => ({ ...m, hasKey: !!repo.keyInfo(m.id) })), activity: repo.activity(50) }));
   app.post('/api/members/:id/revoke-key', requireAdmin, (req, res) => answer(res, repo.revokeKey(req.params.id, req.user.id)));
   // each member makes their own key (shown once); the admin has no member record, so makes themselves a member to connect
@@ -116,6 +117,7 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
   const answer = (res, r, body) => (r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json(body || { ok: true }));
   app.post('/api/members', requireAdmin, (req, res) => { const r = repo.createMember(req.body || {}, req.user.id); answer(res, r, { member: r.member }); });
   app.post('/api/members/:id/password', requireAdmin, (req, res) => answer(res, repo.setPassword(req.params.id, (req.body || {}).password, req.user.id)));
+  app.delete('/api/members/:id', requireAdmin, (req, res) => { const r = repo.deleteMember(req.params.id, (req.body || {}).confirm, req.user.id); answer(res, r, r); });
   app.patch('/api/members/:id', requireAdmin, (req, res) => answer(res, repo.setActive(req.params.id, !!(req.body || {}).active, req.user.id)));
 
   // ---- adding a file from the page: the original bytes go straight in. kind is customer, vendor or item; key is the mobile number or item id.

@@ -45,37 +45,39 @@
     return '<select class="assign" data-assign="' + c.mobile + '"><option value=""' + (c.owner_id ? '' : ' selected') + '>Unassigned</option>' + people.map(function (p) { return '<option value="' + p.id + '"' + (c.owner_id === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select>';
   }
   var listState = { q: '', owner: '', buyer: '', business: '', state: '', attention: false };
-  function customersScreen() {
+  // bk: a member's id shows only that member's basket; empty shows every customer
+  function customersScreen(bk) {
     var my = seq;
-    var qs = ['q', 'owner', 'buyer', 'business', 'state'].map(function (k) { return k + '=' + encodeURIComponent(listState[k]); }).join('&') + (listState.attention ? '&attention=1' : '');
+    var qs = ['q', 'owner', 'buyer', 'business', 'state'].map(function (k) { return k + '=' + encodeURIComponent(k === 'owner' && bk ? bk : listState[k]); }).join('&') + (listState.attention ? '&attention=1' : '');
     return Promise.all([api('GET', '/api/people'), api('GET', '/api/customers?' + qs)]).then(function (r) {
       if (my !== seq) return;
-      var rows = r[1].customers, opt = r[1].options, people = r[0].people;
-      var quick = [['', 'All'], ['attention', 'Needs attention'], ['none', 'Unassigned']].concat(me.role === 'admin' ? [] : [['mine', 'Mine']]);
-      var on = function (k) { return k === 'attention' ? listState.attention : k === 'none' ? listState.owner === 'none' : k === 'mine' ? listState.owner === me.id : (!listState.attention && !listState.owner); };
-      view.innerHTML = '<div class="card"><div class="between"><h2>Customers</h2><span class="muted">' + rows.length + ' shown</span></div>' +
+      var rows = r[1].customers, opt = r[1].options, people = r[0].people, who = bk ? people.filter(function (p) { return p.id === bk; })[0] : null, ownerNow = bk || listState.owner;
+      var title = who ? who.name + "'s basket" : 'Customers';
+      var quick = bk ? [['', 'All'], ['attention', 'Needs attention']] : [['', 'All'], ['attention', 'Needs attention'], ['none', 'Unassigned (' + r[0].unassigned + ')']].concat(me.role === 'admin' ? [] : [['mine', 'My basket']]);
+      var on = function (k) { return k === 'attention' ? listState.attention : k === 'none' ? ownerNow === 'none' : k === 'mine' ? ownerNow === me.id : (!listState.attention && (bk || !ownerNow)); };
+      view.innerHTML = '<div class="card"><div class="between"><h2>' + esc(title) + '</h2><span class="muted">' + rows.length + ' shown</span></div>' +
         '<div class="chips" id="quick">' + quick.map(function (q) { return '<button class="chip' + (on(q[0]) ? ' on' : '') + '" data-q="' + q[0] + '" type="button">' + q[1] + '</button>'; }).join('') + '</div>' +
         '<div class="row"><label>Search<input id="q" value="' + esc(listState.q) + '" placeholder="Name, mobile, company, city, what they want, anything in their history"></label>' +
-        '<label>Assigned to<select id="own"><option value="">Anyone</option><option value="none"' + (listState.owner === 'none' ? ' selected' : '') + '>Unassigned</option>' + people.map(function (p) { return '<option value="' + p.id + '"' + (listState.owner === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select></label>' +
+        (bk ? '' : '<label>Basket assigned to<select id="own"><option value="">Any basket</option><option value="none"' + (listState.owner === 'none' ? ' selected' : '') + '>Unassigned</option>' + people.map(function (p) { return '<option value="' + p.id + '"' + (listState.owner === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select></label>') +
         '<label>State<select id="st"><option value="">All states</option>' + opt.states.map(function (s) { return '<option value="' + esc(s.state) + '"' + (listState.state.toLowerCase() === s.state.toLowerCase() ? ' selected' : '') + '>' + esc(s.state) + ' (' + s.n + ')</option>'; }).join('') + '</select></label>' +
         '<label>Type<select id="buyer"><option value="">Trader or OEM</option>' + opt.buyer_types.filter(function (b) { return b !== 'unknown'; }).map(function (b) { return '<option value="' + b + '"' + (listState.buyer === b ? ' selected' : '') + '>' + nice(b) + '</option>'; }).join('') + '</select></label>' +
         '<label>Business<select id="biz"><option value="">Any</option>' + opt.businesses.map(function (b) { return '<option value="' + b + '"' + (listState.business === b ? ' selected' : '') + '>' + nice(b) + '</option>'; }).join('') + '</select></label></div>' +
-        (rows.length ? '<div class="clist"><div class="chead"><span>Customer</span><span>City, state</span><span>Mobile</span><span>Created by</span><span>Assigned to</span><span>Status</span></div>' + rows.map(function (c) {
+        (rows.length ? '<div class="clist"><div class="chead"><span>Customer</span><span>City, state</span><span>Mobile</span><span>Created by</span><span>Basket assigned to</span><span>Status</span></div>' + rows.map(function (c) {
           return '<div class="crow" data-go="customer/' + c.mobile + '"><div class="cmain">' + avatar(c.name) + '<div><b>' + esc(c.name) + '</b><div class="muted small">' + esc(c.company || '') + '</div><div class="cmeta">' + typePill(c.buyer_type) + ' ' + zohoChip(c) + '</div></div></div>' +
             '<div class="cplace">' + esc([c.city, c.state].filter(Boolean).join(', ')) + '</div><div class="cnum">' + esc(c.mobile) + '</div>' +
             '<div class="cown"><span class="lbl">Created by</span>' + (c.created_by_name ? avatar(c.created_by_name) + ' <span>' + esc(c.created_by_name) + '</span>' : '<span class="muted small">\u2014</span>') + '</div>' +
-            '<div class="cown"><span class="lbl">Assigned to</span>' + assignCell(c, people) + '</div>' +
+            '<div class="cown"><span class="lbl">Basket assigned to</span>' + assignCell(c, people) + '</div>' +
             '<div class="cflags">' + (chips(c.attention) || '<span class="muted small">' + (c.last_at ? 'Last contact ' + ago(c.last_at).toLowerCase() : 'No contact yet') + '</span>') + '</div></div>';
-        }).join('') + '</div>' : '<div class="empty">No customers match. They appear here as your team adds them through Claude.</div>') + '</div>';
+        }).join('') + '</div>' : '<div class="empty">' + (bk ? 'No customers in this basket yet. The admin puts customers here from the Customers tab.' : 'No customers match. They appear here as your team adds them through Claude.') + '</div>') + '</div>';
       var q = $('q');
-      debounce(q, function () { listState.q = q.value; customersScreen().then(function () { var n = $('q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); });
-      [['own', 'owner'], ['st', 'state'], ['buyer', 'buyer'], ['biz', 'business']].forEach(function (p) { $(p[0]).addEventListener('change', function (e) { listState[p[1]] = e.target.value; customersScreen(); }); });
+      debounce(q, function () { listState.q = q.value; customersScreen(bk).then(function () { var n = $('q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); });
+      [['own', 'owner'], ['st', 'state'], ['buyer', 'buyer'], ['biz', 'business']].forEach(function (p) { if (!$(p[0])) return; $(p[0]).addEventListener('change', function (e) { listState[p[1]] = e.target.value; customersScreen(bk); }); });
       view.querySelectorAll('select[data-assign]').forEach(function (sel) { sel.addEventListener('change', function () {
-        api('PATCH', '/api/customers/' + sel.dataset.assign + '/assign', { owner: sel.value || null }).then(function (x) { toast(x.owner ? 'Assigned to ' + x.owner : 'Now unassigned'); return customersScreen(); }).catch(fail);
+        api('PATCH', '/api/customers/' + sel.dataset.assign + '/assign', { owner: sel.value || null }).then(function (x) { toast(x.owner ? 'Assigned to ' + x.owner : 'Now unassigned'); return customersScreen(bk); }).catch(fail);
       }); });
       $('quick').addEventListener('click', function (e) {
         var b = e.target.closest('[data-q]'); if (!b) return; var k = b.dataset.q;
-        listState.attention = k === 'attention'; listState.owner = k === 'none' ? 'none' : k === 'mine' ? me.id : ''; customersScreen();
+        listState.attention = k === 'attention'; if (!bk) listState.owner = k === 'none' ? 'none' : k === 'mine' ? me.id : ''; customersScreen(bk);
       });
     });
   }
@@ -135,7 +137,7 @@
       view.innerHTML = '<a class="btn ghost sm back" href="#customers">&larr; All customers</a>' +
         '<div class="hero"><div class="herotop">' + avatar(c.name, true) + '<div class="heroname"><h2>' + esc(c.name) + '</h2><div>' + esc(c.company || '') + '</div></div>' +
         '<div class="heropills">' + typePill(c.buyer_type) + (c.business ? pill(nice(c.business), 'light') : '') + (c.source ? pill('From ' + nice(c.source), 'light') : '') + '</div></div>' +
-        '<div class="herolines">' + (place ? '<span class="place">📍 ' + esc(place) + '</span>' : '') + '<a class="tel" href="tel:+91' + c.mobile + '">📞 ' + esc(c.mobile) + '</a><span>Created by <b>' + esc(c.created_by_name || '\u2014') + '</b> on ' + date(c.created_at) + '</span><span>' + (me.role === 'admin' ? 'Assigned to <select class="assign light" id="assignSel"></select>' : (c.owner_name ? 'Assigned to <b>' + esc(c.owner_name) + '</b>' : '<b>Unassigned</b>')) + '</span></div>' +
+        '<div class="herolines">' + (place ? '<span class="place">📍 ' + esc(place) + '</span>' : '') + '<a class="tel" href="tel:+91' + c.mobile + '">📞 ' + esc(c.mobile) + '</a><span>Created by <b>' + esc(c.created_by_name || '\u2014') + '</b> on ' + date(c.created_at) + '</span><span>' + (me.role === 'admin' ? 'Basket assigned to <select class="assign light" id="assignSel"></select>' : (c.owner_name ? 'Basket: <b>' + esc(c.owner_name) + '</b>' : 'Basket: <b>unassigned</b>')) + '</span></div>' +
         '<div class="kpis" id="kpis"><div class="kpi k-green"><small>Sold so far</small><b id="kSold">&hellip;</b></div><div class="kpi k-teal"><small>Collected</small><b id="kColl">&hellip;</b></div><div class="kpi k-red"><small>Still to collect</small><b id="kDue">&hellip;</b></div><div class="kpi k-blue"><small>Quotes waiting</small><b id="kQuote">&hellip;</b></div>' + zohoTile(c) + '</div></div>' +
         '<div class="card pursue"><h3>What to do next</h3><div class="plines">' +
         '<div class="pl">' + (next ? '<span class="pill ' + (next < new Date().toISOString().slice(0, 10) ? 'off' : 'info') + '">Follow up ' + dueText(next) + ' (' + date(next) + ')</span> <span class="muted">' + esc(last.summary.slice(0, 140)) + '</span>' : '<span class="pill due">No follow-up date set</span> <span class="muted">Ask Claude to log the next call with a date.</span>') + '</div>' +
@@ -322,7 +324,7 @@
       view.innerHTML = '<div class="card"><h2>Team members</h2><div class="muted">Create a person here and give them the username and password. They use these to sign in to the portal and to the MCP, and everything they change is saved under their name.</div>' +
         '<form id="mk" class="row"><label>Name<input name="name" maxlength="60" required></label><label>Username<input name="username" maxlength="40" autocapitalize="none" required></label><label>Password (10+ characters)<input name="password" id="pw" minlength="10" required></label><button class="btn ghost fit" id="gen" type="button">Generate</button><button class="btn fit" type="submit">Create member</button></form><div class="err" id="mkErr"></div><div id="shown"></div></div>' +
         '<div class="card"><h3>Members (' + r.members.length + ')</h3>' + (r.members.length ? '<table><thead><tr><th>Name</th><th>Username</th><th></th></tr></thead><tbody>' + r.members.map(function (m) {
-          return '<tr><td><b>' + esc(m.name) + '</b> ' + (m.active ? '' : '<span class="pill off">Switched off</span>') + (m.hasKey ? ' <span class="pill ok">MCP key</span>' : '') + '</td><td>' + esc(m.username) + '</td><td style="text-align:right"><button class="btn ghost sm" data-pw="' + m.id + '" data-name="' + esc(m.name) + '" type="button">Reset password</button> ' + (m.hasKey ? '<button class="btn ghost sm" data-rk="' + m.id + '" data-name="' + esc(m.name) + '" type="button">Revoke key</button> ' : '') + '<button class="btn ghost sm" data-act="' + m.id + '" data-on="' + (m.active ? 0 : 1) + '" type="button">' + (m.active ? 'Switch off' : 'Switch on') + '</button></td></tr>';
+          return '<tr><td><b>' + esc(m.name) + '</b> ' + (m.active ? '' : '<span class="pill off">Switched off</span>') + (m.hasKey ? ' <span class="pill ok">MCP key</span>' : '') + '</td><td>' + esc(m.username) + '</td><td style="text-align:right"><button class="btn ghost sm" data-setpw="' + m.id + '" data-name="' + esc(m.name) + '" type="button">Set password</button> <button class="btn ghost sm" data-pw="' + m.id + '" data-name="' + esc(m.name) + '" type="button">Generate new</button> ' + (m.hasKey ? '<button class="btn ghost sm" data-rk="' + m.id + '" data-name="' + esc(m.name) + '" type="button">Revoke key</button> ' : '') + '<button class="btn ghost sm" data-act="' + m.id + '" data-on="' + (m.active ? 0 : 1) + '" type="button">' + (m.active ? 'Switch off' : 'Switch on') + '</button> <button class="btn ghost sm danger" data-delm="' + m.id + '" data-name="' + esc(m.name) + '" data-user="' + esc(m.username) + '" type="button">Delete</button></td></tr>';
         }).join('') + '</tbody></table>' : '<div class="empty">No members yet.</div>') + '</div>' +
         '<div class="card"><h3>Recent changes</h3>' + (r.activity.length ? r.activity.map(function (a) { return '<div class="muted"><b>' + esc(a.who) + '</b> ' + esc(a.action) + ' &middot; ' + when(a.at) + '</div>'; }).join('') : '<div class="muted">Nothing yet.</div>') + '</div>';
       $('gen').addEventListener('click', function () { $('pw').value = randomPassword(); });
@@ -337,6 +339,18 @@
     });
   }
   function onMembersClick(e) {
+    var sp = e.target.closest('[data-setpw]'), dm = e.target.closest('[data-delm]');
+    if (sp) {
+      var typed = window.prompt('Type the new password for ' + sp.dataset.name + ' (at least 10 characters). Their old password stops working.');
+      if (typed == null) return;
+      if (typed.length < 10) { toast('The password needs at least 10 characters'); return; }
+      api('POST', '/api/members/' + sp.dataset.setpw + '/password', { password: typed }).then(function () { return membersScreen(); }).then(function () { $('shown').innerHTML = '<div class="card" style="background:#f0fdfa;border-color:#99f6e4"><b>Password set for ' + esc(sp.dataset.name) + '.</b> Share it with them now: <b>' + esc(typed) + '</b></div>'; window.scrollTo(0, 0); }).catch(fail); return;
+    }
+    if (dm) {
+      var ok = window.prompt('Delete ' + dm.dataset.name + '?\nThey can no longer sign in and disappear from every list. What they did before keeps their name, and the customers in their basket go back to unassigned.\n\nTo confirm, type their username (' + dm.dataset.user + '):');
+      if (ok == null) return;
+      api('DELETE', '/api/members/' + dm.dataset.delm, { confirm: ok.trim() }).then(function (x) { toast(dm.dataset.name + ' deleted' + (x.unassigned ? '; ' + x.unassigned + ' customer' + (x.unassigned === 1 ? '' : 's') + ' are unassigned now' : '')); return membersScreen(); }).catch(fail); return;
+    }
     var p = e.target.closest('[data-pw]'), a = e.target.closest('[data-act]'), rk = e.target.closest('[data-rk]');
     if (rk) { if (window.confirm('Revoke the MCP key of ' + rk.dataset.name + '? Claude stops working for them until they make a new key.')) api('POST', '/api/members/' + rk.dataset.rk + '/revoke-key', {}).then(function () { toast('Key revoked'); return membersScreen(); }).catch(fail); return; }
     if (p) { var pw = randomPassword(); if (!window.confirm('Set a new password for ' + p.dataset.name + '? Their old password stops working.')) return;
@@ -367,18 +381,30 @@
   }
 
   // ---------- shell ----------
+  // one tab per team member: their basket of customers
+  var team = [];
+  function tabList() {
+    var dup = {}; team.forEach(function (p) { dup[p.name] = (dup[p.name] || 0) + 1; });
+    return [['customers', 'Customers'], ['suppliers', 'Suppliers']]
+      .concat(team.map(function (p) { return ['basket/' + p.id, (dup[p.name] > 1 ? p.name + ' (' + p.username + ')' : p.name) + (p.id === me.id ? ' \u2022 you' : ''), p.customers]; }))
+      .concat(me.role === 'admin' ? [['members', 'Members']] : []).concat([['connection', 'My connection']]);
+  }
+  function drawTabs() {
+    var h = location.hash.replace(/^#/, '') || 'customers', parts = h.split('/');
+    var base = parts[0] === 'basket' ? 'basket/' + parts[1] : { customer: 'customers', vendor: 'suppliers', item: 'suppliers', vendors: 'suppliers', items: 'suppliers' }[parts[0]] || parts[0];
+    $('tabs').innerHTML = tabList().map(function (t) { return '<button class="tab' + (base === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '" type="button">' + esc(t[1]) + (t[2] != null ? ' <span class="n">' + t[2] + '</span>' : '') + '</button>'; }).join('');
+  }
   function route() {
     var h = location.hash.replace(/^#/, '') || 'customers', parts = h.split('/');
     seq++; view.removeEventListener('click', onMembersClick);
-    var tabs = [['customers', 'Customers'], ['suppliers', 'Suppliers']].concat(me.role === 'admin' ? [['members', 'Members']] : []).concat([['connection', 'My connection']]);
-    var base = { customer: 'customers', vendor: 'suppliers', item: 'suppliers', vendors: 'suppliers', items: 'suppliers' }[parts[0]] || parts[0];
-    $('tabs').innerHTML = tabs.map(function (t) { return '<button class="tab' + (base === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '" type="button">' + t[1] + '</button>'; }).join('');
+    drawTabs();
+    api('GET', '/api/people').then(function (p) { team = p.people; drawTabs(); }).catch(function () {});
     var arg = decodeURIComponent(parts[1] || '');
-    var screen = parts[0] === 'customer' && arg ? customerScreen(arg) : parts[0] === 'vendor' && arg ? vendorScreen(arg) : parts[0] === 'item' && arg ? itemScreen(arg) : parts[0] === 'suppliers' || parts[0] === 'vendors' || parts[0] === 'items' ? (src.view = parts[0] === 'vendors' ? 'vendor' : parts[0] === 'items' ? 'item' : ['item', 'vendor', 'collection'].indexOf(parts[1]) >= 0 ? parts[1] : src.view, suppliersScreen())
+    var screen = parts[0] === 'basket' && arg ? customersScreen(arg) : parts[0] === 'customer' && arg ? customerScreen(arg) : parts[0] === 'vendor' && arg ? vendorScreen(arg) : parts[0] === 'item' && arg ? itemScreen(arg) : parts[0] === 'suppliers' || parts[0] === 'vendors' || parts[0] === 'items' ? (src.view = parts[0] === 'vendors' ? 'vendor' : parts[0] === 'items' ? 'item' : ['item', 'vendor', 'collection'].indexOf(parts[1]) >= 0 ? parts[1] : src.view, suppliersScreen())
       : parts[0] === 'connection' ? connectionScreen() : parts[0] === 'members' && me.role === 'admin' ? membersScreen() : customersScreen();
     screen.catch(function (e) { view.innerHTML = '<div class="card"><div class="err">' + esc(e.message) + '</div></div>'; });
   }
-  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) location.hash = b.dataset.tab; });
+  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b) return; listState.attention = false; if (b.dataset.tab === 'customers') listState.owner = ''; location.hash = b.dataset.tab; if (location.hash.replace(/^#/, '') === b.dataset.tab) route(); });
   // a row or card with data-go opens that page
   view.addEventListener('click', function (e) { if (e.target.closest('a, button, summary, select, input')) return; var g = e.target.closest('[data-go]'); if (g) location.hash = g.dataset.go; });
   $('out').addEventListener('click', function () { api('POST', '/api/auth/logout', {}).then(function () { location.replace('/login.html'); }); });

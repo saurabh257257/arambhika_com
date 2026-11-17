@@ -109,3 +109,8 @@ textarea { width: 100%; padding: 9px 11px; border: 1px solid #cbd5e1; border-rad
 .fnote { color: #334155; font-size: 13px; overflow-wrap: anywhere; } .file .btn { justify-self: start; }
 .chead { display: grid; grid-template-columns: minmax(190px, 2.2fr) minmax(110px, 1.1fr) 105px minmax(105px, 1fr) minmax(120px, 1.1fr) minmax(150px, 1.8fr); gap: 10px; padding: 0 12px 0 16px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 @media (max-width: 760px) { .chead { display: none; } }
+
+/* one tab per member, with their basket count */
+.tab .n { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; }
+.tab.on .n { background: var(--teal); color: #fff; }
+.btn.danger { color: var(--bad); border-color: #fecaca; } .btn.danger:hover { background: #fef2f2; }

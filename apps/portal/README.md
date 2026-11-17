@@ -91,3 +91,9 @@ The list shows **Created by** (the team member who first added the customer; nev
 The Portal's address is **https://crm.arambhika.com** (MCP: `https://crm.arambhika.com/mcp`). It needs a DNS **A record** `crm` → the dev droplet's IP; the deploy then makes the nginx site and the Let's Encrypt certificate (if DNS is not there yet it still deploys and prints a note, and the next deploy gets the certificate). The older address `https://134-209-153-189.sslip.io` and `http://<ip>:4200` keep working.
 
 DNS for `crm.arambhika.com` was added on 15 Nov 2026 and points at the dev droplet (134.209.153.189); the deploy after that issued its certificate.
+
+### Baskets and members
+
+A customer sits in a member's **basket** ("Basket assigned to"). A new customer is created with a **blank basket**, whoever adds it (a team member or Claude), and keeps showing **Created by**. Only the admin puts a customer in a basket (dropdown in the list or on the customer page; Claude's `assign_customer` refuses team members). The menu is **Customers, Suppliers, one tab per team member (their basket, with a count), Members (admin), My connection**; the Unassigned quick filter shows how many customers are waiting for a basket.
+
+Members page: create with a typed or generated password, **Set password** (typed by the admin, 10+ characters), **Generate new**, switch off, revoke key, and **Delete** (the admin types the member's username to confirm). Deleting ends their login, key and sessions, hides them from every list and frees the username; what they did before keeps their name, and the customers in their basket go back to unassigned.

@@ -71,7 +71,7 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
       if (!p.fields.name) return { error: 'The customer needs a name' };
       const t = now(), f = { ...{ company: '', email: '', address: '', about: '', city: '', state: '', pincode: '', gstin: '', source: '', source_detail: '', buyer_type: 'unknown', business: '', looking_for: '', application: '', cell_format: '', monthly_volume: '', urgency: '' }, ...p.fields };
       run('INSERT INTO customers (mobile, name, company, email, address, about, city, state, pincode, gstin, source, source_detail, buyer_type, business, looking_for, application, cell_format, monthly_volume, urgency, owner_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        m, f.name, f.company, f.email, f.address, f.about, f.city, f.state, f.pincode, f.gstin, f.source, f.source_detail, f.buyer_type, f.business, f.looking_for, f.application, f.cell_format, f.monthly_volume, f.urgency, input.ownerId === undefined ? by : input.ownerId, by, t, t);
+        m, f.name, f.company, f.email, f.address, f.about, f.city, f.state, f.pincode, f.gstin, f.source, f.source_detail, f.buyer_type, f.business, f.looking_for, f.application, f.cell_format, f.monthly_volume, f.urgency, input.ownerId === undefined ? null : input.ownerId, by, t, t);
       audit(by, 'Added customer ' + f.name + ' (' + m + ')');
       const c = repo.customer(m);
       return { customer: c, missing: missing(c) };
@@ -145,6 +145,11 @@ module.exports = function data({ get, all, run, audit, plain, dataDir, tx }) {
         contacts: all('SELECT * FROM customer_contacts WHERE customer_mobile = ? ORDER BY name COLLATE NOCASE', m).map(plain),
         missing: missing(c),
       };
+    },
+    // how many customers sit in each member's basket, and how many in nobody's
+    baskets() {
+      const per = new Map(all('SELECT owner_id, COUNT(*) AS n FROM customers WHERE owner_id IS NOT NULL GROUP BY owner_id').map((r) => [r.owner_id, r.n]));
+      return { per, unassigned: get('SELECT COUNT(*) AS n FROM customers WHERE owner_id IS NULL').n };
     },
     states: () => all("SELECT state, COUNT(*) AS n FROM customers WHERE state != '' GROUP BY lower(state) ORDER BY state COLLATE NOCASE").map(plain),
     // is this customer in the Zoho Books customer directory? Claude looks them up with its own Zoho connector and reports here
