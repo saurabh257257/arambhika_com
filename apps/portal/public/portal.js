@@ -368,6 +368,63 @@
     if (a) api('PATCH', '/api/members/' + a.dataset.act, { active: a.dataset.on === '1' }).then(function () { toast(a.dataset.on === '1' ? 'Switched on' : 'Switched off'); return membersScreen(); }).catch(fail);
   }
 
+  // ---------- uploads: shared folders and files, visible to everybody ----------
+  var upOpen = {};
+  var DL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0l-4-4m4 4l4-4"/><path d="M5 19h14"/></svg>';
+  function fsize(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+  function uploadsScreen() {
+    var my = seq;
+    return api('GET', '/api/uploads').then(function (d) {
+      if (my !== seq) return;
+      function branch(parent) {
+        var subs = d.folders.filter(function (f) { return f.parent_id === parent; });
+        var fls = d.files.filter(function (f) { return f.folder_id === parent; });
+        return subs.map(function (f) {
+          var on = upOpen[f.id] === true, n = d.folders.filter(function (x) { return x.parent_id === f.id; }).length + d.files.filter(function (x) { return x.folder_id === f.id; }).length;
+          return '<div class="upnode"><div class="uprow"><div class="upname" data-utog="' + f.id + '" role="button" tabindex="0"><span class="caret">' + (on ? '\u25be' : '\u25b8') + '</span>\ud83d\udcc1 <b>' + esc(f.name) + '</b> <span class="muted small">' + n + ' item' + (n === 1 ? '' : 's') + ' \u00b7 ' + esc(f.by_name) + ', ' + date(f.at) + '</span></div>' +
+            '<div class="upacts"><a class="iconbtn" href="/api/uploads/folders/' + f.id + '/download" title="Download this folder (zip)" aria-label="Download folder ' + esc(f.name) + '">' + DL + '</a><button class="btn ghost sm" data-uaddf="' + f.id + '" type="button">+ Folder</button><button class="btn ghost sm" data-uup="' + f.id + '" type="button">Upload</button><button class="btn ghost sm" data-urnf="' + f.id + '" data-name="' + esc(f.name) + '" type="button">Rename</button><button class="btn ghost sm" data-udelf="' + f.id + '" type="button">Remove</button></div></div>' +
+            (on ? '<div class="upkids">' + (branch(f.id) || '<div class="muted small upempty">Empty folder</div>') + '</div>' : '') + '</div>';
+        }).join('') + fls.map(function (f) {
+          return '<div class="uprow"><div class="upname">\ud83d\udcc4 <b>' + esc(f.name) + '</b> <span class="muted small">' + fsize(f.size) + ' \u00b7 ' + esc(f.by_name) + ', ' + date(f.at) + '</span></div>' +
+            '<div class="upacts"><a class="iconbtn" href="/api/uploads/files/' + f.id + '/download" title="Download" aria-label="Download ' + esc(f.name) + '">' + DL + '</a><button class="btn ghost sm" data-urn="' + f.id + '" data-name="' + esc(f.name) + '" type="button">Rename</button><button class="btn ghost sm" data-udel="' + f.id + '" data-name="' + esc(f.name) + '" type="button">Remove</button></div></div>';
+        }).join('');
+      }
+      view.innerHTML = '<div class="card"><div class="between"><h2>Uploads</h2><span class="muted small">' + d.files.length + ' file' + (d.files.length === 1 ? '' : 's') + '</span></div><div class="muted small">Shared with the whole team. Anyone can make folders, upload files (' + d.maxMb + ' MB each), download, rename and remove. Use the download icon on any file, or on a folder to get it all as one zip.</div>' +
+        '<div class="upbar"><button class="btn sm" data-uaddf="" type="button">+ New folder</button><button class="btn sm" data-uup="" type="button">Upload files</button></div><input type="file" id="upFiles" multiple hidden></div>' +
+        '<div class="card"><div class="uplist">' + (branch('') || '<div class="muted">Nothing here yet. Make a folder or upload a file.</div>') + '</div></div>';
+    });
+  }
+  var upTo = '';
+  function upClick(e) {
+    var t = e.target.closest('[data-utog]'); if (t) { upOpen[t.dataset.utog] = !upOpen[t.dataset.utog]; uploadsScreen(); return; }
+    var up = e.target.closest('[data-uup]'); if (up) { upTo = up.dataset.uup; $('upFiles').click(); return; }
+    var af = e.target.closest('[data-uaddf]');
+    if (af) { var nm = window.prompt('Folder name'); if (nm) api('POST', '/api/uploads/folders', { name: nm, parentId: af.dataset.uaddf }).then(function () { if (af.dataset.uaddf) upOpen[af.dataset.uaddf] = true; toast('Folder created'); return uploadsScreen(); }).catch(fail); return; }
+    var rf = e.target.closest('[data-urnf]');
+    if (rf) { var n = window.prompt('Folder name', rf.dataset.name); if (n) api('PATCH', '/api/uploads/folders/' + rf.dataset.urnf, { name: n }).then(uploadsScreen).catch(fail); return; }
+    var rn = e.target.closest('[data-urn]');
+    if (rn) { var m = window.prompt('File name', rn.dataset.name); if (m) api('PATCH', '/api/uploads/files/' + rn.dataset.urn, { name: m }).then(uploadsScreen).catch(fail); return; }
+    var df = e.target.closest('[data-udelf]');
+    if (df) { if (window.confirm('Remove this folder? It must be empty.')) api('DELETE', '/api/uploads/folders/' + df.dataset.udelf).then(function () { toast('Folder removed'); return uploadsScreen(); }).catch(fail); return; }
+    var d = e.target.closest('[data-udel]');
+    if (d && window.confirm('Remove ' + d.dataset.name + ' for everyone? This cannot be undone.')) api('DELETE', '/api/uploads/files/' + d.dataset.udel).then(function () { toast('File removed'); return uploadsScreen(); }).catch(fail);
+  }
+  view.addEventListener('click', upClick);
+  view.addEventListener('keydown', function (e) { var t = e.target.closest && e.target.closest('[data-utog]'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); upOpen[t.dataset.utog] = !upOpen[t.dataset.utog]; uploadsScreen(); } });
+  view.addEventListener('change', function (e) {
+    if (e.target.id !== 'upFiles') return;
+    var list = [].slice.call(e.target.files), input = e.target, to = upTo, chain = Promise.resolve();
+    list.forEach(function (f) {
+      chain = chain.then(function () {
+        if (f.size > 50 * 1048576) { toast(f.name + ' is over 50 MB, skipped'); return; }
+        toast('Uploading ' + f.name + '...');
+        return fetch('/api/upload?' + new URLSearchParams({ kind: 'uploads', key: to, name: f.name }), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Portal-Upload': '1' }, body: f })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || (r.status === 413 ? 'The file is too big for the server' : 'Upload failed')); toast('Uploaded ' + f.name); }); }).catch(fail);
+      });
+    });
+    chain.then(function () { if (to) upOpen[to] = true; input.value = ''; return uploadsScreen(); });
+  });
+
   // ---------- my connection (MCP key) ----------
   function connectionScreen() {
     var my = seq;
@@ -397,7 +454,7 @@
     var dup = {}; team.forEach(function (p) { dup[p.name] = (dup[p.name] || 0) + 1; });
     return [['customers', 'Customers'], ['suppliers', 'Suppliers']]
       .concat(team.map(function (p) { return ['basket/' + p.id, (dup[p.name] > 1 ? p.name + ' (' + p.username + ')' : p.name) + (p.id === me.id ? ' \u2022 you' : ''), p.customers]; }))
-      .concat(me.role === 'admin' ? [['members', 'Members']] : []).concat([['connection', 'My connection']]);
+      .concat(me.role === 'admin' ? [['members', 'Members']] : []).concat([['uploads', 'Uploads'], ['connection', 'My connection']]);
   }
   function drawTabs() {
     var h = location.hash.replace(/^#/, '') || 'customers', parts = h.split('/');
@@ -411,7 +468,7 @@
     api('GET', '/api/people').then(function (p) { team = p.people; drawTabs(); }).catch(function () {});
     var arg = decodeURIComponent(parts[1] || '');
     var screen = parts[0] === 'basket' && arg ? customersScreen(arg) : parts[0] === 'customer' && arg ? customerScreen(arg) : parts[0] === 'vendor' && arg ? vendorScreen(arg) : parts[0] === 'item' && arg ? itemScreen(arg) : parts[0] === 'suppliers' || parts[0] === 'vendors' || parts[0] === 'items' ? (src.view = parts[0] === 'vendors' ? 'vendor' : parts[0] === 'items' ? 'item' : ['item', 'vendor', 'collection'].indexOf(parts[1]) >= 0 ? parts[1] : src.view, suppliersScreen())
-      : parts[0] === 'connection' ? connectionScreen() : parts[0] === 'members' && me.role === 'admin' ? membersScreen() : customersScreen();
+      : parts[0] === 'uploads' ? uploadsScreen() : parts[0] === 'connection' ? connectionScreen() : parts[0] === 'members' && me.role === 'admin' ? membersScreen() : customersScreen();
     screen.catch(function (e) { view.innerHTML = '<div class="card"><div class="err">' + esc(e.message) + '</div></div>'; });
   }
   $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b) return; listState.attention = false; if (b.dataset.tab === 'customers') listState.owner = ''; location.hash = b.dataset.tab; if (location.hash.replace(/^#/, '') === b.dataset.tab) route(); });

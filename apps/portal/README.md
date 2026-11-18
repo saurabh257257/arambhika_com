@@ -104,3 +104,9 @@ When several people use the same Claude account, each adds their own connector w
 `https://crm.arambhika.com/mcp/u/<username>`. Only that member can sign in through it (the sign-in page shows
 the username locked), and a key or token of anyone else is refused with a clear message. Each member's tab shows
 the address and the steps (admin sees everyone's, a member sees their own). `/mcp` still works for one person per Claude account.
+
+## Uploads tab
+
+A shared place for the whole team: folders (nested) and files, 50 MB each. Everyone signed in, the admin too, can make folders, upload,
+rename, remove and download. Every file and every folder has a download icon; a folder downloads as one zip (sub-folders and empty folders kept).
+Files are stored under random names in `DATA_DIR/uploads` and only ever sent back as downloads. The deploy lets nginx accept 60 MB requests for the Portal sites.

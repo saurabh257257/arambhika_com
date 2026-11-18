@@ -11,6 +11,7 @@ try { Database = require('node:sqlite').DatabaseSync; } catch (e) { Database = r
 
 const { ensure } = require('./schema');
 const makeData = require('./data');
+const makeUploads = require('./uploads');
 const TYPES = makeData.ENUMS.TYPES;
 const now = () => new Date().toISOString();
 const id = () => crypto.randomUUID();
@@ -154,6 +155,7 @@ function open(dataDir) {
     close: () => db.close(),
   };
   Object.assign(repo, makeData({ get, all, run, audit, plain, dataDir, tx }));
+  Object.assign(repo, makeUploads({ get, all, run, audit, plain, dataDir }));
   return repo;
 }
 

@@ -901,3 +901,70 @@ describe('oauth sign-in for the Claude apps', () => {
     } finally { await s.stop(); }
   });
 });
+
+describe('uploads: shared folders and files for the whole team', () => {
+  const crypto = require('node:crypto');
+  // reads a zip back (central directory) and checks every file's checksum, so the folder download is known to be a real zip
+  function readZip(buf) {
+    const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06])), n = buf.readUInt16LE(eocd + 10), out = {};
+    let p = buf.readUInt32LE(eocd + 16);
+    for (let i = 0; i < n; i++) {
+      const crc = buf.readUInt32LE(p + 16), size = buf.readUInt32LE(p + 24), nl = buf.readUInt16LE(p + 28), off = buf.readUInt32LE(p + 42), name = buf.toString('utf8', p + 46, p + 46 + nl);
+      const lnl = buf.readUInt16LE(off + 26), lel = buf.readUInt16LE(off + 28), data = buf.subarray(off + 30 + lnl + lel, off + 30 + lnl + lel + size);
+      if (!name.endsWith('/')) { assert.equal(data.length, size); assert.equal(require('node:zlib').crc32 ? require('node:zlib').crc32(data) : crc, crc, 'checksum of ' + name); }
+      out[name] = data; p += 46 + nl + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+    }
+    return out;
+  }
+
+  test('anyone signed in can make folders, upload, rename, download a file and a whole folder as a zip, and remove', async () => {
+    const s = await boot();
+    try {
+      s.app.repo.createMember({ name: 'Lokesh', username: 'lokesh', password: 'lokesh-pass-1234' });
+      const lok = client(s.base); await lok.post('/api/auth/login', { username: 'lokesh', password: 'lokesh-pass-1234' });
+      assert.equal((await client(s.base).get('/api/uploads')).status, 401, 'sign-in needed');
+
+      const f1 = (await lok.post('/api/uploads/folders', { name: 'Price lists' })).data.folder;
+      assert.equal((await lok.post('/api/uploads/folders', { name: 'price LISTS' })).status, 400, 'same name twice');
+      const sub = (await lok.post('/api/uploads/folders', { name: 'Nov 2026', parentId: f1.id })).data.folder;
+      await lok.post('/api/uploads/folders', { name: 'Empty one', parentId: f1.id });
+
+      const up = (c, folder, name, body) => fetch(s.base + '/api/upload?' + new URLSearchParams({ kind: 'uploads', key: folder, name }), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Portal-Upload': '1', Cookie: c.cookie() }, body });
+      const doc = Buffer.from(Array.from({ length: 30000 }, (_, i) => (i * 7) % 256));
+      assert.equal((await up(lok, f1.id, 'rates.bin', doc)).status, 200);
+      assert.equal((await up(s.admin, sub.id, 'rates.bin', Buffer.from('second file, same name'))).status, 200, 'the admin can upload too');
+      assert.equal((await up(lok, '', 'top.txt', Buffer.from('at the top'))).status, 200);
+      assert.equal((await fetch(s.base + '/api/upload?kind=uploads&key=&name=x.txt', { method: 'POST', headers: { Cookie: lok.cookie() }, body: 'x' })).status, 400, 'only from the page');
+      assert.equal((await up(lok, 'nope', 'a.txt', Buffer.from('x'))).status, 404, 'unknown folder');
+      assert.equal((await up(lok, '', 'broken.png', Buffer.from('not a picture'))).status, 400, 'a damaged picture is refused');
+
+      // everyone sees the same tree, with who added what
+      const tree = (await s.admin.get('/api/uploads')).data;
+      assert.equal(tree.folders.length, 3); assert.equal(tree.files.length, 3);
+      assert.equal(tree.files.find((f) => f.name === 'top.txt').by_name, 'Lokesh');
+      assert.equal(tree.files.find((f) => f.folder_id === sub.id).by_name, 'Admin');
+
+      // download: exact bytes, as an attachment
+      const mine = tree.files.find((f) => f.name === 'rates.bin' && f.folder_id === f1.id);
+      const dl = await fetch(s.base + '/api/uploads/files/' + mine.id + '/download', { headers: { Cookie: s.admin.cookie() } });
+      assert.equal(dl.status, 200); assert.match(dl.headers.get('content-disposition'), /^attachment; filename="rates\.bin"/);
+      assert.ok(Buffer.from(await dl.arrayBuffer()).equals(doc), 'downloaded exactly as uploaded');
+
+      // a folder downloads as a zip with its sub-folders, and empty folders are kept
+      const zr = await fetch(s.base + '/api/uploads/folders/' + f1.id + '/download', { headers: { Cookie: lok.cookie() } });
+      assert.equal(zr.headers.get('content-type'), 'application/zip'); assert.match(zr.headers.get('content-disposition'), /Price lists\.zip/);
+      const z = readZip(Buffer.from(await zr.arrayBuffer()));
+      assert.deepEqual(Object.keys(z).sort(), ['Price lists/', 'Price lists/Empty one/', 'Price lists/Nov 2026/', 'Price lists/Nov 2026/rates.bin', 'Price lists/rates.bin']);
+      assert.ok(z['Price lists/rates.bin'].equals(doc)); assert.equal(z['Price lists/Nov 2026/rates.bin'].toString(), 'second file, same name');
+      assert.equal((await lok.get('/api/uploads/folders/nope/download')).status, 404);
+
+      // rename, and a folder with something inside cannot be removed
+      assert.equal((await lok.patch('/api/uploads/files/' + mine.id, { name: 'rates v2.bin' })).status, 200);
+      assert.equal((await lok.raw('DELETE', '/api/uploads/folders/' + f1.id, {})).status, 400);
+      const gone = (await s.admin.get('/api/uploads')).data.files.map((f) => f.id);
+      for (const id of gone) assert.equal((await lok.raw('DELETE', '/api/uploads/files/' + id, {})).status, 200);
+      for (const f of (await s.admin.get('/api/uploads')).data.folders.sort((a, b) => b.parent_id.length - a.parent_id.length)) assert.equal((await lok.raw('DELETE', '/api/uploads/folders/' + f.id, {})).status, 200);
+      assert.deepEqual((await s.admin.get('/api/uploads')).data.folders, []);
+    } finally { await s.stop(); }
+  });
+});

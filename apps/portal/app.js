@@ -8,6 +8,7 @@ const { open, TYPES } = require('./lib/db');
 const mcp = require('./lib/mcp');
 const oauth = require('./lib/oauth');
 const books = require('./lib/books');
+const { writeZip } = require('./lib/zip');
 const { createSync } = require('./lib/items-sync');
 
 const safeEqual = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
@@ -124,11 +125,35 @@ function createApp({ dataDir, adminPassword, sessionSecret, fetchFn, startSync =
 
   // ---- adding a file from the page: the original bytes go straight in. kind is customer, vendor or item; key is the mobile number or item id.
   // The custom header cannot be sent by another website, so only this page can use it. ----
-  app.post('/api/upload', express.raw({ type: () => true, limit: '11mb' }), (req, res) => {
+  app.post('/api/upload', express.raw({ type: () => true, limit: '51mb' }), (req, res) => {
     if (req.headers['x-portal-upload'] !== '1') return res.status(400).json({ error: 'Not an upload from the portal page' });
     const q = req.query, buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0), kind = String(q.kind || '');
+    if (kind === 'uploads') { const u = repo.addUploadFile({ name: q.name, folderId: q.key, buffer }, req.user); return u.error ? res.status(u.status || 400).json({ error: u.error }) : res.json({ ok: true, name: u.file.name }); }
+    if (buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'The file is too big (10 MB at most)' });
     const r = kind === 'customer' ? repo.addFile({ mobile: q.key, name: q.name, note: q.note, buffer }, req.user.id) : repo.addAttachment({ kind, key: q.key, name: q.name, note: q.note, buffer }, req.user.id);
     return r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json({ ok: true, name: (r.file || r.attachment).name });
+  });
+
+  // ---- Uploads: shared folders and files for the whole team (everyone signed in, the admin too, can add, rename, remove and download) ----
+  app.get('/api/uploads', (req, res) => res.json({ ...repo.uploadsTree(), maxMb: repo.UPLOAD_MAX / 1048576 }));
+  app.post('/api/uploads/folders', (req, res) => { const r = repo.addUploadFolder((req.body || {}).name, (req.body || {}).parentId, req.user); answer(res, r, r); });
+  app.patch('/api/uploads/folders/:id', (req, res) => answer(res, repo.renameUploadFolder(req.params.id, (req.body || {}).name, req.user)));
+  app.delete('/api/uploads/folders/:id', (req, res) => answer(res, repo.deleteUploadFolder(req.params.id, req.user)));
+  app.patch('/api/uploads/files/:id', (req, res) => answer(res, repo.renameUploadFile(req.params.id, (req.body || {}).name, req.user)));
+  app.delete('/api/uploads/files/:id', (req, res) => answer(res, repo.deleteUploadFile(req.params.id, req.user)));
+  const attach = (name) => 'attachment; filename="' + String(name).replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '') + '"; filename*=UTF-8\'\'' + encodeURIComponent(name);
+  app.get('/api/uploads/files/:id/download', (req, res) => {
+    const f = repo.uploadFile(req.params.id);
+    if (!f || !require('fs').existsSync(f.path)) return res.status(404).json({ error: 'File not found' });
+    res.set({ 'Content-Type': 'application/octet-stream', 'Content-Length': String(f.size), 'Cache-Control': 'private, no-store', 'Content-Disposition': attach(f.name) });
+    require('fs').createReadStream(f.path).pipe(res);
+  });
+  app.get('/api/uploads/folders/:id/download', async (req, res) => {
+    const z = repo.uploadZipEntries(req.params.id);
+    if (!z) return res.status(404).json({ error: 'Folder not found' });
+    z.entries = z.entries.filter((e) => e.dir || require('fs').existsSync(e.file));
+    res.set({ 'Content-Type': 'application/zip', 'Cache-Control': 'private, no-store', 'Content-Disposition': attach(z.name + '.zip') });
+    try { await writeZip(res, z.entries); } catch (e) { res.destroy(); }
   });
 
   // ---- customers (view only) ----

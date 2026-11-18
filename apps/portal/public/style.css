@@ -114,3 +114,18 @@ textarea { width: 100%; padding: 9px 11px; border: 1px solid #cbd5e1; border-rad
 .tab .n { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; }
 .tab.on .n { background: var(--teal); color: #fff; }
 .btn.danger { color: var(--bad); border-color: #fecaca; } .btn.danger:hover { background: #fef2f2; }
+
+/* uploads */
+.upbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.uplist { display: grid; gap: 4px; }
+.uprow { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.uprow:hover { border-color: #5eead4; }
+.upname { min-width: 0; overflow-wrap: anywhere; }
+.upname[role=button] { cursor: pointer; }
+.upname .caret { display: inline-block; width: 14px; color: var(--muted); }
+.upacts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.upkids { margin: 4px 0 4px 18px; padding-left: 10px; border-left: 2px solid #ccfbf1; display: grid; gap: 4px; }
+.upempty { padding: 4px 8px; }
+.iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: #0f766e; color: #fff; text-decoration: none; }
+.iconbtn:hover { background: #115e59; }
+.iconbtn:focus-visible { outline: 3px solid #5eead4; outline-offset: 2px; }

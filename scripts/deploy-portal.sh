@@ -134,6 +134,12 @@ if [ ! -d /etc/letsencrypt/live/$DOMAIN ]; then
     echo \"NOTE: $DOMAIN does not point at this server yet (DNS says '\$dns', this server is '\$mine'). Add the DNS A record, then re-run this deploy to get the HTTPS certificate.\"
   fi
 fi
+# files go up to 50 MB (the Uploads tab), so every Portal site may take a 60 MB request (nginx's own default is 1 MB)
+changed=0
+for f in \$(grep -l \"127.0.0.1:$APP_PORT\" /etc/nginx/sites-available/* 2>/dev/null); do
+  if ! grep -q client_max_body_size \"\$f\"; then sed -i '/server_name /a\\    client_max_body_size 60m;' \"\$f\"; changed=1; fi
+done
+if [ \"\$changed\" = 1 ]; then nginx -t && systemctl reload nginx; fi
 "
 
 fi

@@ -56,6 +56,13 @@ const NEW_TABLES = `
     by_member TEXT NOT NULL REFERENCES members(id), at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS attachments_key ON attachments(kind, key, at);
+  CREATE TABLE IF NOT EXISTS up_folders (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, parent_id TEXT NOT NULL DEFAULT '', by_name TEXT NOT NULL, at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS up_files (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, folder_id TEXT NOT NULL DEFAULT '', size INTEGER NOT NULL, by_name TEXT NOT NULL, at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS up_files_folder ON up_files(folder_id);
   CREATE TABLE IF NOT EXISTS vendor_offers (
     id TEXT PRIMARY KEY, vendor_mobile TEXT NOT NULL REFERENCES vendors(mobile), item_id TEXT REFERENCES items(id), item_text TEXT NOT NULL,
     rate REAL NOT NULL, unit TEXT NOT NULL DEFAULT '', quantity TEXT NOT NULL DEFAULT '', valid_till TEXT, note TEXT NOT NULL DEFAULT '',
