@@ -1,0 +1,64 @@
+name: directory (dev only)
+
+# Lithium Directory (lithiumdirectory.com) is a separate service. It is tested and deployed only to the DEV droplet here.
+# Production gets its own, separately approved workflow later. Nothing in apps/directory is part of the website release (deploy.sh skips apps/).
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'apps/directory/**'
+      - 'scripts/deploy-directory.sh'
+      - '.github/workflows/directory-dev.yml'
+  pull_request:
+    branches: [dev]
+    paths:
+      - 'apps/directory/**'
+  workflow_dispatch:
+
+concurrency:
+  group: directory
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: directory tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/directory
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/directory/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    name: deploy to dev droplet
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: bash scripts/deploy-directory.sh
+        env:
+          DEPLOY_ENV: dev
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          DIRECTORY_PORT: ${{ vars.DIRECTORY_PORT }}
+          # a test address on the dev droplet, once its DNS record exists (empty: reached by the droplet address and port 4300)
+          DIRECTORY_DOMAIN: ${{ vars.DIRECTORY_DOMAIN }}
+          ADMIN_MOBILE: ${{ vars.DIRECTORY_ADMIN_MOBILE }}
+          # optional: a fixed test code, only if the SMS keys cannot be found on the droplet
+          DEV_OTP_CODE: ${{ secrets.DIRECTORY_DEV_OTP }}

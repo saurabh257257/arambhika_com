@@ -1,0 +1,21 @@
+{
+  "name": "directory",
+  "version": "1.0.0",
+  "description": "Lithium Directory: a listing site where manufacturers list lithium-ion batteries (and related products). Buyers browse and message the seller on WhatsApp; there is no checkout. Sellers sign in with a mobile OTP. Data lives in SQLite (Node 22.13+ built-in, or better-sqlite3 on Node 20) plus photos on disk.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "11.10.0"
+  }
+}
