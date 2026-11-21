@@ -150,16 +150,26 @@ function open(dataDir) {
     },
 
     // ---- listings ----
-    createListing(mobile, input) {
-      const s = repo.seller(mobile); if (!s || s.suspended) return { error: 'This account cannot add products', status: 403 };
-      if (!s.name || !s.business) return { error: 'Add your name and business name first (Profile)' };
+    // adminBy: the admin adding a product for a seller (no profile or daily limit needed, and it goes live at once)
+    createListing(mobile, input, adminBy) {
+      const s = repo.seller(mobile); if (!s || (s.suspended && !adminBy)) return { error: 'This account cannot add products', status: 403 };
+      if (!adminBy && (!s.name || !s.business)) return { error: 'Add your name and business name first (Profile)' };
       const recent = get('SELECT COUNT(*) AS n FROM listings WHERE seller_mobile = ? AND created_at > ?', mobile, new Date(Date.now() - 86400000).toISOString());
-      if (recent.n >= 30) return { error: 'You can add up to 30 products a day. Try again tomorrow.' };
+      if (!adminBy && recent.n >= 30) return { error: 'You can add up to 30 products a day. Try again tomorrow.' };
       const c = checkListing(input, mobile); if (c.error) return c;
-      const t = c.ok, status = s.trusted ? 'live' : 'pending', ts = now();
+      const t = c.ok, status = adminBy || s.trusted ? 'live' : 'pending', ts = now();
       const r = run(`INSERT INTO listings (seller_mobile, category_id, title, brand, description, price, price_unit, min_order, warranty, chemistry, voltage, capacity_ah, energy_wh, state, city, whatsapp, status, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, mobile, t.category_id, t.title, t.brand, t.description, t.price, t.price_unit, t.min_order, t.warranty, t.chemistry, t.voltage, t.capacity_ah, t.energy_wh, t.state, t.city, t.whatsapp, status, ts, ts);
+      if (adminBy) audit(adminBy, 'Added product ' + t.title + ' for ' + mobile);
       return { id: Number(r.lastInsertRowid), status };
+    },
+    // the admin onboards a seller by hand (the seller can then log in with this mobile number)
+    addSellerByAdmin(input, by) {
+      const m = mobile10(input.mobile); if (!m) return { error: 'Enter a valid 10-digit mobile number' };
+      if (repo.seller(m)) return { error: 'This mobile number is already a seller', status: 400 };
+      run('INSERT INTO sellers (mobile, created_at) VALUES (?, ?)', m, now());
+      const r = repo.updateSeller(m, input); if (r.error) { run('DELETE FROM sellers WHERE mobile = ?', m); return r; }
+      audit(by, 'Added seller ' + m); return { seller: r.seller };
     },
     // by is the seller's own mobile, or 'admin' (the admin may change anything)
     updateListing(id, input, by, isAdmin) {

@@ -47,8 +47,8 @@ function createApp({ dataDir, adminMobile = '8112662827', sessionSecret, siteUrl
   app.use(express.static(path.join(__dirname, 'public'), { maxAge: 0, index: false }));
 
   // ---- public pages ----
-  const page = (req, res, o, status = 200) => res.status(status).type('html').send(views.layout({ ...o, user: req.user, siteUrl: siteUrl || origin(req) }));
-  app.get('/', (req, res) => page(req, res, { canonical: '/', body: views.home({ cats: repo.categories(), latest: repo.search({ perPage: 8 }).rows, stats: repo.stats() }) }));
+  const page = (req, res, o, status = 200) => res.status(status).type('html').send(views.layout({ q: String(req.query.q || '').slice(0, 80), category: String(req.query.category || ''), ...o, cats: repo.categories(), user: req.user, siteUrl: siteUrl || origin(req) }));
+  app.get('/', (req, res) => page(req, res, { canonical: '/', body: views.home({ cats: repo.categories(), latest: repo.search({ perPage: 10 }).rows, stats: repo.stats(), states: repo.states() }) }));
   app.get('/browse', (req, res) => {
     const q = req.query, params = {};
     for (const k of ['q', 'category', 'state', 'chemistry', 'minPrice', 'maxPrice', 'minVoltage', 'maxVoltage', 'sort', 'page']) params[k] = String(q[k] || '').slice(0, 80);
@@ -103,7 +103,7 @@ function createApp({ dataDir, adminMobile = '8112662827', sessionSecret, siteUrl
     const mobile = repo.mobile10(req.body && req.body.mobile);
     if (!mobile) return res.status(400).json({ error: 'Enter a valid 10-digit mobile number.' });
     if (otp.mode() === 'off') return res.status(503).json({ error: 'Login is not switched on yet.' });
-    const s = repo.seller(mobile); if (s && s.suspended) return res.status(403).json({ error: 'This account has been suspended. Write to info@arambhika.com.' });
+    const s = repo.seller(mobile); if (s && s.suspended) return res.status(403).json({ error: 'This account has been suspended. Please contact the site admin.' });
     const blocked = otp.checkSend(mobile, req.ip); if (blocked) return res.status(429).json({ error: blocked });
     try {
       const r = await otp.send(mobile, !!(req.body && req.body.resend));
@@ -120,7 +120,7 @@ function createApp({ dataDir, adminMobile = '8112662827', sessionSecret, siteUrl
     let r; try { r = await otp.verify(mobile, code); } catch (e) { return res.status(502).json({ error: 'Could not verify the OTP right now. Please try again.' }); }
     if (!r.ok) { otp.fail(mobile); return res.status(401).json({ error: 'That OTP is not correct or has expired.' }); }
     otp.clear(mobile);
-    const s = repo.touchSeller(mobile); if (s.suspended) return res.status(403).json({ error: 'This account has been suspended. Write to info@arambhika.com.' });
+    const s = repo.touchSeller(mobile); if (s.suspended) return res.status(403).json({ error: 'This account has been suspended. Please contact the site admin.' });
     session.start(req, res, mobile);
     res.json({ ok: true, admin: mobile === admin, seller: s });
   });
@@ -152,6 +152,14 @@ function createApp({ dataDir, adminMobile = '8112662827', sessionSecret, siteUrl
   app.delete('/api/admin/photos/:id', needAdmin, (req, res) => answer(res, repo.deletePhoto(req.params.id, req.user.mobile, true)));
   app.get('/api/admin/listings/:id', needAdmin, (req, res) => { const l = repo.listing(req.params.id); return l ? res.json({ listing: l }) : res.status(404).json({ error: 'Product not found' }); });
   app.get('/api/admin/sellers', needAdmin, (req, res) => res.json({ sellers: repo.sellers() }));
+  app.post('/api/admin/sellers', needAdmin, (req, res) => { const r = repo.addSellerByAdmin(req.body || {}, req.user.mobile); answer(res, r, { seller: r.seller }); });
+  // everything about one seller: their details, products and enquiries (the admin page for a seller)
+  app.get('/api/admin/sellers/:mobile', needAdmin, (req, res) => {
+    const m = repo.mobile10(req.params.mobile), s = m && repo.seller(m);
+    if (!s) return res.status(404).json({ error: 'Seller not found' });
+    res.json({ seller: s, listings: repo.sellerListings(m), leads: repo.sellerLeads(m, 30) });
+  });
+  app.post('/api/admin/sellers/:mobile/listings', needAdmin, (req, res) => { const r = repo.createListing(repo.mobile10(req.params.mobile), req.body || {}, req.user.mobile); answer(res, r, r); });
   app.patch('/api/admin/sellers/:mobile', needAdmin, (req, res) => { const r = repo.setSeller(repo.mobile10(req.params.mobile), req.body || {}, req.user.mobile); answer(res, r, { seller: r.seller }); });
   app.patch('/api/admin/categories/:id', needAdmin, (req, res) => answer(res, repo.renameCategory(req.params.id, (req.body || {}).name, req.user.mobile)));
   app.delete('/api/admin/categories/:id', needAdmin, (req, res) => answer(res, repo.deleteCategory(req.params.id, req.user.mobile)));

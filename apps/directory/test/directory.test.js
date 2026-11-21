@@ -116,9 +116,9 @@ describe('lithium directory', () => {
       const page = await anon.get(p.location); assert.equal(page.status, 200);
       assert.match(page.data, /Chat on WhatsApp/); assert.match(page.data, /Shakti Batteries/); assert.match(page.data, /1440 Wh/, 'energy worked out from V x Ah'); assert.match(page.data, /application\/ld\+json/);
       assert.doesNotMatch(page.data, /9811122233/, "the seller's number is not printed on the page");
-      assert.match((await anon.get('/browse?category=battery-packs')).data, /48V 30Ah/);
-      assert.match((await anon.get('/browse?q=lifepo4&state=Maharashtra&minVoltage=40')).data, /48V 30Ah/);
-      assert.doesNotMatch((await anon.get('/browse?q=lifepo4&state=Kerala')).data, /48V 30Ah/);
+      assert.match((await anon.get('/browse?category=battery-packs')).data, /1 product found/);
+      assert.match((await anon.get('/browse?q=lifepo4&state=Maharashtra&minVoltage=40')).data, /1 product found/);
+      assert.match((await anon.get('/browse?q=lifepo4&state=Kerala')).data, /0 products found/);
       assert.match((await anon.get('/sitemap.xml')).data, /48v-30ah-lifepo4-battery-pack/);
       const img = await fetch(s.base + page.data.match(/src="(\/img\/\d+)"/)[1]); assert.equal(img.headers.get('content-type'), 'image/png');
 
