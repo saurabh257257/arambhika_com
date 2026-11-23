@@ -2953,3 +2953,18 @@ input:focus, select:focus, textarea:focus { border-color: var(--m-teal) !importa
 /* ===== product pictures: the whole picture always sits inside its frame (nothing cropped or zoomed past the edge) ===== */
 .prod-img { overflow: hidden; }
 .prod-img img, .prod-card:hover .prod-img img { width: 100%; height: 100%; object-fit: contain !important; object-position: center !important; transform: none !important; }
+
+/* ===== search box: one outline only (the pill), the field inside has none ===== */
+.header-search input, .search-wrap input, .header-search input:focus, .search-wrap input:focus { border: 0 !important; background: transparent !important; box-shadow: none !important; outline: none !important; border-radius: 999px 0 0 999px; }
+.search-wrap:focus-within { border-color: #0f766e !important; }
+
+/* ===== phones: the logo and icons on the first line, the search on its own full-width line below (pinned with the header) ===== */
+@media (max-width: 860px) {
+  .site-header .nav, .site-header .container.nav { display: grid !important; grid-template-areas: none !important; grid-template-columns: minmax(0, 1fr) auto !important; grid-template-rows: auto auto !important; gap: 6px 8px !important; align-items: center; }
+  .site-header .brand-block { grid-column: 1 !important; grid-row: 1 !important; min-width: 0; }
+  .site-header .nav-right { grid-column: 2 !important; grid-row: 1 !important; }
+  .site-header .header-search { grid-column: 1 / -1 !important; grid-row: 2 !important; width: 100% !important; height: 42px; flex: none; }
+  .site-header .search-wrap { height: 100%; }
+  .site-header .header-search input { height: 100%; font-size: 16px; }
+  .site-header .search-go { height: calc(100% - 6px); }
+}
