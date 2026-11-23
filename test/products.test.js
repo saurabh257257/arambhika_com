@@ -300,6 +300,22 @@ describe('Shop by Collections comes from the Zoho collections', () => {
     assert.match(js, /card\.dataset\.group/)
   })
 
+  test('categories come in the order set in Zoho (sibling order), parents followed by their own sub-categories', async () => {
+    const { buildCatalog } = await import('../lib/catalog.js')
+    const cat = (id, name, order, subs = []) => ({ category_id: id, name, visibility: true, sibling_order: order, sub_categories: subs })
+    const zoho = {
+      // deliberately listed out of order, with names that would sort differently A to Z
+      categories: [
+        cat('9', 'Tapes', 3),
+        cat('1', 'Nickel Strips', 1, [cat('3', 'Nickel Strip Pure', 2), cat('2', 'Nickel Strip Plated', 1)]),
+        cat('5', 'Connectors', 2),
+      ],
+      products: ['2', '3', '5', '9'].map((id) => ({ product_id: 'p' + id, name: 'Item ' + id, category_id: id, variants: [{}] })),
+    }
+    const out = buildCatalog(zoho, { categories: [] })
+    assert.deepEqual(out.categories.map((c) => c.name), ['Nickel Strip Plated', 'Nickel Strip Pure', 'Connectors', 'Tapes'])
+  })
+
   test('each category in the catalogue says which parent it sits under', async () => {
     const { buildCatalog } = await import('../lib/catalog.js')
     const zoho = {
