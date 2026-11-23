@@ -2968,3 +2968,32 @@ input:focus, select:focus, textarea:focus { border-color: var(--m-teal) !importa
   .site-header .header-search input { height: 100%; font-size: 16px; }
   .site-header .search-go { height: calc(100% - 6px); }
 }
+
+
+/* ===== home page: guides and FAQ start closed ===== */
+.home-fold { background: #fff; border: 1px solid #dbe8e5; border-radius: 12px; padding: 0 18px; }
+.home-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; }
+.home-fold > summary::-webkit-details-marker { display: none; }
+.fold-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fold-title .eyebrow { margin: 0; }
+.fold-h { font-size: 1.05rem; font-weight: 700; color: #12263f; line-height: 1.25; }
+.fold-hint { flex: none; font-size: 0.8rem; font-weight: 700; color: #0b6f62; background: #e3f1ee; border-radius: 999px; padding: 5px 14px; }
+.fold-hint::after { content: "Show \25be"; }
+.home-fold[open] > summary .fold-hint::after { content: "Hide \25b4"; }
+.home-fold[open] { padding-bottom: 16px; }
+.home-fold[open] > summary { border-bottom: 1px solid #e6efed; margin-bottom: 14px; }
+
+
+/* ===== product page: guides and FAQ, collapsed until asked for ===== */
+.pp-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-weight: 700; color: #12263f; font-size: 1rem; }
+.pp-fold > summary::-webkit-details-marker { display: none; }
+.pp-fold > summary::after { content: "Show \25be"; flex: none; font-size: 0.78rem; font-weight: 700; color: #0b6f62; background: #e3f1ee; border-radius: 999px; padding: 4px 12px; }
+.pp-fold[open] > summary::after { content: "Hide \25b4"; }
+.pp-fold > summary span { color: #64748b; font-weight: 500; margin-left: 6px; }
+.pp-fold[open] > summary { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #e6efed; }
+.pp-guides { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.pp-guides a { color: #0b6f62; font-weight: 600; }
+.pp-faq { display: grid; gap: 14px; }
+.pp-faq-item h3 { font-size: 0.95rem; margin: 0 0 4px; color: #12263f; }
+.pp-faq-item p { margin: 0; color: #475569; font-size: 0.92rem; line-height: 1.55; }
+.pp-fold > summary span { margin-right: auto; }

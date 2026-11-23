@@ -95,6 +95,8 @@
       <table class="pp-spec">${specRows(P).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>
     </section>
     ${P.details.length ? `<section class="pp-sec"><h2>About this item</h2><ul class="pp-about">${P.details.map((d) => `<li>${esc(d)}</li>`).join("")}</ul></section>` : ""}
+    ${P.guides && P.guides.length ? `<section class="pp-sec"><details class="pp-fold"><summary>Guides about ${esc(P.name)} <span>(${P.guides.length})</span></summary><ul class="pp-guides">${P.guides.map((g) => `<li><a href="${esc(g.url)}">${esc(g.title)}</a></li>`).join("")}</ul></details></section>` : ""}
+    ${P.faqs && P.faqs.length ? `<section class="pp-sec"><details class="pp-fold"><summary>FAQ about ${esc(P.name)} <span>(${P.faqs.length})</span></summary><div class="pp-faq">${P.faqs.map((f) => `<div class="pp-faq-item"><h3>${esc(f.q)}</h3><p>${esc(f.a)}</p></div>`).join("")}</div></details></section>` : ""}
     ${RELATED.length ? `<section class="pp-sec"><div class="pp-sec-head"><h2>More from ${esc(P.category)}</h2><a href="/?category=${encodeURIComponent(P.category)}#catalog">See all &rsaquo;</a></div><div class="pp-rel-grid">${RELATED.map(relatedCard).join("")}</div></section>` : ""}
     <div class="pp-sticky" id="ppSticky"></div>`;
 

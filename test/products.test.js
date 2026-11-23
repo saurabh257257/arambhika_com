@@ -528,8 +528,8 @@ describe('discovery files for search engines and AI assistants', () => {
   })
 })
 
-describe('nothing about products is stored on the server', () => {
-  test('no local product file, saved catalogue or saved photos', () => {
+describe('only a cache copy of the catalogue is kept on the server', () => {
+  test('no local product file or saved photos; the one cache copy is replaced after each refresh', () => {
     const srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8')
     for (const gone of ['writeSnapshot', 'readSnapshot', 'localCatalog', 'writeImageToDisk', 'readImageFromDisk', 'IMAGE_DIR']) {
       assert.ok(!srv.includes(gone), gone + ' is still in server.js')
@@ -539,6 +539,20 @@ describe('nothing about products is stored on the server', () => {
     assert.ok(!fs.existsSync(path.join(ROOT, 'public', 'assets', 'catalog.pdf')))
     const cat = fs.readFileSync(path.join(ROOT, 'lib', 'catalog.js'), 'utf8')
     assert.ok(!cat.includes('localImages'))
+    assert.ok(srv.includes("'catalog-cache.json'") && srv.includes('saveCatalogCache(data)'), 'a cache copy is saved after every successful refresh')
+  })
+
+  test('after a restart the last cached copy is served at once instead of waiting for Zoho', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arambhika-cache-'))
+    const data = JSON.parse(fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'products.local.json'), 'utf8'))
+    fs.writeFileSync(path.join(dir, 'catalog-cache.json'), JSON.stringify({ at: Date.now() - 5000, data }))
+    const app = await startApp({ env: { CATALOG_FIXTURE: '', DATA_DIR: dir } })
+    try {
+      const r = await fetch(app.base + '/products.json')
+      assert.equal(r.status, 200)
+      assert.equal(r.headers.get('x-catalog-source'), 'cache')
+      assert.ok((await r.json()).categories.length > 0)
+    } finally { await app.stop(); fs.rmSync(dir, { recursive: true, force: true }) }
   })
 })
 

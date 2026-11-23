@@ -1442,6 +1442,8 @@ document.addEventListener("keydown", (event) => {
     btn.innerHTML = open ? "Show fewer ▴" : "Show more guides (" + (tiles.length - limit) + ") ▾";
   };
   btn.addEventListener("click", () => { open = !open; apply(); });
+  const fold = grid.closest("details"); // the section starts closed; work out the rows once it is opened
+  if (fold) fold.addEventListener("toggle", apply);
   let timer;
   window.addEventListener("resize", () => { clearTimeout(timer); timer = setTimeout(apply, 150); });
   apply();
@@ -1496,4 +1498,15 @@ document.addEventListener("keydown", (event) => {
   update();
   // the selected category scrolls into view inside the row
   row.addEventListener("click", () => setTimeout(() => row.querySelector(".cat-tile.active")?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }), 50));
+})();
+
+// The guides and the FAQ on the home page start closed; a link to #blog or #faq opens the one it points at.
+(() => {
+  const open = () => {
+    const id = location.hash.replace("#", "");
+    const fold = id === "blog" ? document.getElementById("blogFold") : id === "faq" ? document.getElementById("faqFold") : null;
+    if (fold) fold.open = true;
+  };
+  open();
+  window.addEventListener("hashchange", open);
 })();

@@ -13,3 +13,5 @@ data/session_secret
 
 # local design prototypes, never committed
 public/_prototype/
+data/catalog-cache.json
+data/catalog-cache.json.tmp

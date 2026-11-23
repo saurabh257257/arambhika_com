@@ -31,7 +31,8 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC_DIR = path.join(ROOT, 'public')
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data')
 const PORT = Number(process.env.PORT) || 3000
-const REFRESH_EVERY = (Number(process.env.CATALOG_CACHE_SECONDS) || 30) * 1000
+// Zoho is asked for the catalogue once a minute; every visitor in between is answered from the copy held here.
+const REFRESH_EVERY = (Number(process.env.CATALOG_CACHE_SECONDS) || 60) * 1000
 const PARTIAL_REFRESHES_ALLOWED = 5
 
 // Nothing about products is kept on this server: no product file, no saved copy of the catalogue, no
@@ -53,6 +54,27 @@ let lastError = ''
 const indexNowSent = new Set() // pages already announced since this server started (memory only)
 const countProducts = (data) => data.categories.reduce((n, c) => n + c.products.length, 0)
 
+// A cache copy of the catalogue is kept in the data folder, so a restart or a deploy answers visitors at once (from the last copy)
+// instead of making them wait for Zoho. It is only a cache: Zoho stays the source, and the copy is replaced after every refresh.
+const CACHE_FILE = path.join(DATA_DIR, 'catalog-cache.json')
+function loadCatalogCache() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'))
+    if (saved && saved.data && Array.isArray(saved.data.categories) && countProducts(saved.data)) return { data: saved.data, at: Number(saved.at) || 0, source: 'cache' }
+  } catch {}
+  return null
+}
+function saveCatalogCache(data) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true })
+    fs.writeFileSync(CACHE_FILE + '.tmp', JSON.stringify({ at: Date.now(), data }))
+    fs.renameSync(CACHE_FILE + '.tmp', CACHE_FILE)
+  } catch (err) {
+    console.error('[catalog] could not save the cache copy:', err.message)
+  }
+}
+if (current.source === 'loading') current = loadCatalogCache() || current
+
 async function refreshCatalog() {
   if (refreshing) return
   refreshing = true
@@ -69,6 +91,7 @@ async function refreshCatalog() {
 
     current = { data, at: Date.now(), source: 'zoho' }
     lastError = ''
+    saveCatalogCache(data)
     warmImages(data).catch(() => {}) // in the background: the next visitor finds the card pictures ready
     // Only the real site tells search engines about its pages.
     if (IS_PRODUCTION && !process.env.DISABLE_CATALOG_REFRESH) pingIndexNow(data, indexNowSent).catch(() => {})
