@@ -139,6 +139,8 @@ const scrollToProducts = () => {
 let currentGroup = ""; // the parent being browsed ("" = none)
 const categoryGroup = new Map(); // category name -> the tile it sits under
 let groupInfo = new Map(); // tile name -> { name, image, own, children }
+// a smaller copy of a picture for round tiles and thumbnails (only our own picture addresses can be resized)
+const thumb = (src, w) => (/^\/(zimg|zcat)\//.test(src || "") && !String(src).includes("?") ? `${src}?w=${w}` : src);
 const visibleProducts = (cat) => (cat.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1);
 const categoryPhoto = (cat) => {
   if (cat.Image) return cat.Image;
@@ -183,7 +185,7 @@ const renderFilters = (categories) => {
     btn.className = "cat-tile filter-btn";
     btn.dataset.group = g.name;
     btn.innerHTML = `
-      <span class="cat-tile-img">${g.image ? `<img src="${g.image}" alt="" loading="lazy" />` : `<i>${g.name.trim().charAt(0).toUpperCase()}</i>`}</span>
+      <span class="cat-tile-img">${g.image ? `<img src="${thumb(g.image, 200)}" alt="" loading="lazy" decoding="async" />` : `<i>${g.name.trim().charAt(0).toUpperCase()}</i>`}</span>
       <span class="cat-tile-text"><b>${g.name}</b></span>`;
     categoryFilters.appendChild(btn);
   });
@@ -211,7 +213,7 @@ const renderSubRow = () => {
   const chips = [{ label: "All " + g.name, filter: "all", count: g.count, image: "" }]
     .concat(g.own ? [{ label: g.own.name, filter: g.own.name, count: visibleProducts(g.own).length, image: categoryPhoto(g.own) }] : [])
     .concat(g.children.map((c) => ({ label: c.name, filter: c.name, count: visibleProducts(c).length, image: categoryPhoto(c) })));
-  sub.innerHTML = chips.map((c) => `<button type="button" class="sub-chip${c.filter === currentCategoryFilter ? " active" : ""}" data-filter="${c.filter.replace(/"/g, "&quot;")}">${c.image ? `<span class="sub-img"><img src="${c.image}" alt="" loading="lazy" /></span>` : ""}<span>${c.label}</span><small>${c.count}</small></button>`).join("");
+  sub.innerHTML = chips.map((c) => `<button type="button" class="sub-chip${c.filter === currentCategoryFilter ? " active" : ""}" data-filter="${c.filter.replace(/"/g, "&quot;")}">${c.image ? `<span class="sub-img"><img src="${thumb(c.image, 200)}" alt="" loading="lazy" decoding="async" /></span>` : ""}<span>${c.label}</span><small>${c.count}</small></button>`).join("");
   sub.hidden = false;
   if (!sub.dataset.wired) {
     sub.dataset.wired = "1";
@@ -288,6 +290,7 @@ const filterCatalog = () => {
     block.style.display = any ? "" : "none";
     if (any) shown += 1;
   });
+  catalogGrid.classList.toggle("is-focused", currentCategoryFilter !== "all" || !!currentGroup || !!currentSearchTerm);
   applyRowLimit();
   let empty = catalogGrid.querySelector(".catalog-empty");
   if (!shown) {
@@ -903,6 +906,10 @@ const renderCatalog = (categories) => {
     const grid = block.querySelector(".cat-grid");
     products.forEach((product) => {
       const card = createCard(product, category.name);
+      if (cardCount < 8) {
+        const pic = card.querySelector(".prod-img img");
+        if (pic) { pic.loading = "eager"; pic.setAttribute("fetchpriority", "high"); }
+      }
       grid.appendChild(card);
       const thumbImg = card.querySelector(".prod-img img");
       productIndex.push({
@@ -932,7 +939,7 @@ const renderCatalog = (categories) => {
       const p = (c.products || []).find((x) => (Array.isArray(x.Image_Link) ? x.Image_Link[0] : x.Image_Link));
       if (p) pics.push(Array.isArray(p.Image_Link) ? p.Image_Link[0] : p.Image_Link);
     });
-    thumbs.innerHTML = pics.slice(0, 3).map((src) => `<img src="${src}" alt="" loading="lazy" />`).join("");
+    thumbs.innerHTML = pics.slice(0, 3).map((src) => `<img src="${thumb(src, 400)}" alt="" loading="lazy" decoding="async" />`).join("");
   }
 
   // /?category=Nickel%20Strip%20Plated  (used by the product page breadcrumb)

@@ -69,6 +69,7 @@ async function refreshCatalog() {
 
     current = { data, at: Date.now(), source: 'zoho' }
     lastError = ''
+    warmImages(data).catch(() => {}) // in the background: the next visitor finds the card pictures ready
     // Only the real site tells search engines about its pages.
     if (IS_PRODUCTION && !process.env.DISABLE_CATALOG_REFRESH) pingIndexNow(data, indexNowSent).catch(() => {})
   } catch (err) {
@@ -80,8 +81,24 @@ async function refreshCatalog() {
 }
 
 // ---- Product photos: kept in memory only, fetched from Zoho on demand ----
+// The cache is limited by size (not by count), so it holds every card picture without growing past a safe amount on a small server.
+// After each catalogue refresh the card pictures are fetched in the background, so the first visitor does not wait for Zoho.
 const imageCache = new Map()
-const IMAGE_CACHE_MAX = 400
+const IMAGE_CACHE_BYTES = 40 * 1024 * 1024
+let imageCacheBytes = 0
+
+function remember(key, img) {
+  const old = imageCache.get(key)
+  if (old) imageCacheBytes -= old.buffer.length
+  imageCache.delete(key)
+  imageCache.set(key, img) // newest last
+  imageCacheBytes += img.buffer.length
+  while (imageCacheBytes > IMAGE_CACHE_BYTES && imageCache.size > 1) {
+    const oldest = imageCache.keys().next().value
+    imageCacheBytes -= imageCache.get(oldest).buffer.length
+    imageCache.delete(oldest)
+  }
+}
 
 // size: undefined = the full photo; 200, 400 or 800 = a smaller copy for cards, tiles and thumbnails
 async function getImage(docId, file, size) {
@@ -90,12 +107,49 @@ async function getImage(docId, file, size) {
   let img = imageCache.get(memKey)
   if (!img) {
     try { img = await fetchImage(docId, file, size ? `${size}x${size}` : undefined) } catch (err) { console.error('[image] fetch failed:', err.message) }
-  }
-  if (img) {
-    if (imageCache.size >= IMAGE_CACHE_MAX) imageCache.delete(imageCache.keys().next().value)
-    imageCache.set(memKey, img)
+    if (img) remember(memKey, img)
   }
   return img
+}
+
+async function getCategoryImage(id, file, size) {
+  const memKey = `cat${id}_${size}/${file}`
+  let img = imageCache.get(memKey)
+  if (!img) {
+    try { img = await fetchCategoryImage(id, file, size) } catch (err) { console.error('[category image]', err.message) }
+    if (img) remember(memKey, img)
+  }
+  return img
+}
+
+// the pictures a visitor sees first: every category picture and each product's first photo at card size
+let warming = false
+async function warmImages(data) {
+  if (warming) return
+  warming = true
+  try {
+    const jobs = []
+    const seen = new Set()
+    const add = (fn, key) => { if (!seen.has(key)) { seen.add(key); jobs.push(fn) } }
+    for (const c of data.categories || []) {
+      for (const src of [c.Image, c.ParentImage]) {
+        const m = /^\/zcat\/(\d+)\/([^/?]+)/.exec(src || '')
+        if (m) add(() => getCategoryImage(m[1], m[2], 200), 'c' + m[1])
+      }
+      for (const p of c.products || []) {
+        const first = Array.isArray(p.Image_Link) ? p.Image_Link[0] : p.Image_Link
+        const m = /^\/zimg\/(\d+)\/([^/?]+)/.exec(first || '')
+        if (m) add(() => getImage(m[1], decodeURIComponent(m[2]), 400), 'p' + m[1])
+      }
+    }
+    let next = 0
+    const worker = async () => {
+      while (next < jobs.length) { const job = jobs[next++]; try { await job() } catch {} }
+    }
+    await Promise.all(Array.from({ length: 4 }, worker))
+  } finally {
+    warming = false
+  }
 }
 
 const app = express()
@@ -705,17 +759,14 @@ app.get('/products.json', (req, res) => {
   res.json(current.data)
 })
 
-const categoryImageCache = new Map()
 app.get('/zcat/:id/:file', async (req, res) => {
   const { id, file } = req.params
   if (!/^\d+$/.test(id) || !/^[A-Za-z0-9_.+%-]+$/.test(file)) return res.status(400).end()
-  let img = categoryImageCache.get(`${id}/${file}`)
-  if (!img) {
-    try { img = await fetchCategoryImage(id, file) } catch (err) { console.error('[category image]', err.message) }
-    if (img) categoryImageCache.set(`${id}/${file}`, img)
-  }
+  const w = [200, 500].includes(Number(req.query.w)) ? Number(req.query.w) : 500
+  const img = await getCategoryImage(id, file, w)
   if (!img) return res.status(404).end()
-  res.set({ 'Content-Type': img.type, 'Cache-Control': 'public, max-age=86400' })
+  // a picture has its own id, so a changed picture is a new address: browsers may keep this for a month
+  res.set({ 'Content-Type': img.type, 'Cache-Control': 'public, max-age=2592000, immutable' })
   res.send(img.buffer)
 })
 
@@ -725,7 +776,7 @@ app.get('/zimg/:docId/:file', async (req, res) => {
   const w = [200, 400, 800].includes(Number(req.query.w)) ? Number(req.query.w) : undefined
   const img = await getImage(docId, file, w)
   if (!img) return res.status(404).end()
-  res.set({ 'Content-Type': img.type, 'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400' })
+  res.set({ 'Content-Type': img.type, 'Cache-Control': 'public, max-age=2592000, immutable' })
   res.send(img.buffer)
 })
 

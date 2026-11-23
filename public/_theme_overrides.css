@@ -2943,3 +2943,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--m-teal) !importa
   .catalog-grid > :not(.cat-block) { grid-column: 1 / -1; }
   .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
+
+/* ===== a chosen category, parent or search: one wide block, four products across (desktop) ===== */
+@media (min-width: 1101px) {
+  .catalog-grid.is-focused { grid-template-columns: minmax(0, 1fr); }
+  .catalog-grid.is-focused .cat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+}
