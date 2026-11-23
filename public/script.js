@@ -69,6 +69,8 @@ const normalizeCatalogData = (data) => {
       name: cat.name || fallbackName,
       Image: cat.Image || "",
       Handle: cat.Handle || "",
+      Parent: cat.Parent || "",
+      ParentImage: cat.ParentImage || "",
       products: (cat.products || []).map((product) => {
         const availabilityRaw = String(product.Availability || "Now").trim().toLowerCase();
         const availability =
@@ -132,98 +134,104 @@ const scrollToProducts = () => {
   setTimeout(() => go("auto"), 800);
 };
 
+// The shop shows only the parent categories in the top row. Choosing one opens its sub-categories on a second line.
+// A category without a parent is its own tile.
+let currentGroup = ""; // the parent being browsed ("" = none)
+const categoryGroup = new Map(); // category name -> the tile it sits under
+let groupInfo = new Map(); // tile name -> { name, image, own, children }
+const visibleProducts = (cat) => (cat.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1);
+const categoryPhoto = (cat) => {
+  if (cat.Image) return cat.Image;
+  const withImage = visibleProducts(cat).find((p) => (Array.isArray(p.Image_Link) ? p.Image_Link[0] : p.Image_Link));
+  return withImage ? (Array.isArray(withImage.Image_Link) ? withImage.Image_Link[0] : withImage.Image_Link) : "";
+};
+const buildGroups = (categories) => {
+  categoryGroup.clear();
+  groupInfo = new Map();
+  categories.forEach((cat) => {
+    if (!visibleProducts(cat).length) return;
+    const key = cat.Parent || cat.name;
+    categoryGroup.set(cat.name, key);
+    if (!groupInfo.has(key)) groupInfo.set(key, { name: key, image: "", own: null, children: [], count: 0 });
+    const g = groupInfo.get(key);
+    g.count += visibleProducts(cat).length;
+    if (cat.Parent) { g.children.push(cat); if (!g.image && cat.ParentImage) g.image = cat.ParentImage; } else g.own = cat;
+  });
+  groupInfo.forEach((g) => { g.image = (g.own && g.own.Image) || g.image || (g.own && categoryPhoto(g.own)) || (g.children[0] && categoryPhoto(g.children[0])) || ""; });
+};
+
 const renderFilters = (categories) => {
   if (!categoryFilters) return;
   categoryFilters.innerHTML = "";
   {
-    const total = categories.reduce((n, c) => n + (c.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1).length, 0);
+    const total = categories.reduce((n, c) => n + visibleProducts(c).length, 0);
     const all = document.createElement("button");
     all.type = "button";
     all.className = "cat-tile filter-btn cat-tile-all";
-    all.dataset.filter = "all";
+    all.dataset.group = "all";
     all.innerHTML = `
       <span class="cat-tile-img"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
       <span class="cat-tile-text"><b>All${total ? " (" + total + ")" : ""}</b></span>`;
     categoryFilters.appendChild(all);
   }
-  categories.forEach((cat) => {
-    // same rule the grid uses: placeholder products with a one-character code are not shown
-    const products = (cat.products || []).filter((p) => p && p.ProductCode && p.ProductCode.trim().length > 1);
-    if (!products.length) return;
-    const withImage = products.find((p) => (Array.isArray(p.Image_Link) ? p.Image_Link[0] : p.Image_Link));
-    const productSrc = withImage ? (Array.isArray(withImage.Image_Link) ? withImage.Image_Link[0] : withImage.Image_Link) : "";
-    const imageSrc = cat.Image || productSrc; // the category's own picture first, then a product photo
-    const btn = document.createElement(cat.Handle ? "a" : "button");
-    if (cat.Handle) btn.href = "/category/" + String(cat.Handle).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  groupInfo.forEach((g) => {
+    const opens = g.children.length > 0;
+    const handle = !opens && g.own && g.own.Handle;
+    const btn = document.createElement(handle ? "a" : "button");
+    if (handle) btn.href = "/category/" + String(g.own.Handle).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     else btn.type = "button";
     btn.className = "cat-tile filter-btn";
-    btn.dataset.filter = cat.name;
+    btn.dataset.group = g.name;
     btn.innerHTML = `
-      <span class="cat-tile-img">${imageSrc ? `<img src="${imageSrc}" alt="" loading="lazy" />` : `<i>${cat.name.trim().charAt(0).toUpperCase()}</i>`}</span>
-      <span class="cat-tile-text"><b>${cat.name}</b></span>`;
+      <span class="cat-tile-img">${g.image ? `<img src="${g.image}" alt="" loading="lazy" />` : `<i>${g.name.trim().charAt(0).toUpperCase()}</i>`}</span>
+      <span class="cat-tile-text"><b>${g.name}</b></span>`;
     categoryFilters.appendChild(btn);
   });
-  // tapping the active tile again shows everything
+  // choosing a tile opens it; choosing the open tile again shows everything
   categoryFilters.querySelectorAll(".filter-btn").forEach((btn) => {
     btn.addEventListener("click", (event) => {
       event.preventDefault();
-      currentCategoryFilter = currentCategoryFilter === btn.dataset.filter ? "all" : btn.dataset.filter;
-      setFilterButtonState(currentCategoryFilter);
+      const g = btn.dataset.group;
+      currentGroup = g === "all" || currentGroup === g ? "" : g;
+      currentCategoryFilter = "all";
+      setFilterButtonState();
       filterCatalog();
       scrollToProducts();
     });
   });
-  setFilterButtonState(currentCategoryFilter);
+  setFilterButtonState();
 };
 
-// "Shop by Collections": the collections from Zoho Commerce (18650, 21700, 32650 ...), exactly as set up there.
-// Only a catalogue saved before collections existed falls back to reading sizes out of product names.
-let currentCellCodes = null;
-const renderCellPills = (categories) => {
-  const holder = document.querySelector("#cellPills");
-  if (!holder) return;
-  let groups;
-  if (Array.isArray(categories.collections)) {
-    groups = categories.collections.map((col) => ({ key: col.name, codes: new Set(col.products || []), count: (col.products || []).length }));
-  } else {
-    const found = new Map();
-    categories.forEach((c) => (c.products || []).forEach((p) => {
-      const m = String(p.ProductCode || "").match(/\((\d{4,5})\)/);
-      if (m) { if (!found.has(m[1])) found.set(m[1], new Set()); found.get(m[1]).add(p.ProductCode); }
-    }));
-    groups = [...found.entries()].sort().map(([key, codes]) => ({ key, codes, count: codes.size }));
-  }
-  holder.innerHTML = "";
-  if (!groups.length) return;
-  const label = document.createElement("span");
-  label.className = "cell-pills-label";
-  label.textContent = "Shop by Collections:";
-  holder.appendChild(label);
-  groups.forEach((g) => {
-    const pill = document.createElement("button");
-    pill.type = "button";
-    pill.className = "cell-pill";
-    pill.dataset.cell = g.key;
-    pill.innerHTML = `${g.key} <small>${g.count}</small>`;
-    pill.addEventListener("click", () => {
-      const next = currentCellFilter === g.key ? "" : g.key;
-      currentCellFilter = next;
-      currentCellCodes = next ? g.codes : null;
-      holder.querySelectorAll(".cell-pill").forEach((b) => b.classList.toggle("active", b.dataset.cell === next));
+// the second line: the sub-categories of the parent that is open
+const renderSubRow = () => {
+  const sub = document.querySelector("#subCategoryFilters");
+  if (!sub) return;
+  const g = currentGroup ? groupInfo.get(currentGroup) : null;
+  if (!g || !g.children.length) { sub.hidden = true; sub.innerHTML = ""; return; }
+  const chips = [{ label: "All " + g.name, filter: "all", count: g.count, image: "" }]
+    .concat(g.own ? [{ label: g.own.name, filter: g.own.name, count: visibleProducts(g.own).length, image: categoryPhoto(g.own) }] : [])
+    .concat(g.children.map((c) => ({ label: c.name, filter: c.name, count: visibleProducts(c).length, image: categoryPhoto(c) })));
+  sub.innerHTML = chips.map((c) => `<button type="button" class="sub-chip${c.filter === currentCategoryFilter ? " active" : ""}" data-filter="${c.filter.replace(/"/g, "&quot;")}">${c.image ? `<span class="sub-img"><img src="${c.image}" alt="" loading="lazy" /></span>` : ""}<span>${c.label}</span><small>${c.count}</small></button>`).join("");
+  sub.hidden = false;
+  if (!sub.dataset.wired) {
+    sub.dataset.wired = "1";
+    sub.addEventListener("click", (event) => {
+      const chip = event.target.closest(".sub-chip");
+      if (!chip) return;
+      currentCategoryFilter = chip.dataset.filter === currentCategoryFilter ? "all" : chip.dataset.filter;
+      setFilterButtonState();
       filterCatalog();
+      scrollToProducts();
     });
-    holder.appendChild(pill);
-  });
+  }
 };
-
-let currentCellFilter = "";
 
 // Each category shows a single row of products; "Show all" opens the rest. A search or a chosen
 // category/size always shows everything that matches.
 const expandedCats = new Set();
 function applyRowLimit() {
   if (!catalogGrid) return;
-  const narrowing = currentCategoryFilter !== "all" || !!currentSearchTerm || !!currentCellFilter;
+  const narrowing = currentCategoryFilter !== "all" || !!currentSearchTerm || !!currentGroup;
   catalogGrid.querySelectorAll(".cat-block").forEach((block) => {
     const grid = block.querySelector(".cat-grid");
     const cards = [...block.querySelectorAll(".prod-card")].filter((c) => c.style.display !== "none");
@@ -256,11 +264,11 @@ const filterCatalog = () => {
   const cards = catalogGrid.querySelectorAll(".prod-card");
   cards.forEach((card) => {
     const matchesCategory =
-      currentCategoryFilter === "all" || card.dataset.category === currentCategoryFilter;
+      (currentCategoryFilter === "all" || card.dataset.category === currentCategoryFilter) &&
+      (!currentGroup || card.dataset.group === currentGroup);
     const haystack = `${card.dataset.search || ""}`.toLowerCase();
     const matchesSearch = !currentSearchTerm || haystack.includes(currentSearchTerm);
-    const matchesCell = !currentCellFilter || (currentCellCodes ? currentCellCodes.has(card.dataset.productCode) : haystack.includes(currentCellFilter.toLowerCase()));
-    card.style.display = matchesCategory && matchesSearch && matchesCell ? "" : "none";
+    card.style.display = matchesCategory && matchesSearch ? "" : "none";
   });
   // a category block with nothing left in it disappears too
   let shown = 0;
@@ -283,11 +291,14 @@ const filterCatalog = () => {
   }
 };
 
-const setFilterButtonState = (filterValue) => {
-  if (!categoryFilters) return;
-  categoryFilters.querySelectorAll(".filter-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.filter === filterValue);
-  });
+const setFilterButtonState = () => {
+  if (categoryFilters) {
+    categoryFilters.querySelectorAll(".filter-btn").forEach((btn) => {
+      const g = btn.dataset.group;
+      btn.classList.toggle("active", g === "all" ? !currentGroup && currentCategoryFilter === "all" : g === currentGroup);
+    });
+  }
+  renderSubRow();
 };
 
 const focusProductByCode = (productCode, { smooth = true, updateUrl = true } = {}) => {
@@ -301,6 +312,7 @@ const focusProductByCode = (productCode, { smooth = true, updateUrl = true } = {
   if (!card) return false;
 
   currentCategoryFilter = "all";
+  currentGroup = "";
   currentSearchTerm = "";
   if (globalSearch) globalSearch.value = "";
   document.body.classList.remove("search-active");
@@ -785,6 +797,7 @@ const createCard = (product, categoryName) => {
   const card = document.createElement("article");
   card.className = "prod-card";
   card.dataset.category = categoryName;
+  card.dataset.group = categoryGroup.get(categoryName) || categoryName;
 
   const name = product.ProductCode || "";
   const sku = product.SKU || "";
@@ -864,6 +877,7 @@ const renderCatalog = (categories) => {
   if (!catalogGrid) return;
   catalogGrid.innerHTML = "";
   productIndex = [];
+  buildGroups(categories);
   let cardCount = 0;
   // Within each category, available products come first.
   const availabilityRank = { Now: 0, "On Request": 1, Notify: 2 };
@@ -898,7 +912,6 @@ const renderCatalog = (categories) => {
     catalogGrid.innerHTML = "<p>No products found. Please try again shortly.</p>";
   }
   renderFilters(categories);
-  renderCellPills(categories);
 
   // a few real product photos in the banner
   const thumbs = document.querySelector("#heroThumbs");
@@ -915,7 +928,8 @@ const renderCatalog = (categories) => {
   const wanted = new URLSearchParams(window.location.search).get("category");
   if (wanted && categories.some((c) => c.name === wanted)) {
     currentCategoryFilter = wanted;
-    setFilterButtonState(wanted);
+    currentGroup = categoryGroup.get(wanted) || "";
+    setFilterButtonState();
   }
   filterCatalog();
   // an old shared link (/?product=Name#catalog) now lands on that product's own page
@@ -959,7 +973,8 @@ const refreshCatalog = async () => {
     cachedCatalog = categories;
     renderCatalog(categories);
     if (!categories.some((cat) => cat.name === currentCategoryFilter)) currentCategoryFilter = "all";
-    setFilterButtonState(currentCategoryFilter);
+    if (currentGroup && !groupInfo.has(currentGroup)) currentGroup = "";
+    setFilterButtonState();
     filterCatalog();
   } catch {
     // keep showing the last good catalog

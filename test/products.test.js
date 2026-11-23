@@ -159,8 +159,8 @@ describe('store home markup', () => {
     assert.doesNotMatch(home, /class="chips"/)
   })
 
-  test('catalog has category tiles, cell-type pills and a sectioned grid', () => {
-    for (const id of ['categoryFilters', 'cellPills', 'catalogGrid']) assert.match(home, new RegExp(`id="${id}"`))
+  test('catalog has category tiles, a second line for sub-categories and a sectioned grid', () => {
+    for (const id of ['categoryFilters', 'subCategoryFilters', 'catalogGrid']) assert.match(home, new RegExp(`id="${id}"`))
     assert.match(home, /class="cat-tiles"/)
   })
 
@@ -292,10 +292,33 @@ describe('Shop by Collections comes from the Zoho collections', () => {
     assert.equal(out.collections, undefined)
   })
 
-  test('the pills are built from the collections, not invented from product names', () => {
+  test('the shop page has no Shop by block; it shows parent categories first, with sub-categories on a second line', () => {
     const js = fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8')
-    assert.match(js, /categories\.collections/)
-    assert.doesNotMatch(js, /zig\s\*zag/i)
+    assert.doesNotMatch(js, /Shop by|cellPills|renderCellPills/)
+    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'), /cellPills|Shop by/)
+    assert.match(js, /renderSubRow/)
+    assert.match(js, /card\.dataset\.group/)
+  })
+
+  test('each category in the catalogue says which parent it sits under', async () => {
+    const { buildCatalog } = await import('../lib/catalog.js')
+    const zoho = {
+      categories: [
+        { category_id: '1', name: 'Cells', visibility: true, handle: 'cells', images: [{ id: 'p1', url: '/category-images/cells.png/1/500x500' }], sub_categories: [
+          { category_id: '2', name: 'Prismatic Cells', visibility: true, sub_categories: [] },
+          { category_id: '3', name: 'NMC Cylindrical Cells', visibility: true, sub_categories: [] },
+        ] },
+        { category_id: '4', name: 'Tapes', visibility: true, sub_categories: [] },
+      ],
+      products: [
+        { product_id: 'a', name: 'Prismatic 3.2V', category_id: '2', variants: [{}] },
+        { product_id: 'b', name: 'NMC 18650', category_id: '3', variants: [{}] },
+        { product_id: 'c', name: 'Kapton tape', category_id: '4', variants: [{}] },
+      ],
+    }
+    const out = buildCatalog(zoho, { categories: [] })
+    assert.deepEqual(out.categories.map((c) => [c.name, c.Parent]).sort(), [['NMC Cylindrical Cells', 'Cells'], ['Prismatic Cells', 'Cells'], ['Tapes', '']])
+    assert.match(out.categories.find((c) => c.name === 'Prismatic Cells').ParentImage, /^\/zcat\/p1\//, "a sub-category carries its parent's picture")
   })
 })
 
