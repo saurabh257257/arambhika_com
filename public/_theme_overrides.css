@@ -2935,3 +2935,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--m-teal) !importa
   .cat-tile .cat-tile-text b { max-width: 74px !important; font-size: 0.68rem !important; }
   .cat-arrow { top: 12px; width: 28px; height: 28px; }
 }
+
+/* ===== desktop: two categories side by side, two products across in each (phones and tablets keep their own layout) ===== */
+@media (min-width: 1101px) {
+  .catalog-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 26px !important; align-items: start; }
+  .catalog-grid > .cat-block { min-width: 0; }
+  .catalog-grid > :not(.cat-block) { grid-column: 1 / -1; }
+  .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
