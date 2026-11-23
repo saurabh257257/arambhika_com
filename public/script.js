@@ -226,34 +226,45 @@ const renderSubRow = () => {
   }
 };
 
-// Each category shows a single row of products; "Show all" opens the rest. A search or a chosen
-// category/size always shows everything that matches.
-const expandedCats = new Set();
+// Each category shows a single row of products. "Show all" opens that one category on its own (every product in it, and
+// nothing else); "Show less" goes back to the overview. A search, a chosen tile or a chosen sub-category always shows everything that matches.
 function applyRowLimit() {
   if (!catalogGrid) return;
   const narrowing = currentCategoryFilter !== "all" || !!currentSearchTerm || !!currentGroup;
   catalogGrid.querySelectorAll(".cat-block").forEach((block) => {
+    block.querySelector(".cat-more")?.remove();
     const grid = block.querySelector(".cat-grid");
     const cards = [...block.querySelectorAll(".prod-card")].filter((c) => c.style.display !== "none");
     cards.forEach((c) => c.classList.remove("row-extra"));
-    let more = block.querySelector(".cat-more");
+    const name = block.dataset.category;
     const cols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(" ").length);
-    const open = narrowing || expandedCats.has(block.dataset.category);
-    const extra = cards.length - cols;
-    if (extra <= 0 || narrowing) { if (more) more.remove(); return; }
-    if (!open) cards.slice(cols).forEach((c) => c.classList.add("row-extra"));
-    if (!more) {
-      more = document.createElement("button");
+    const addButton = (label, onClick) => {
+      const more = document.createElement("button");
       more.type = "button";
       more.className = "cat-more";
-      more.addEventListener("click", () => {
-        const k = block.dataset.category;
-        if (expandedCats.has(k)) expandedCats.delete(k); else expandedCats.add(k);
-        applyRowLimit();
-      });
+      more.textContent = label;
+      more.addEventListener("click", onClick);
       block.querySelector(".cat-block-head").appendChild(more);
+    };
+    if (currentCategoryFilter === name) {
+      addButton("Show less \u25b4", () => {
+        currentCategoryFilter = "all";
+        currentGroup = "";
+        setFilterButtonState();
+        filterCatalog();
+        scrollToProducts();
+      });
+      return;
     }
-    more.textContent = open ? "Show less ▴" : `Show all ${cards.length} products ▾`;
+    if (narrowing || cards.length <= cols) return;
+    cards.slice(cols).forEach((c) => c.classList.add("row-extra"));
+    addButton(`Show all ${cards.length} products \u25be`, () => {
+      currentGroup = categoryGroup.get(name) || "";
+      currentCategoryFilter = name;
+      setFilterButtonState();
+      filterCatalog();
+      scrollToProducts();
+    });
   });
 }
 let rowLimitTimer;
