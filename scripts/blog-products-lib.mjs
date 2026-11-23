@@ -16,8 +16,9 @@ export const mk = (o) => ({
   productsHeading: o.productsHeading,
   ctaHeading: o.ctaHeading || 'Need these for your next build?',
   waText: o.waText || `Hi Arambhika, I read your blog on ${o.short[0]} and need a quote.`,
-  date: '2026-11-07',
-  dateLabel: '7 November 2026',
+  strict: !!o.strict, // new posts must only link products that exist now
+  date: o.date || '2026-11-07',
+  dateLabel: o.dateLabel || '7 November 2026',
   readTime: o.readTime || 5,
   intro: o.intro,
   body: o.body + guideNote,

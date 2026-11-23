@@ -406,6 +406,45 @@ describe('customer requests: five steps, a screenshot, and carried to the next d
     assert.equal((await ann.get('/api/files/' + 'a'.repeat(32) + '.png')).status, 404);
   });
 
+  test('a team member who logs a NEW customer becomes that customer\'s owner once the customer is in Zoho', async () => {
+    const owners = async (who) => Object.fromEntries((await who.get('/api/customers')).data.customers.map((c) => [c.id, c.ownerId]));
+    assert.equal((await owners(admin))['1004'], '', 'nobody owns the prospect yet');
+    // existing customer: no claim, the customer stays unowned
+    z.data.contacts.find((c) => c.id === '1003');
+    await ann.post('/api/requests', { customerName: 'Green Cells', phone: '9833333333', customerType: 'existing', customerId: '1003' });
+    assert.equal((await owners(admin))['1003'], '', 'an existing customer is not claimed');
+    // the owner (admin) logging a new customer does not claim either
+    await admin.post('/api/requests', { customerName: 'Volt Works', phone: '9822222222', customerType: 'new', ownerId: rajId });
+    assert.equal((await owners(admin))['1002'], '', 'only a team member claims a new customer');
+    // a team member logging a new customer does, matched by phone
+    await ann.post('/api/requests', { customerName: 'New Prospect Co', phone: '98444 44444', customerType: 'new' });
+    assert.equal((await owners(admin))['1004'], annId, 'Ann owns the new customer');
+    // somebody else logging the same customer later does not take it, and the owner can still reassign it
+    await raj.post('/api/requests', { customerName: 'New Prospect', phone: '9844444444', customerType: 'new' });
+    assert.equal((await owners(raj))['1004'], annId);
+    assert.equal((await admin.post('/api/customers/1004/assign', { ownerId: rajId })).status, 200);
+    assert.equal((await owners(admin))['1004'], rajId, 'the claim is used once; the owner\'s choice stands');
+  });
+
+  test('the payment cannot be ticked without a screenshot, and the photo uploads work as the camera sends them (JPEG)', async () => {
+    const r = (await ann.post('/api/requests', { customerName: 'Camera Test', phone: '9877700000', customerType: 'new' })).data.request;
+    const no = await ann.put('/api/requests/' + r.id + '/steps/payment', { done: true });
+    assert.equal(no.status, 400); assert.match(no.data.error, /screenshot/i);
+    const JPG = 'data:image/jpeg;base64,' + Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1]).toString('base64');
+    assert.equal((await ann.post('/api/requests/' + r.id + '/screenshot', { dataUrl: JPG })).data.request.screenshots.length, 1);
+    assert.equal((await ann.put('/api/requests/' + r.id + '/steps/payment', { done: true })).data.request.steps.payment.by, 'Ann');
+    // tidy up the requests these two tests made, so the tests after them start from the same list
+    for (const x of (await admin.get('/api/requests?filter=all')).data.requests) if (x.id !== id) await admin.del('/api/requests/' + x.id);
+  });
+
+  test('the page offers Upload and Take photo, and ticking Paid asks for the screenshot first', () => {
+    const js = fs.readFileSync(path.join(ROOT, 'public/js/requests.js'), 'utf8');
+    assert.match(js, /data-pay-file/); assert.match(js, /data-pay-cam/);
+    assert.match(js, /capture['"], 'environment'/, 'phones open the camera');
+    assert.match(js, /getUserMedia/, 'computers use a live camera preview');
+    assert.match(js, /askForProof\(id\.id\)/, 'Paid without a screenshot opens the upload dialog');
+  });
+
   test('an unfinished request is there again the next day, and counts as that day\'s work until it is touched', async () => {
     day('2026-12-08');
     const open = (await ann.get('/api/requests')).data.requests;

@@ -1,0 +1,21 @@
+{
+  "name": "portal",
+  "version": "1.0.0",
+  "description": "Arambhika Portal: view-only customer pages with each customer's history, and the admin page where team members and their passwords are created. Data lives in SQLite (Node 22.13+ built-in, or better-sqlite3 on Node 20) (data, plus uploaded files on disk). Updates will come only through the MCP server.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "11.10.0"
+  }
+}

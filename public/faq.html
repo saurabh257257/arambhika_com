@@ -2311,6 +2311,822 @@
             "@type": "Answer",
             "text": "Sometimes. In sealed packs, better design of the heat path matters more than a fan."
           }
+        },
+        {
+          "@type": "Question",
+          "name": "Are these weights exact?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. They come from standard densities and the nominal size. Real coils vary slightly with tolerance and plating thickness, so use the figures for planning."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does a thicker strip give fewer metres per kg?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Weight per metre grows with cross-section, so a strip with twice the cross-section gives about half the length from the same weight."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much do I have to order?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The minimum order is shown on each product page. For most strips it is 3 kg."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I clean nickel-plated strip with sandpaper?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Sanding removes the nickel plating. Wipe with isopropyl alcohol on a lint-free cloth instead."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the strip expire?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It does not have a shelf life as such, but it can pick up moisture or rust if stored badly. Keep it dry and sealed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why do cut edges rust first?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The plating covers the faces. Where the strip is cut, the steel base is exposed, so those edges are the first to show moisture damage."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are these resistance values exact?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "They are calculated from handbook resistivities. Real strip varies with alloy, temperature and tolerance, so use them to compare options, not as specifications."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does thicker pure nickel always run cooler?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For the same width and length, yes: resistance falls as the cross-section rises. The weld joints still matter."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is it worth paying more for pure nickel?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is worth it when current is high, space is tight or heat is a problem. For light loads, plated strip is usually enough."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How can I tell pure nickel from plated strip?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The cut edge of plated strip shows a different metal inside. A magnet is not a reliable test, because nickel is magnetic too. A material test certificate, plus a weight and resistance check, is the proper proof."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why is pure strip priced so much higher?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is solid nickel, a more expensive metal, while plated strip is mostly steel."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which thickness should I start with?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Choose by current. Our sizing guide shows worked examples, and 0.15 mm is a common starting point for spot-welded packs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I turn Ah into kWh?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Multiply nominal voltage by amp-hours and divide by 1000. For an LFP cell that is 3.2 x Ah / 1000."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is a bigger cell always better value?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Often it costs less per kWh, but check the minimum order and the size of the pack you need."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I mix different capacities in one pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is not recommended. Cells in the same pack should have the same capacity and come from the same batch."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What voltage should new LFP cells read?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "They are normally shipped partly charged, so around 3.2 to 3.3 V is typical. Check your cell datasheet for the exact range."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I charge cells before building?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Top-balance cells to the same voltage before you join them, following the cell datasheet and a charger suited to LFP."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What should I do with a swollen cell?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Do not use it. Keep it away from heat and other cells and send us photos and the batch details."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is a higher mAh cell always better?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only if the load is light. High-capacity cells often have a lower maximum current, so check the discharge rating first."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does EV grade mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is a supplier term for a cell intended for e-mobility use. Ask for the datasheet to see the actual ratings."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I mix cells from different makers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Keep one model and one batch in a pack, so capacity and resistance are matched."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why 3.6 V per cell?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is the nominal voltage used for NMC cells. Some datasheets use 3.7 V, which changes the numbers slightly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I round up or down for the series count?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "To the nearest whole number, then check the full-charge voltage (S x 4.2 V) against your motor controller and charger."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need extra cells?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Order a few more than the total, for test welds and rejects at the receiving check."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How many 32140 cells make a 12V pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Four in series (4S) gives 12.8 V nominal. Add parallel groups for more capacity, for example 4S4P for 60 Ah."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What BMS do I need?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "One with the same series count as your pack and an LFP charge voltage of 3.65 V per cell, rated above your peak current."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use a lead-acid charger?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not without checking it. LFP needs its own charge profile and a BMS to protect each cell."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is an EV grade cell better than an ESS cell?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Neither is better in general. They are chosen for different jobs, so match the datasheet to your load."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does A grade guarantee?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "On its own, not much. Ask the supplier what test the grade is based on and for the datasheet."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use ESS cells in an e-bike?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only if the continuous and peak discharge ratings cover your load. Check the datasheet."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need CAN or RS485 for a normal e-bike pack?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Bluetooth or no communication is usually enough. The wired ports matter when a device has to read or control the battery."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will any CAN BMS work with my inverter?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The inverter must support the BMS protocol. Check the inverter maker's compatibility list."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I monitor several batteries with Bluetooth?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The app normally connects to one BMS at a time. For many batteries on one screen look at RS485 and a monitor that supports it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is a trip at switch-on dangerous?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is the BMS doing its job. The surge is real, so fix it with pre-charge or settings rather than removing the protection."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a pre-charge resistor?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A resistor that limits the current while the input capacitors charge. After a short time a main switch closes and the resistor is bypassed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will a bigger BMS fix it?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sometimes, if the surge is small. For a large inverter the inrush should still be limited."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the rated current of a 20x2 mm busbar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "There is no single rating. It depends on the allowed temperature rise, airflow and joints. Use a planning estimate, then test."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does the joint matter more than the bar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A joint has contact resistance. A poor one gets hot first and can fail even when the bar itself is fine."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I stack two bars?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, but stacked bars cool each other less. Test the temperature with the real arrangement."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I bolt a busbar to an 18650 cell?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Those cells have no bolt terminal. They are joined with spot-welded strip."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is copper always better than nickel?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It conducts better, but the right choice depends on the cell terminals, the current and how you assemble the pack."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which is cheaper?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It depends on the size and the number of joints. Compare the full set of parts for your pack, not just the per-piece price."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I bolt a busbar to a laser-weld cell?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only if the terminal is designed for it. Check the cell datasheet before choosing a method."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a C2C busbar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Cell-to-cell: it connects one cell terminal to the next."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which grade of aluminium is used?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Our Model 1 busbars are 1200 grade aluminium."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to sand aluminium before bolting?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Clean it first. If the surface is dull, a fine abrasive pad removes oxide just before assembly. Do not leave it for hours."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can aluminium touch copper?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It can, but in damp conditions the joint can corrode. Keep it dry and use suitable hardware."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does a joint get warm?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A high-resistance joint, from oxide, dirt or low torque, turns current into heat. Clean it and check the torque."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does UL 94 V-0 mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is a flammability rating. V-0 is the best of the vertical burn classes, meaning the material stops burning quickly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How many sheets are in the minimum order?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "At 5 kg, about 16 sheets of 1 mm, but the number depends on thickness. See the table."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I cut the sheet to size?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, with the right tools and dust control. See our cutting guide."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a mask to cut FR-4?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The dust contains glass fibre. Use a suitable mask, eye protection and extraction."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I cut it with a normal wood blade?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You can, but it will dull quickly. A carbide-tipped or diamond blade lasts far longer."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does the hole edge chip?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The drill breaks out of the back face. Back the sheet with a scrap board and feed slowly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I count holders or cells when I order?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Holders. A 1x2 holder carries two cells, so divide your cell count by two and round up."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use an 18650 holder for a 21700 cell?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Each holder fits one cell size."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I order extra?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A few percent extra covers test builds and breakage."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I fit insulation before or after the holders?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Fit the holders first so the cells are in place, then add the insulation paper where your design needs it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why test-weld first?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Settings vary with the strip, the cell and the welder. A pull test on a spare cell shows if the welds are strong before you weld the real pack."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which tape or sleeve do I use at the end?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "See our tape guide for pack assembly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does 1:1 mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Equal parts of Part A and Part B. Check whether the datasheet means by weight or by volume."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How long do I have to pour?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "That is the pot life, and it is in the datasheet. Mix only as much as you can pour in that time."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I pot a live board?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Wait until the gel has cured before you power the part."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is potting required for a BMS?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It is a choice that depends on moisture, vibration and heat in your use."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can potted parts be repaired?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A soft gel can be removed with care, but it takes longer than repairing an open board."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does potting stop a pack from catching fire?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It protects the electronics from moisture and shock. A fire risk is managed with proper cells, BMS and design."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Kapton tape a brand or a material?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Kapton is a brand of polyimide film. Tapes of this kind are often called Kapton tape."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can it replace all other tapes?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It is excellent for heat and insulation, but not for strapping or mounting."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which width should I choose?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use 25 mm for narrow jobs such as strip ends and wires, and 50 mm for larger surfaces."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use duct tape to insulate a battery?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is not made as an electrical insulator. Use PVC tape, Kapton tape or proper insulation paper."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which tape holds cells together best?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Filament tape, because of its fibre reinforcement. Use it together with cell holders."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which tape is for mounting a BMS?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Double-sided tape, for light boards. Add a screw or strap for anything heavy."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a thimble?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The metal contact crimped onto the wire. Different thimbles suit different wire sizes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I solder instead of crimping?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use the crimp method the connector is designed for. If you solder, do it as the maker recommends and never leave a cold joint."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I know which set fits my wire?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Check the wire range on the product page, or send us your wire size on WhatsApp."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What cable fits a PG7 gland?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Usually round cable of about 3 to 6.5 mm. Measure yours and check the gland datasheet."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a metal gland?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not for a light-duty box. Choose metal for rough use or a rugged enclosure."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why leave slack inside?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "So that a pull on the cable is taken by the gland and not by the terminal."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is lay-flat width?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The width of the sleeve when it is pressed flat. The distance around the tube is twice that."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I shrink it with a hairdryer?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A hairdryer is usually too weak. A heat gun on a low or medium setting does it properly, with care."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the sleeve replace insulation paper?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It is an outer wrap. Use insulation paper and tape inside the pack where parts need a barrier."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I add a wire later?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Unwind the spiral, add the wire and wind it back on."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does spiral wrap insulate a joint?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. It tidies and protects the bundle. Use heat shrink or tape for a bare joint."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I stop it unwinding?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Secure each end with a cable tie or a turn of tape."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is AWG?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "American Wire Gauge. A smaller number means a thicker wire. 4 AWG is much thicker than 16 AWG."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does thin wire get hot?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A thin wire has more resistance, so more of the current turns into heat."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which gauge for a 12 V, 40 A load?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Work out the voltage drop and the heat for your run length first. For a short run, 7 AWG or thicker is a common starting point, then check the wire datasheet."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where does the fuse go?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "In the positive lead, as close to the battery as possible."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I twist wires instead of crimping?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A twisted joint can heat and loosen. Use a crimped lug or a soldered, insulated joint."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does strain relief matter?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A pull on the wire can tear a weld or loosen a terminal. A clamp or gland takes the load instead."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a 2:1 shrink ratio?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The tube shrinks to about half its supplied diameter."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use one tube size for all wires?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Match the tube to the part it covers. Too small will not fit, too large will stay loose."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does heat shrink replace tape?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It insulates a joint neatly. Tape and heat shrink do different jobs, and both are useful."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use a lighter to shrink the tube?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. A flame scorches the tube and is a hazard near a battery. Use a heat gun."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why slide the tube on first?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Once a joint is made, you cannot slide the tube over the ends. Put it on before crimping or soldering."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I know it has shrunk fully?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It sits snug with no wrinkles or gaps, and the shape of the joint shows through."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How many rings do I need?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "One for each cell, plus a few percent extra for mistakes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the ring go on the positive or negative end?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Follow your pack design and the product listing. Our 18650 listing is for the negative terminal end, and the product page for each size says how it is used."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will the ring stop a weld working?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only if it covers the weld spot. Keep the weld area clear."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which roll width should I buy?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The narrowest roll that is wide enough for the barrier you need, so you can cut it without a joint. Use 100 mm for wider parts."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can paper replace epoxy sheet?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not for rigid parts. Paper is for liners and barriers; epoxy sheet is for stiff plates."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I keep it from slipping?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Fix the edges with tape or a dot of suitable adhesive."
+          }
         }
       ]
     }
@@ -2348,7 +3164,7 @@
       <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> &rsaquo; <span>FAQ</span></nav>
       <p class="blog-tag">Help centre</p>
       <h1>Frequently asked questions</h1>
-      <p class="blog-subline">284 answers on strips, busbars, welding, sizing and ordering.</p>
+      <p class="blog-subline">386 answers on strips, busbars, welding, sizing and ordering.</p>
       <input type="search" id="faqSearch" class="faq-search" placeholder="Search the FAQs..." aria-label="Search the FAQs" />
       
       <section class="faq-group">
@@ -2694,6 +3510,142 @@
       <section class="faq-group">
         <h2>Pack Heat in Indian Summers</h2>
         <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What temperature is too hot for a lithium pack?</h3><p class="faq-a">Check the cell datasheet. Charging and discharging both have maximum temperature limits.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Does a bigger BMS run cooler?</h3><p class="faq-a">A higher-rated BMS running well below its limit usually runs cooler.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Will a fan help?</h3><p class="faq-a">Sometimes. In sealed packs, better design of the heat path matters more than a fan.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Metres per Kilo of Nickel Strip</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Are these weights exact?</h3><p class="faq-a">No. They come from standard densities and the nominal size. Real coils vary slightly with tolerance and plating thickness, so use the figures for planning.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why does a thicker strip give fewer metres per kg?</h3><p class="faq-a">Weight per metre grows with cross-section, so a strip with twice the cross-section gives about half the length from the same weight.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">How much do I have to order?</h3><p class="faq-a">The minimum order is shown on each product page. For most strips it is 3 kg.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Storing Nickel Strip</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Can I clean nickel-plated strip with sandpaper?</h3><p class="faq-a">No. Sanding removes the nickel plating. Wipe with isopropyl alcohol on a lint-free cloth instead.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Does the strip expire?</h3><p class="faq-a">It does not have a shelf life as such, but it can pick up moisture or rust if stored badly. Keep it dry and sealed.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why do cut edges rust first?</h3><p class="faq-a">The plating covers the faces. Where the strip is cut, the steel base is exposed, so those edges are the first to show moisture damage.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Pure vs Plated: The Numbers</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Are these resistance values exact?</h3><p class="faq-a">They are calculated from handbook resistivities. Real strip varies with alloy, temperature and tolerance, so use them to compare options, not as specifications.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Does thicker pure nickel always run cooler?</h3><p class="faq-a">For the same width and length, yes: resistance falls as the cross-section rises. The weld joints still matter.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Is it worth paying more for pure nickel?</h3><p class="faq-a">It is worth it when current is high, space is tight or heat is a problem. For light loads, plated strip is usually enough.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Buying Pure Nickel Strip</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">How can I tell pure nickel from plated strip?</h3><p class="faq-a">The cut edge of plated strip shows a different metal inside. A magnet is not a reliable test, because nickel is magnetic too. A material test certificate, plus a weight and resistance check, is the proper proof.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why is pure strip priced so much higher?</h3><p class="faq-a">It is solid nickel, a more expensive metal, while plated strip is mostly steel.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which thickness should I start with?</h3><p class="faq-a">Choose by current. Our sizing guide shows worked examples, and 0.15 mm is a common starting point for spot-welded packs.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Prismatic LFP Cells by kWh</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">How do I turn Ah into kWh?</h3><p class="faq-a">Multiply nominal voltage by amp-hours and divide by 1000. For an LFP cell that is 3.2 x Ah / 1000.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Is a bigger cell always better value?</h3><p class="faq-a">Often it costs less per kWh, but check the minimum order and the size of the pack you need.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I mix different capacities in one pack?</h3><p class="faq-a">It is not recommended. Cells in the same pack should have the same capacity and come from the same batch.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Checking LFP Cells on Arrival</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What voltage should new LFP cells read?</h3><p class="faq-a">They are normally shipped partly charged, so around 3.2 to 3.3 V is typical. Check your cell datasheet for the exact range.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Should I charge cells before building?</h3><p class="faq-a">Top-balance cells to the same voltage before you join them, following the cell datasheet and a charger suited to LFP.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">What should I do with a swollen cell?</h3><p class="faq-a">Do not use it. Keep it away from heat and other cells and send us photos and the batch details.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Energy vs Power NMC Cells</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is a higher mAh cell always better?</h3><p class="faq-a">Only if the load is light. High-capacity cells often have a lower maximum current, so check the discharge rating first.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">What does EV grade mean?</h3><p class="faq-a">It is a supplier term for a cell intended for e-mobility use. Ask for the datasheet to see the actual ratings.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I mix cells from different makers?</h3><p class="faq-a">No. Keep one model and one batch in a pack, so capacity and resistance are matched.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Cell Count for Your Pack</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Why 3.6 V per cell?</h3><p class="faq-a">It is the nominal voltage used for NMC cells. Some datasheets use 3.7 V, which changes the numbers slightly.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Should I round up or down for the series count?</h3><p class="faq-a">To the nearest whole number, then check the full-charge voltage (S x 4.2 V) against your motor controller and charger.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Do I need extra cells?</h3><p class="faq-a">Order a few more than the total, for test welds and rejects at the receiving check.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>32140 LFP Pack Layouts</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">How many 32140 cells make a 12V pack?</h3><p class="faq-a">Four in series (4S) gives 12.8 V nominal. Add parallel groups for more capacity, for example 4S4P for 60 Ah.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">What BMS do I need?</h3><p class="faq-a">One with the same series count as your pack and an LFP charge voltage of 3.65 V per cell, rated above your peak current.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I use a lead-acid charger?</h3><p class="faq-a">Not without checking it. LFP needs its own charge profile and a BMS to protect each cell.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>ESS vs EV Grade 32140 Cells</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is an EV grade cell better than an ESS cell?</h3><p class="faq-a">Neither is better in general. They are chosen for different jobs, so match the datasheet to your load.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">What does A grade guarantee?</h3><p class="faq-a">On its own, not much. Ask the supplier what test the grade is based on and for the datasheet.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I use ESS cells in an e-bike?</h3><p class="faq-a">Only if the continuous and peak discharge ratings cover your load. Check the datasheet.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Smart BMS: UART, RS485, CAN</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Do I need CAN or RS485 for a normal e-bike pack?</h3><p class="faq-a">No. Bluetooth or no communication is usually enough. The wired ports matter when a device has to read or control the battery.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Will any CAN BMS work with my inverter?</h3><p class="faq-a">No. The inverter must support the BMS protocol. Check the inverter maker's compatibility list.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I monitor several batteries with Bluetooth?</h3><p class="faq-a">The app normally connects to one BMS at a time. For many batteries on one screen look at RS485 and a monitor that supports it.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>BMS Trips at Switch-On</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is a trip at switch-on dangerous?</h3><p class="faq-a">It is the BMS doing its job. The surge is real, so fix it with pre-charge or settings rather than removing the protection.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">What is a pre-charge resistor?</h3><p class="faq-a">A resistor that limits the current while the input capacitors charge. After a short time a main switch closes and the resistor is bypassed.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Will a bigger BMS fix it?</h3><p class="faq-a">Sometimes, if the surge is small. For a large inverter the inrush should still be limited.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Copper Busbar Current Capacity</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What is the rated current of a 20x2 mm busbar?</h3><p class="faq-a">There is no single rating. It depends on the allowed temperature rise, airflow and joints. Use a planning estimate, then test.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why does the joint matter more than the bar?</h3><p class="faq-a">A joint has contact resistance. A poor one gets hot first and can fail even when the bar itself is fine.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I stack two bars?</h3><p class="faq-a">Yes, but stacked bars cool each other less. Test the temperature with the real arrangement.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Nickel Strip or Copper Busbar?</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Can I bolt a busbar to an 18650 cell?</h3><p class="faq-a">No. Those cells have no bolt terminal. They are joined with spot-welded strip.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Is copper always better than nickel?</h3><p class="faq-a">It conducts better, but the right choice depends on the cell terminals, the current and how you assemble the pack.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which is cheaper?</h3><p class="faq-a">It depends on the size and the number of joints. Compare the full set of parts for your pack, not just the per-piece price.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Aluminium Busbars: Weld or Bolt</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Can I bolt a busbar to a laser-weld cell?</h3><p class="faq-a">Only if the terminal is designed for it. Check the cell datasheet before choosing a method.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">What is a C2C busbar?</h3><p class="faq-a">Cell-to-cell: it connects one cell terminal to the next.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which grade of aluminium is used?</h3><p class="faq-a">Our Model 1 busbars are 1200 grade aluminium.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Aluminium Busbar Joints</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Do I need to sand aluminium before bolting?</h3><p class="faq-a">Clean it first. If the surface is dull, a fine abrasive pad removes oxide just before assembly. Do not leave it for hours.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can aluminium touch copper?</h3><p class="faq-a">It can, but in damp conditions the joint can corrode. Keep it dry and use suitable hardware.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why does a joint get warm?</h3><p class="faq-a">A high-resistance joint, from oxide, dirt or low torque, turns current into heat. Clean it and check the torque.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Epoxy Sheet Thickness Guide</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What does UL 94 V-0 mean?</h3><p class="faq-a">It is a flammability rating. V-0 is the best of the vertical burn classes, meaning the material stops burning quickly.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">How many sheets are in the minimum order?</h3><p class="faq-a">At 5 kg, about 16 sheets of 1 mm, but the number depends on thickness. See the table.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I cut the sheet to size?</h3><p class="faq-a">Yes, with the right tools and dust control. See our cutting guide.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Cutting FR-4 Epoxy Sheet</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Do I need a mask to cut FR-4?</h3><p class="faq-a">Yes. The dust contains glass fibre. Use a suitable mask, eye protection and extraction.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I cut it with a normal wood blade?</h3><p class="faq-a">You can, but it will dull quickly. A carbide-tipped or diamond blade lasts far longer.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why does the hole edge chip?</h3><p class="faq-a">The drill breaks out of the back face. Back the sheet with a scrap board and feed slowly.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>How Many Cell Holders?</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Do I count holders or cells when I order?</h3><p class="faq-a">Holders. A 1x2 holder carries two cells, so divide your cell count by two and round up.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I use an 18650 holder for a 21700 cell?</h3><p class="faq-a">No. Each holder fits one cell size.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Should I order extra?</h3><p class="faq-a">A few percent extra covers test builds and breakage.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Cylindrical Pack Assembly Order</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Do I fit insulation before or after the holders?</h3><p class="faq-a">Fit the holders first so the cells are in place, then add the insulation paper where your design needs it.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why test-weld first?</h3><p class="faq-a">Settings vary with the strip, the cell and the welder. A pull test on a spare cell shows if the welds are strong before you weld the real pack.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which tape or sleeve do I use at the end?</h3><p class="faq-a">See our tape guide for pack assembly.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Mixing a 1:1 Potting Gel</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What does 1:1 mean?</h3><p class="faq-a">Equal parts of Part A and Part B. Check whether the datasheet means by weight or by volume.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">How long do I have to pour?</h3><p class="faq-a">That is the pot life, and it is in the datasheet. Mix only as much as you can pour in that time.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I pot a live board?</h3><p class="faq-a">No. Wait until the gel has cured before you power the part.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Should You Pot Your Pack?</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is potting required for a BMS?</h3><p class="faq-a">No. It is a choice that depends on moisture, vibration and heat in your use.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can potted parts be repaired?</h3><p class="faq-a">A soft gel can be removed with care, but it takes longer than repairing an open board.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Does potting stop a pack from catching fire?</h3><p class="faq-a">No. It protects the electronics from moisture and shock. A fire risk is managed with proper cells, BMS and design.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Kapton Tape for Battery Packs</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Is Kapton tape a brand or a material?</h3><p class="faq-a">Kapton is a brand of polyimide film. Tapes of this kind are often called Kapton tape.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can it replace all other tapes?</h3><p class="faq-a">No. It is excellent for heat and insulation, but not for strapping or mounting.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which width should I choose?</h3><p class="faq-a">Use 25 mm for narrow jobs such as strip ends and wires, and 50 mm for larger surfaces.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Which Tape for Which Job</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Can I use duct tape to insulate a battery?</h3><p class="faq-a">It is not made as an electrical insulator. Use PVC tape, Kapton tape or proper insulation paper.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which tape holds cells together best?</h3><p class="faq-a">Filament tape, because of its fibre reinforcement. Use it together with cell holders.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which tape is for mounting a BMS?</h3><p class="faq-a">Double-sided tape, for light boards. Add a screw or strap for anything heavy.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>SB50 Connector Sets</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What is a thimble?</h3><p class="faq-a">The metal contact crimped onto the wire. Different thimbles suit different wire sizes.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I solder instead of crimping?</h3><p class="faq-a">Use the crimp method the connector is designed for. If you solder, do it as the maker recommends and never leave a cold joint.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">How do I know which set fits my wire?</h3><p class="faq-a">Check the wire range on the product page, or send us your wire size on WhatsApp.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>PG7 Cable Glands</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What cable fits a PG7 gland?</h3><p class="faq-a">Usually round cable of about 3 to 6.5 mm. Measure yours and check the gland datasheet.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Do I need a metal gland?</h3><p class="faq-a">Not for a light-duty box. Choose metal for rough use or a rugged enclosure.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why leave slack inside?</h3><p class="faq-a">So that a pull on the cable is taken by the gland and not by the terminal.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>PVC Sleeve for Battery Packs</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What is lay-flat width?</h3><p class="faq-a">The width of the sleeve when it is pressed flat. The distance around the tube is twice that.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I shrink it with a hairdryer?</h3><p class="faq-a">A hairdryer is usually too weak. A heat gun on a low or medium setting does it properly, with care.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Does the sleeve replace insulation paper?</h3><p class="faq-a">No. It is an outer wrap. Use insulation paper and tape inside the pack where parts need a barrier.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>PVC Spiral Wrap for BMS Wiring</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Can I add a wire later?</h3><p class="faq-a">Yes. Unwind the spiral, add the wire and wind it back on.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Does spiral wrap insulate a joint?</h3><p class="faq-a">No. It tidies and protects the bundle. Use heat shrink or tape for a bare joint.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">How do I stop it unwinding?</h3><p class="faq-a">Secure each end with a cable tie or a turn of tape.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Silicone Wire Gauge Guide</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What is AWG?</h3><p class="faq-a">American Wire Gauge. A smaller number means a thicker wire. 4 AWG is much thicker than 16 AWG.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why does thin wire get hot?</h3><p class="faq-a">A thin wire has more resistance, so more of the current turns into heat.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Which gauge for a 12 V, 40 A load?</h3><p class="faq-a">Work out the voltage drop and the heat for your run length first. For a short run, 7 AWG or thicker is a common starting point, then check the wire datasheet.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Wiring a Battery Pack Safely</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Where does the fuse go?</h3><p class="faq-a">In the positive lead, as close to the battery as possible.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I twist wires instead of crimping?</h3><p class="faq-a">A twisted joint can heat and loosen. Use a crimped lug or a soldered, insulated joint.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why does strain relief matter?</h3><p class="faq-a">A pull on the wire can tear a weld or loosen a terminal. A clamp or gland takes the load instead.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Heat Shrink Tube Sizing</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">What is a 2:1 shrink ratio?</h3><p class="faq-a">The tube shrinks to about half its supplied diameter.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can I use one tube size for all wires?</h3><p class="faq-a">No. Match the tube to the part it covers. Too small will not fit, too large will stay loose.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Does heat shrink replace tape?</h3><p class="faq-a">It insulates a joint neatly. Tape and heat shrink do different jobs, and both are useful.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Using Heat Shrink on a Pack</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Can I use a lighter to shrink the tube?</h3><p class="faq-a">No. A flame scorches the tube and is a hazard near a battery. Use a heat gun.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Why slide the tube on first?</h3><p class="faq-a">Once a joint is made, you cannot slide the tube over the ends. Put it on before crimping or soldering.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">How do I know it has shrunk fully?</h3><p class="faq-a">It sits snug with no wrinkles or gaps, and the shape of the joint shows through.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Battery Insulation Paper Rings</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">How many rings do I need?</h3><p class="faq-a">One for each cell, plus a few percent extra for mistakes.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Does the ring go on the positive or negative end?</h3><p class="faq-a">Follow your pack design and the product listing. Our 18650 listing is for the negative terminal end, and the product page for each size says how it is used.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Will the ring stop a weld working?</h3><p class="faq-a">Only if it covers the weld spot. Keep the weld area clear.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
+      </section>
+      <section class="faq-group">
+        <h2>Insulation Paper Rolls</h2>
+        <div class="faq-list"><div class="faq-item"><h3 class="faq-q">Which roll width should I buy?</h3><p class="faq-a">The narrowest roll that is wide enough for the barrier you need, so you can cut it without a joint. Use 100 mm for wider parts.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">Can paper replace epoxy sheet?</h3><p class="faq-a">Not for rigid parts. Paper is for liners and barriers; epoxy sheet is for stiff plates.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div><div class="faq-item"><h3 class="faq-q">How do I keep it from slipping?</h3><p class="faq-a">Fix the edges with tape or a dot of suitable adhesive.</p><button type="button" class="faq-more" aria-expanded="false" hidden>Show more</button></div></div>
       </section>
       <p class="faq-empty" id="faqEmpty" hidden>No question matches. <a href="https://wa.me/919315545821" target="_blank" rel="noopener">Ask us on WhatsApp</a>.</p>
     </section>

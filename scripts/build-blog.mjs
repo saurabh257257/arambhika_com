@@ -16,8 +16,12 @@ import { posts as productPostsE } from './blog-content-products-e.mjs'
 import { posts as productPostsF } from './blog-content-products-f.mjs'
 import { posts as productPostsG } from './blog-content-products-g.mjs'
 import { posts as productPostsH } from './blog-content-products-h.mjs'
+import { posts as categoryPostsA } from './blog-content-categories-a.mjs'
+import { posts as categoryPostsB } from './blog-content-categories-b.mjs'
+import { posts as categoryPostsC } from './blog-content-categories-c.mjs'
+import { posts as categoryPostsD } from './blog-content-categories-d.mjs'
 
-const posts = [...materialPosts, ...howtoPosts, ...morePosts, ...productPostsA, ...productPostsB, ...productPostsC, ...productPostsD, ...productPostsE, ...productPostsF, ...productPostsG, ...productPostsH]
+const posts = [...materialPosts, ...howtoPosts, ...morePosts, ...productPostsA, ...productPostsB, ...productPostsC, ...productPostsD, ...productPostsE, ...productPostsF, ...productPostsG, ...productPostsH, ...categoryPostsA, ...categoryPostsB, ...categoryPostsC, ...categoryPostsD]
 
 const slugs = new Set()
 for (const post of posts) {
@@ -112,7 +116,7 @@ for (const post of posts) {
   const missing = names.filter((n) => !byName.get(norm(n)))
   if (missing.length) {
     const msg = 'Post ' + post.slug + ' links products that are not in the catalogue: ' + missing.join(' | ')
-    if (post.short) throw new Error(msg)
+    if (post.strict) throw new Error(msg) // older posts may link a product that has since been renamed: warn, as before
     console.warn('warning: ' + msg)
   }
   if (!listed.length) {

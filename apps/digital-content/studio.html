@@ -228,7 +228,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
         </div>
         <div class="st-field"><label for="pcTitle">Title</label><input type="text" id="pcTitle" maxlength="90" placeholder="Nickel Strip Plated 2P(32650)"></div>
         <div class="st-field"><label for="pcSub">Details (optional, smaller line under the title)</label><input type="text" id="pcSub" maxlength="140" placeholder="46.5x0.15 mm | CD 34.5 | with holder with slit"></div>
-        <div class="st-field"><label for="pcFormat">Size</label><select id="pcFormat"><option value="portrait">Portrait 4:5 (1080 x 1350)</option><option value="square">Square 1:1 (1080 x 1080)</option></select></div>
+        <div class="st-field"><label for="pcFormat">Size</label><select id="pcFormat"><option value="portrait">Portrait 4:5 (1080 x 1350)</option><option value="square">Square 1:1 (1080 x 1080)</option><option value="shorts">YouTube Shorts 9:16 (1080 x 1920)</option></select></div>
         <div class="st-res-actions"><button type="button" class="st-btn" id="pcDownload">Download PNG</button><button type="button" class="st-btn ghost" id="pcSave">Save to Library</button></div>
       </div>
       <div class="st-card"><h4>Preview</h4><canvas id="pcCanvas" width="1080" height="1350" style="width:100%;max-width:440px;border:1px solid var(--border);border-radius:10px;background:#fff"></canvas></div>
@@ -695,14 +695,14 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
     return lines;
   }
   function drawProductCard() {
-    var cv = $('pcCanvas'), g = cv.getContext('2d'), W = 1080, H = $('pcFormat').value === 'square' ? 1080 : 1350;
+    var cv = $('pcCanvas'), g = cv.getContext('2d'), W = 1080, fmt = $('pcFormat').value, shorts = fmt === 'shorts', H = shorts ? 1920 : fmt === 'square' ? 1080 : 1350;
     cv.width = W; cv.height = H;
     var seq = ++pcSeq, pad = 60;
     g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
     loadImg(brand.logo || BRAND_DEFAULT.logo).catch(function () { return null; }).then(function (logo) {
       if (seq !== pcSeq) return;
       g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
-      var y = 44;
+      var y = shorts ? 140 : 44;
       if (logo) { var lh = H === 1080 ? 110 : 130, lw = Math.round(logo.naturalWidth / logo.naturalHeight * lh); g.drawImage(logo, Math.round((W - lw) / 2), y, lw, lh); y += lh; }
       // bottom text block: title (bold) and details (lighter), centred, anchored to the bottom
       var title = $('pcTitle').value.trim(), sub = $('pcSub').value.trim();
@@ -710,7 +710,7 @@ details.st-fold > summary::after { content: "\25BE"; } details.st-fold[open] > s
       g.font = '700 58px ' + PC_FONT; var tl = title ? pcWrap(g, title, W - pad * 2, 2) : [];
       g.font = '400 36px ' + PC_FONT; var sl = sub ? pcWrap(g, sub, W - pad * 2, 2) : [];
       var th = tl.length * 70, sh = sl.length * 46, gap = tl.length && sl.length ? 8 : 0;
-      var textH = th + gap + sh, textTop = H - pad - textH;
+      var textH = th + gap + sh, textTop = H - (shorts ? 380 : pad) - textH;
       // photo: fitted inside the free space, never stretched
       var top = y + 24, bottom = textTop - 28, boxW = W - pad * 2, boxH = Math.max(100, bottom - top);
       if (pcImg) {

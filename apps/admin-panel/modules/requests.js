@@ -141,6 +141,8 @@ module.exports = function requests(app, ctx) {
     if (req.user.role === 'employee') ownerId = req.user.id; // a request you log yourself is yours
     else if (req.body.ownerId) { if (!ctx.employees().some((u) => u.id === req.body.ownerId)) return res.status(400).json({ error: 'Choose a team member' }); ownerId = req.body.ownerId; }
     const made = create({ user: req.user, fields: r.value, ownerId });
+    // a team member who brings in a NEW customer owns that customer from now on
+    if (customerType === 'new' && req.user.role === 'employee' && ctx.claimNewCustomer) ctx.claimNewCustomer({ user: req.user, name: made.customerName, phone: made.phone });
     if (/^\d{4}-\d{2}-\d{2}$/.test(String(req.body.nextDate || ''))) { made.nextDate = req.body.nextDate; ctx.save('requests'); }
     res.json({ request: view(made) });
   });

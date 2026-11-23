@@ -159,8 +159,8 @@ describe('store home markup', () => {
     assert.doesNotMatch(home, /class="chips"/)
   })
 
-  test('catalog has category tiles, cell-type pills and a sectioned grid', () => {
-    for (const id of ['categoryFilters', 'cellPills', 'catalogGrid']) assert.match(home, new RegExp(`id="${id}"`))
+  test('catalog has category tiles, a second line for sub-categories and a sectioned grid', () => {
+    for (const id of ['categoryFilters', 'subCategoryFilters', 'catalogGrid']) assert.match(home, new RegExp(`id="${id}"`))
     assert.match(home, /class="cat-tiles"/)
   })
 
@@ -270,7 +270,7 @@ describe('requesting an unavailable product', () => {
   })
 })
 
-describe('Shop by cell comes from the Zoho collections', () => {
+describe('Shop by Collections comes from the Zoho collections', () => {
   test('the catalogue carries the collections exactly as set up in Zoho', async () => {
     const { buildCatalog } = await import('../lib/catalog.js')
     const zoho = {
@@ -292,10 +292,49 @@ describe('Shop by cell comes from the Zoho collections', () => {
     assert.equal(out.collections, undefined)
   })
 
-  test('the pills are built from the collections, not invented from product names', () => {
+  test('the shop page has no Shop by block; it shows parent categories first, with sub-categories on a second line', () => {
     const js = fs.readFileSync(path.join(ROOT, 'public/script.js'), 'utf8')
-    assert.match(js, /categories\.collections/)
-    assert.doesNotMatch(js, /zig\s\*zag/i)
+    assert.doesNotMatch(js, /Shop by|cellPills|renderCellPills/)
+    assert.doesNotMatch(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'), /cellPills|Shop by/)
+    assert.match(js, /renderSubRow/)
+    assert.match(js, /card\.dataset\.group/)
+  })
+
+  test('categories come in the order set in Zoho (sibling order), parents followed by their own sub-categories', async () => {
+    const { buildCatalog } = await import('../lib/catalog.js')
+    const cat = (id, name, order, subs = []) => ({ category_id: id, name, visibility: true, sibling_order: order, sub_categories: subs })
+    const zoho = {
+      // deliberately listed out of order, with names that would sort differently A to Z
+      categories: [
+        cat('9', 'Tapes', 3),
+        cat('1', 'Nickel Strips', 1, [cat('3', 'Nickel Strip Pure', 2), cat('2', 'Nickel Strip Plated', 1)]),
+        cat('5', 'Connectors', 2),
+      ],
+      products: ['2', '3', '5', '9'].map((id) => ({ product_id: 'p' + id, name: 'Item ' + id, category_id: id, variants: [{}] })),
+    }
+    const out = buildCatalog(zoho, { categories: [] })
+    assert.deepEqual(out.categories.map((c) => c.name), ['Nickel Strip Plated', 'Nickel Strip Pure', 'Connectors', 'Tapes'])
+  })
+
+  test('each category in the catalogue says which parent it sits under', async () => {
+    const { buildCatalog } = await import('../lib/catalog.js')
+    const zoho = {
+      categories: [
+        { category_id: '1', name: 'Cells', visibility: true, handle: 'cells', images: [{ id: 'p1', url: '/category-images/cells.png/1/500x500' }], sub_categories: [
+          { category_id: '2', name: 'Prismatic Cells', visibility: true, sub_categories: [] },
+          { category_id: '3', name: 'NMC Cylindrical Cells', visibility: true, sub_categories: [] },
+        ] },
+        { category_id: '4', name: 'Tapes', visibility: true, sub_categories: [] },
+      ],
+      products: [
+        { product_id: 'a', name: 'Prismatic 3.2V', category_id: '2', variants: [{}] },
+        { product_id: 'b', name: 'NMC 18650', category_id: '3', variants: [{}] },
+        { product_id: 'c', name: 'Kapton tape', category_id: '4', variants: [{}] },
+      ],
+    }
+    const out = buildCatalog(zoho, { categories: [] })
+    assert.deepEqual(out.categories.map((c) => [c.name, c.Parent]).sort(), [['NMC Cylindrical Cells', 'Cells'], ['Prismatic Cells', 'Cells'], ['Tapes', '']])
+    assert.match(out.categories.find((c) => c.name === 'Prismatic Cells').ParentImage, /^\/zcat\/p1\//, "a sub-category carries its parent's picture")
   })
 })
 
@@ -489,8 +528,8 @@ describe('discovery files for search engines and AI assistants', () => {
   })
 })
 
-describe('nothing about products is stored on the server', () => {
-  test('no local product file, saved catalogue or saved photos', () => {
+describe('only a cache copy of the catalogue is kept on the server', () => {
+  test('no local product file or saved photos; the one cache copy is replaced after each refresh', () => {
     const srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8')
     for (const gone of ['writeSnapshot', 'readSnapshot', 'localCatalog', 'writeImageToDisk', 'readImageFromDisk', 'IMAGE_DIR']) {
       assert.ok(!srv.includes(gone), gone + ' is still in server.js')
@@ -500,6 +539,20 @@ describe('nothing about products is stored on the server', () => {
     assert.ok(!fs.existsSync(path.join(ROOT, 'public', 'assets', 'catalog.pdf')))
     const cat = fs.readFileSync(path.join(ROOT, 'lib', 'catalog.js'), 'utf8')
     assert.ok(!cat.includes('localImages'))
+    assert.ok(srv.includes("'catalog-cache.json'") && srv.includes('saveCatalogCache(data)'), 'a cache copy is saved after every successful refresh')
+  })
+
+  test('after a restart the last cached copy is served at once instead of waiting for Zoho', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arambhika-cache-'))
+    const data = JSON.parse(fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'products.local.json'), 'utf8'))
+    fs.writeFileSync(path.join(dir, 'catalog-cache.json'), JSON.stringify({ at: Date.now() - 5000, data }))
+    const app = await startApp({ env: { CATALOG_FIXTURE: '', DATA_DIR: dir } })
+    try {
+      const r = await fetch(app.base + '/products.json')
+      assert.equal(r.status, 200)
+      assert.equal(r.headers.get('x-catalog-source'), 'cache')
+      assert.ok((await r.json()).categories.length > 0)
+    } finally { await app.stop(); fs.rmSync(dir, { recursive: true, force: true }) }
   })
 })
 

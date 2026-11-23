@@ -1,0 +1,68 @@
+name: portal (dev only)
+
+# The Portal (customer pages and the members admin page) is a separate service. It is tested and
+# deployed only to the DEV droplet (the dev droplet) and never to production: there is no production job.
+# Nothing in apps/portal is part of the website release either (deploy.sh skips apps/).
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'apps/portal/**'
+      - 'scripts/deploy-portal.sh'
+      - '.github/workflows/portal-dev.yml'
+  pull_request:
+    branches: [dev]
+    paths:
+      - 'apps/portal/**'
+  workflow_dispatch:
+
+concurrency:
+  group: portal
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: admin panel tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/portal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/portal/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    name: deploy to dev droplet
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        run: bash scripts/deploy-portal.sh
+        env:
+          DEPLOY_ENV: dev
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          PORTAL_PORT: ${{ vars.PORTAL_PORT }}
+          # the Portal's own address. (The earlier free name 134-209-153-189.sslip.io keeps working: its nginx site and certificate stay in place.)
+          PORTAL_DOMAIN: ${{ vars.PORTAL_DOMAIN || 'crm.arambhika.com' }}
+          # credentials, kept only as environment secrets (PORTAL_ADMIN_PASSWORD and PORTAL_SESSION_SECRET when set, otherwise the Admin Panel ones)
+          ADMIN_PASSWORD: ${{ secrets.PORTAL_ADMIN_PASSWORD || secrets.ADMIN_PANEL_PASSWORD }}
+          SESSION_SECRET: ${{ secrets.PORTAL_SESSION_SECRET || secrets.ADMIN_PANEL_SESSION_SECRET }}
+          # the Zoho Commerce store's public address (no password or token): used only to list the items
+          ZOHO_DC: ${{ vars.ZOHO_DC }}
+          ZOHO_STOREFRONT_DOMAIN: ${{ vars.ZOHO_STOREFRONT_DOMAIN }}
