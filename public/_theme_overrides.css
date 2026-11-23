@@ -2949,3 +2949,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--m-teal) !importa
   .catalog-grid.is-focused { grid-template-columns: minmax(0, 1fr); }
   .catalog-grid.is-focused .cat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 }
+
+/* ===== product pictures: the whole picture always sits inside its frame (nothing cropped or zoomed past the edge) ===== */
+.prod-img { overflow: hidden; }
+.prod-img img, .prod-card:hover .prod-img img { width: 100%; height: 100%; object-fit: contain !important; object-position: center !important; transform: none !important; }
